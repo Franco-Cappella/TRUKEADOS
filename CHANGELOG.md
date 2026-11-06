@@ -1,5 +1,21 @@
 # Cambios
 
+## 1.2.0 — interfaz despejada, respuesta inmediata y movimiento suave
+- **Botones sin amontonarse**: las acciones pasaron a un panel abajo a la derecha (con el estado como
+  título) y se acomodan en una grilla; el centro de abajo queda libre para tu mano. "Mirar a" pasó a una fila
+  arriba al centro y el anotador arriba a la izquierda (más compacto). En celular el panel va abajo a todo el
+  ancho, con filas de botones deslizables, y la mano sube sola lo justo para no quedar tapada
+  (`scene.setBottomInset`). Probado sin solapamientos en 1280×720, 1038×515, 768×1024 y 375×812.
+- **Sin delay**: al tirar una carta o cantar, la carta vuela y el globo aparece al instante
+  (`RoomClient.predict`); el estado del servidor después lo confirma o lo corrige. Tocar de nuevo la carta
+  elegida la tira. Los botones solo se rehacen si cambian (antes se recreaban en cada actualización y un
+  clic podía perderse).
+- **Movimiento suave**: la cámara sigue un objetivo con amortiguación independiente de los FPS (arrastrar,
+  teclado, rueda y "mirar a"), las cabezas de los personajes giran con la misma técnica, y las cartas se tiran
+  y se reparten con curvas que arrancan rápido y se asientan.
+- Ritmo: los bots piensan 0,65–1,3 s (antes 0,9–1,8 s) y la pausa entre manos bajó de 5,2 a 4,2 s.
+
+
 ## 1.1.0 — tipografía y paleta
 - Tipografía única: **Archivo** (Omnibus-Type, Buenos Aires; Google Fonts, OFL), variable en peso y ancho.
   Ancho normal para textos y botones; angosta (`font-stretch: var(--narrow)`) para rótulos. Se sacaron

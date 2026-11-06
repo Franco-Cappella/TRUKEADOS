@@ -9,6 +9,7 @@ import { palitos, drawFace } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
+const PREDICT_MS = 4000; // un evento propio dentro de este tiempo ya se mostró por adelantado
 const cardImg = (c, alt = '') => `<img src="${ROUTES.card(c)}" alt="${esc(alt)}">`;
 
 export class RoomClient {
@@ -99,7 +100,52 @@ export class RoomClient {
     this.busy = true;
     clearTimeout(this.busyT);
     this.busyT = setTimeout(() => this.unlock(), ACTION_LOCK_MS);
+    this.predict(a);
     this.render();
+  }
+
+  // Respuesta inmediata: muestra lo que va a pasar sin esperar al servidor (la carta vuela a la mesa,
+  // el globo del canto aparece). El próximo `state` lo confirma; si el servidor lo rechaza, lo corrige.
+  predict(a) {
+    const g = this.st?.game;
+    const me = this.you;
+    if (!g?.h || me == null) return;
+    const said = {
+      truco: () => g.actions.truco && ['call', `¡${g.actions.truco}!`, g.actions.truco],
+      envido: () => ['call', `¡${ENVIDO_NAMES[a.kind]}!`, ENVIDO_NAMES[a.kind]],
+      quiero: () => ['call', '¡Quiero!', 'Quiero'],
+      noquiero: () => ['call', '¡No quiero!', 'No quiero'],
+      cantar: () => ['tanto', `${a.value ?? g.h.myTanto}`, `${a.value ?? g.h.myTanto}`],
+      buenas: () => ['tanto', 'Son buenas', 'Son buenas'],
+      mazo: () => ['mazo', g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', null],
+    }[a.t]?.();
+    if (said) {
+      const [type, bubble, voice] = said;
+      this.bubble(me, bubble, type === 'mazo' ? '' : 'call', 2600);
+      if (voice) say(voice);
+      this.predicted = { type, until: Date.now() + PREDICT_MS };
+    }
+    if (a.t === 'play' || a.t === 'play2') {
+      const round = g.h.r;
+      const cards = a.t === 'play'
+        ? [{ c: a.card, faceDown: a.mode === 'down', round }]
+        : [{ c: a.bottom, under: true, round }, { c: a.top, burned: true, round }];
+      const used = new Set(cards.map((p) => p.c));
+      this.scene.setMyCards(g.h.myCards.filter((c) => !used.has(c)), null);
+      this.scene.syncTable(g.h.table.map((list, s) => (s === me ? list.concat(cards) : list)), { animate: true });
+      flick();
+      this.predicted = { type: 'play', until: Date.now() + PREDICT_MS };
+    }
+  }
+
+  // ¿Este evento propio ya se mostró por adelantado con predict()?
+  wasPredicted(e) {
+    const p = this.predicted;
+    if (!p || e.seat !== this.you || Date.now() > p.until) return false;
+    const type = e.type === 'call' ? 'call' : e.type;
+    if (type !== p.type) return false;
+    this.predicted = null;
+    return true;
   }
 
   unlock() {
@@ -246,23 +292,26 @@ export class RoomClient {
   onEvent(e, g) {
     const me = this.you;
     const name = (s) => esc(this.nameOf(s));
+    const shown = this.wasPredicted(e); // lo mío ya se mostró al tocar el botón
     switch (e.type) {
       case 'call':
+        if (shown) break;
         this.bubble(e.seat, `¡${e.text}!`, 'call', 2600);
         say(e.text);
         break;
       case 'tanto': {
+        if (shown) break;
         const txt = e.value == null ? 'Son buenas' : `${e.value}`;
         this.bubble(e.seat, txt, 'call', 4000);
         say(txt);
         break;
       }
       case 'mazo':
-        this.bubble(e.seat, g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', '', 2400);
+        if (!shown) this.bubble(e.seat, g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', '', 2400);
         flick(0.15, 0.2);
         break;
       case 'play':
-        flick();
+        if (!shown) flick();
         if (e.burned) {
           const who = e.seat === me ? 'Tiraste' : `${name(e.seat)} tiró`;
           this.toast(`${who} dos encimadas: quedó quemado el ${esc(cardName(e.burned))}.<br>${cardImg(e.burned)}`, 'bad', 4500);
@@ -323,14 +372,17 @@ export class RoomClient {
     const g = this.st?.game;
     if (this.dealing) return;
     if (!g?.actions.play) return this.toast('Todavía no es tu turno', '', 1200);
+    if (this.busy) return;
     if (this.choosingTop) {
       // tiro doble: la primera elegida va abajo (juega), la segunda arriba (queda quemada)
       const bottom = this.choosingTop;
       this.choosingTop = null;
       this.selected = null;
-      if (id !== bottom) this.act({ t: 'play2', bottom, top: id });
+      if (id !== bottom) return this.act({ t: 'play2', bottom, top: id });
+    } else if (this.selected === id) {
+      return this.playCard(id, 'normal'); // tocar de nuevo la carta elegida la tira
     } else {
-      this.selected = this.selected === id ? null : id;
+      this.selected = id;
     }
     this.scene.setMyCards(g.h.myCards, this.selected);
     this.render();
@@ -426,7 +478,15 @@ export class RoomClient {
     this.renderWaiting();
     this.renderResult();
     $('#spect').textContent = st.room.spectators ? `${st.room.spectators} mirando` : '';
-    $('#tools').classList.toggle('hidden', this.you == null || !st.game || st.room.status !== 'playing');
+    const playing = !!st.game && st.room.status === 'playing';
+    $('#tools').classList.toggle('hidden', this.you == null || !playing);
+    const panel = $('#panel');
+    panel.classList.toggle('hidden', !playing);
+    panel.classList.toggle('busy', this.busy);
+    // Si el panel ocupa todo el ancho (celular), la mano sube para no quedar tapada.
+    const r = panel.getBoundingClientRect();
+    const full = playing && r.width > window.innerWidth * 0.6;
+    this.scene.setBottomInset(full ? window.innerHeight - r.top + 8 : 0);
   }
 
   renderScore() {
@@ -470,9 +530,13 @@ export class RoomClient {
       show: () => (mine ? `Ganaste el envido con ${g.h.show.value}: mostrá las cartas` : `${who(g.h.show.seat)} tiene que mostrar sus ${g.h.show.value}`),
     };
     let t = texts[w.kind]?.() || '';
-    if (this.choosingTop) t = 'Dos encimadas: elegí la carta que va ARRIBA (queda quemada)';
-    if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none' && !mine) t += ' · Sos pie: el envido lo cantás vos en tu turno';
-    el.textContent = t;
+    let hint = '';
+    if (this.choosingTop) {
+      t = 'Dos encimadas';
+      hint = 'Elegí la carta que va arriba: queda quemada.';
+    } else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
+    else if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none') hint = 'Sos pie: el envido lo cantás vos, en tu turno.';
+    el.innerHTML = esc(t) + (hint ? `<small>${esc(hint)}</small>` : '');
     el.classList.toggle('mine', mine);
   }
 
@@ -480,12 +544,29 @@ export class RoomClient {
     const g = this.st.game;
     const box = $('#actions');
     const cardBox = $('#card-actions');
-    box.innerHTML = '';
-    cardBox.classList.add('hidden');
     box.classList.toggle('busy', this.busy);
-    if (!g || this.you == null || this.st.room.status !== 'playing' || this.dealing) return;
-    const a = g.actions;
-    // grupos con rótulo, en este orden
+    const show = g && this.you != null && this.st.room.status === 'playing' && !this.dealing;
+    const a = g?.actions;
+    const next = show ? this.buildActions(g, a) : document.createElement('div');
+    // Solo se reemplazan los botones si cambiaron: así no parpadean ni se pierde un clic a mitad de camino
+    // (y no se borra el número que estás escribiendo para mentir los tantos).
+    if (box.dataset.key !== next.innerHTML) {
+      box.dataset.key = next.innerHTML;
+      box.replaceChildren(...next.children);
+    }
+    const cardOn = show && a.play && this.selected && !this.choosingTop;
+    cardBox.classList.toggle('hidden', !cardOn);
+    if (cardOn) {
+      cardBox.querySelector('[data-play="normal"]').disabled = this.busy;
+      cardBox.querySelector('[data-play="double"]').disabled = this.busy || !a.canDouble;
+      cardBox.querySelector('[data-play="down"]').disabled = this.busy || !a.canDown;
+    }
+    if (show) this.renderDenuncias(a);
+  }
+
+  // Arma los grupos de botones (en un contenedor suelto) según lo que el motor permite ahora.
+  buildActions(g, a) {
+    const out = document.createElement('div');
     const ORDER = ['tantos', 'mostrar', 'resp', 'cantar', 'mano'];
     const groups = {};
     const group = (key, label) => {
@@ -505,7 +586,6 @@ export class RoomClient {
       if (title) b.title = title;
       b.onclick = fn;
       group(key, label).appendChild(b);
-      return b;
     };
     const acting = (action) => () => this.act(action);
 
@@ -516,10 +596,8 @@ export class RoomClient {
       const wrap = document.createElement('span');
       wrap.className = 'lie';
       wrap.title = 'Cantar otro número. Si te piden que muestres, perdés los puntos del envido.';
-      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}"><button class="btn">Cantar otro</button>`;
-      const lieBtn = wrap.querySelector('button');
-      lieBtn.disabled = this.busy;
-      lieBtn.onclick = () => this.act({ t: 'cantar', value: Number(wrap.querySelector('input').value) });
+      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}"><button class="btn"${this.busy ? ' disabled' : ''}>Cantar otro</button>`;
+      wrap.querySelector('button').onclick = () => this.act({ t: 'cantar', value: Number(wrap.querySelector('input').value) });
       group('tantos', 'Tus tantos').appendChild(wrap);
     }
     if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }));
@@ -551,20 +629,8 @@ export class RoomClient {
         this.render();
       });
     }
-    for (const k of ORDER) if (groups[k]) box.appendChild(groups[k]);
-
-    if (a.play && this.selected && !this.choosingTop) {
-      cardBox.classList.remove('hidden');
-      cardBox.querySelector('[data-play="normal"]').disabled = this.busy;
-      cardBox.querySelector('[data-play="double"]').disabled = this.busy || !a.canDouble;
-      cardBox.querySelector('[data-play="down"]').disabled = this.busy || !a.canDown;
-    } else if (a.play && !this.choosingTop && !groups.resp && !groups.tantos) {
-      const hint = document.createElement('span');
-      hint.className = 'act-hint';
-      hint.textContent = 'Elegí una carta · arrastrala para ordenar';
-      box.prepend(hint);
-    }
-    this.renderDenuncias(a);
+    for (const k of ORDER) if (groups[k]) out.appendChild(groups[k]);
+    return out;
   }
 
   renderDenuncias(a) {

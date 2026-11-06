@@ -94,7 +94,7 @@
     <div id="topbar">
       <button class="btn small ghost" id="leave" title="Salir">✕</button>
       <button class="code-chip" id="code-chip" title="Copiar enlace"><span>Sala</span><b id="room-code">-----</b></button>
-            <div class="spacer"></div>
+      <div class="spacer"></div>
       <span id="spect" class="muted"></span>
       <button class="btn small ghost" id="voice-toggle" title="Voz de los cantos">Voz: sí</button>
       <button class="btn small ghost" id="zoom-btn" title="Mantené apretada la tecla Z (o este botón) para hacer zoom">Zoom <kbd>Z</kbd></button>
@@ -102,29 +102,34 @@
       <button class="btn small ghost" id="chat-toggle" title="Chat">Chat<i id="chat-badge" class="badge hidden"></i></button>
     </div>
 
-    <div id="status-line"></div>
     <div id="anotador" title="Anotador"></div>
-
     <div id="look-bar"></div>
 
-    <div id="bottom">
-      <div id="tools">
-        <div class="dropdown" id="senas-dd">
-          <button class="btn" id="senas-btn">Señas</button>
-          <div class="menu hidden" id="senas-menu"></div>
-        </div>
-        <div class="dropdown" id="trampa-dd">
-          <button class="btn danger" id="trampa-btn">Mostrá las dos</button>
-          <div class="menu hidden" id="trampa-menu"></div>
+    <!-- abajo a la izquierda: señas y trampa -->
+    <div id="tools">
+      <div class="dropdown" id="senas-dd">
+        <button class="btn" id="senas-btn">Señas</button>
+        <div class="menu hidden" id="senas-menu"></div>
+      </div>
+      <div class="dropdown" id="trampa-dd">
+        <button class="btn danger" id="trampa-btn">Mostrá las dos</button>
+        <div class="menu hidden" id="trampa-menu"></div>
+      </div>
+    </div>
+
+    <!-- abajo a la derecha: qué pasa y qué podés hacer. El centro queda libre para tu mano. -->
+    <aside id="panel" class="hidden">
+      <div id="status-line"></div>
+      <div id="card-actions" class="hidden">
+        <span class="lbl">Carta elegida</span>
+        <div class="btns">
+          <button class="btn primary" data-play="normal">Tirar</button>
+          <button class="btn" data-play="double" title="Trampa: tapás tu carta con otra. La de abajo es la que juega; la de arriba queda quemada (la perdés y todos la ven quemada). Te pueden pedir que muestres las dos.">Dos encimadas</button>
+          <button class="btn" data-play="down" title="Boca abajo: no gana la ronda">Tapada</button>
         </div>
       </div>
       <div id="actions"></div>
-      <div id="card-actions" class="hidden">
-        <button class="btn primary" data-play="normal">Tirar</button>
-        <button class="btn" data-play="double" title="Trampa: tapás tu carta con otra. La de abajo es la que juega; la de arriba queda quemada (la perdés y todos la ven quemada). Te pueden pedir que muestres las dos.">Dos encimadas</button>
-        <button class="btn" data-play="down" title="Boca abajo: no gana la ronda">Tirar tapada</button>
-      </div>
-    </div>
+    </aside>
 
     <canvas id="mirror" width="240" height="240" class="hidden" title="Así te ven"></canvas>
 

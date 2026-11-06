@@ -34,11 +34,11 @@ export const TIMING = {
   cut: 800, // corta el de la izquierda
   dealStep: 170, // entre carta y carta
   dealTail: 260, // margen al final del reparto
-  handPause: 5200, // pausa para ver cómo terminó la mano
+  handPause: 4200, // pausa para ver cómo terminó la mano
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
   afk: 40_000, // humano desconectado: después de esto juega el bot por él
-  botThinkMin: 900,
-  botThinkRand: 900,
+  botThinkMin: 650, // los bots "piensan" entre 0,65 y 1,3 s: ni instantáneo ni lento
+  botThinkRand: 650,
   botHeartbeat: 2500, // latido para las miradas de los bots
 };
 // Duración total de mezclar + cortar + repartir n jugadores (3 cartas cada uno).

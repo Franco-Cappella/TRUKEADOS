@@ -45,6 +45,7 @@
   --btn-pad: 12px 20px;
   --btn-min-h: 46px;
   --btn-call-font: 22px;
+  --panel-w: min(340px, 34vw);
   /* tipografía */
   --font: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --narrow: 78%;
@@ -173,7 +174,7 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 #zoom-btn kbd { margin-left: 2px; }
 .badge { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 2px; }
 
-#anotador { position: absolute; right: 12px; top: 58px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px 6px; color: var(--text); min-width: 100px; z-index: 2; }
+#anotador { position: absolute; left: 12px; top: 60px; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px 6px; color: var(--text); min-width: 100px; z-index: 2; }
 .an-head, .an-foot { display: grid; grid-template-columns: 1fr 1fr; text-align: center; gap: 6px; }
 .an-head span { font-family: var(--font); font-stretch: var(--narrow); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); padding-bottom: 5px; border-bottom: 1px solid var(--line-2); }
 .an-body { display: flex; justify-content: center; gap: 6px; padding-top: 6px; }
@@ -181,39 +182,40 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .an-foot { margin-top: 2px; border-top: 1px solid var(--line-2); padding-top: 4px; font-family: var(--font); font-weight: 700; font-size: 19px; }
 .an-foot small { grid-column: 1 / -1; font-family: var(--font); font-stretch: var(--narrow); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
-#status-line { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-family: var(--font); font-stretch: var(--narrow); font-weight: 600; font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); padding: 4px 2px; border-bottom: 1px solid var(--line-2); pointer-events: none; white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 4px #000; }
+#status-line { font-family: var(--font); font-stretch: var(--narrow); font-weight: 700; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); padding-bottom: 8px; border-bottom: 1px solid var(--line-2); line-height: 1.25; }
 #status-line:empty { display: none; }
 #status-line.mine { color: var(--text); border-bottom: 2px solid var(--accent); }
 
-#look-bar { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
+#look-bar { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: row; align-items: center; gap: 2px; max-width: calc(100% - 600px); overflow-x: auto; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
 #look-bar:empty { display: none; }
-#look-bar .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 0 6px 4px; }
-#look-bar .btn { justify-content: flex-start; border: 0; background: none; font-size: 15px; padding: 8px 10px; min-height: 40px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; text-transform: none; letter-spacing: 0.02em; }
+#look-bar .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 0 6px; white-space: nowrap; }
+#look-bar .btn { flex-direction: column; gap: 0; border: 0; background: none; font-size: 14px; padding: 4px 10px; min-height: 38px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: none; letter-spacing: 0.02em; }
 #look-bar .btn:hover { background: var(--hover-tint); }
-#look-bar .btn.on { color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
-#look-bar small { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; width: 66px; display: inline-block; }
+#look-bar .btn.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+#look-bar small { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; display: block; line-height: 1.2; }
 
-/* barra de abajo: herramientas a la izquierda, acciones al centro, la carta elegida a la derecha */
-#bottom {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 12px;
-  background: linear-gradient(to top, rgba(10, 7, 5, 0.85), rgba(10, 7, 5, 0));
-  pointer-events: none;
+/* Abajo a la izquierda: señas y trampa. Abajo a la derecha: el panel con el estado y las acciones.
+   El centro de abajo queda libre: ahí está tu mano. */
+#tools { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 8px; z-index: 3; }
+#panel {
+  position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 3;
+  width: var(--panel-w); max-height: calc(100% - 76px); min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
-#bottom > * { pointer-events: auto; }
-#tools { grid-column: 1; grid-row: 1; justify-self: start; display: flex; gap: 6px; }
-#actions { grid-column: 2; grid-row: 1; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; align-items: flex-end; }
-#card-actions { grid-column: 3; grid-row: 1; justify-self: end; display: flex; flex-direction: column; gap: 6px; align-items: stretch; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
-#card-actions::before { content: 'Carta elegida'; font-family: var(--font); font-stretch: var(--narrow); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 0 4px 2px; }
-.act-group { display: flex; flex-direction: column; gap: 6px; }
-#actions.busy .act-group { opacity: 0.6; }
-.act-group .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; text-align: center; }
-.act-group .btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: stretch; }
-.act-hint { font-family: var(--font); font-stretch: var(--narrow); letter-spacing: 0.06em; text-transform: uppercase; font-size: 16px; color: var(--text-dim); text-shadow: 0 1px 3px #000; padding-bottom: 8px; }
-.lie { display: inline-flex; gap: 0; align-items: stretch; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; background: var(--panel); }
-.lie input { width: 66px; background: var(--bg); border: 0; border-right: 1px solid var(--line); padding: 6px 8px; font-size: 21px; font-family: var(--font); font-weight: 700; text-align: center; }
-.lie .btn { border: 0; border-radius: 0; }
+#actions { display: flex; flex-direction: column; gap: 12px; }
+#actions:empty { display: none; }
+#actions.busy .act-group, #panel.busy #card-actions { opacity: 0.55; }
+.act-group, #card-actions { display: flex; flex-direction: column; gap: 6px; }
+.act-group .lbl, #card-actions .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+/* botones en grilla: nunca se pisan, se acomodan en filas parejas */
+.act-group .btns, #card-actions .btns { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+.act-group .btn, #card-actions .btn { width: 100%; white-space: normal; text-align: center; }
+#status-line small { display: block; margin-top: 5px; font-size: 13px; font-weight: 500; font-stretch: 100%; text-transform: none; letter-spacing: 0; color: var(--muted); line-height: 1.35; }
+.lie { grid-column: 1 / -1; display: flex; gap: 0; align-items: stretch; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; background: var(--panel); }
+.lie input { width: 66px; flex: none; background: var(--bg); border: 0; border-right: 1px solid var(--line); padding: 6px 8px; font-size: 21px; font-family: var(--font); font-weight: 700; text-align: center; }
+.lie .btn { border: 0; border-radius: 0; flex: 1; }
 
 .dropdown { position: relative; }
 .dropdown .menu { position: absolute; bottom: calc(100% + 6px); left: 0; background: var(--surface); border: 1px solid var(--line-2); border-radius: 3px; padding: 4px; min-width: 270px; max-height: 60vh; overflow-y: auto; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); z-index: 5; }
@@ -225,7 +227,7 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .menu .tip { font-size: 12px; line-height: 1.45; color: var(--text-dim); padding: 8px 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .menu .tip b { color: var(--text); }
 
-#mirror { position: absolute; right: 12px; bottom: 170px; width: 110px; height: 110px; background: var(--face-bg); border: 1px solid var(--line-2); border-radius: 3px; }
+#mirror { position: absolute; left: 12px; bottom: 80px; z-index: 3; width: 110px; height: 110px; background: var(--face-bg); border: 1px solid var(--line-2); border-radius: 3px; }
 
 #chat { position: absolute; right: 12px; top: 56px; bottom: 96px; width: min(340px, calc(100vw - 24px)); background: var(--panel-hover); border: 1px solid var(--line-2); border-radius: 3px; display: flex; flex-direction: column; z-index: 5; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); font-family: var(--font); font-stretch: var(--narrow); text-transform: uppercase; letter-spacing: 0.1em; font-size: 13px; }
@@ -273,19 +275,26 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 @media (max-width: 760px) {
   .menu-grid { grid-template-columns: 1fr; }
   #look-bar { display: none; }
-  #bottom { grid-template-columns: 1fr; gap: 8px; }
-  #tools { grid-row: 3; }
-  #card-actions { grid-row: 1; flex-direction: row; }
-  #actions { grid-row: 2; }
-  #tools, #actions, #card-actions { grid-column: 1; justify-self: center; }
-  #card-actions::before { display: none; }
+  #panel { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 40%; padding: 8px 10px; gap: 6px; }
+  #status-line small, .act-group .lbl, #card-actions .lbl { display: none; }
+  #panel .btn { min-height: 40px; padding: 8px 10px; }
+  #panel .btn.call { padding: 6px 10px; }
+  /* en celular: una fila deslizable de botones, así el panel queda bajo y la mano no tapa las caras */
+  #actions { flex-direction: row; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 24px; }
+  .act-group { flex: none; }
+  .act-group .btns, #card-actions .btns { display: flex; gap: 6px; }
+  #panel .act-group .btn, #card-actions .btn { width: auto; white-space: nowrap; }
+  #card-actions .btn { flex: 1; }
+  #tools { left: 8px; bottom: auto; top: 52px; }
+  #tools .btn { min-height: 36px; padding: 7px 11px; font-size: 14px; }
+  #tools .dropdown .menu { bottom: auto; top: calc(100% + 6px); }
   .code-chip span { display: none; }
   #topbar { gap: 4px; padding-left: 8px; padding-right: 8px; }
   #topbar .btn.small { padding: 6px 9px; }
   :root { --btn-font: 16px; --btn-pad: 11px 16px; --btn-call-font: 20px; }
   #zoom-btn kbd { display: none; }
-  #anotador { top: 50px; right: 8px; transform: scale(0.8); transform-origin: top right; }
-  #status-line { top: 54px; font-size: 13px; max-width: 70vw; }
-  #mirror { width: 80px; height: 80px; bottom: 210px; }
+  #anotador { left: auto; top: 50px; right: 8px; transform: scale(0.8); transform-origin: top right; }
+  #status-line { font-size: 15px; padding-bottom: 6px; }
+  #mirror { width: 80px; height: 80px; bottom: auto; top: 100px; }
   .seats { grid-template-columns: 1fr; }
 }

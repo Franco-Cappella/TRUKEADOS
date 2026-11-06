@@ -52,6 +52,9 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`
    (evita el doble envío que antes mostraba "No te toca").
+   Al mismo tiempo `predict(a)` muestra el resultado esperado (la carta vuela a la mesa, aparece el globo del
+   canto) para que no haya delay; cuando llega el evento propio, `wasPredicted` evita repetirlo. Si el servidor
+   rechaza la jugada, el `state` que manda corrige la mesa y la mano solas.
 2. `TrucoRoom.webSocketMessage` → `act(game, seat, a)` del motor. Si hay error lo manda como `{t:'error'}`
    junto con el estado actual.
 3. `commit()` guarda, manda `state` a cada socket con `viewFor(game, seat)` (oculta cartas ajenas) y
@@ -81,6 +84,16 @@ npm run dev       # http://localhost:8787
   (si falla con "write EOF", es eso).
 - En el navegador: `window.__truco.room` y `window.__truco.scene` sirven para depurar desde la consola.
 - Con la pestaña oculta el navegador pausa la animación; el reparto igual se destraba solo (`startDeal`).
+
+## Interfaz
+- Pantalla de partida: arriba la barra (salir, código, voz, zoom, ayuda, chat), "Mirar a" al centro y el
+  anotador a la izquierda; abajo a la izquierda Señas y "Mostrá las dos"; **abajo a la derecha el panel**
+  (`#panel`: estado + carta elegida + acciones). El centro de abajo es de la mano: no pongas nada ahí.
+- En celular (`max-width: 760px`) el panel va a todo el ancho con filas deslizables y la mano sube con
+  `scene.setBottomInset()`. Antes de cerrar un cambio de interfaz, medí solapamientos en 1280×720, 768×1024
+  y 375×812.
+- Movimiento: la cámara y las cabezas usan `damp()` (suavizado por tiempo, no por cuadro). Para mover la
+  cámara cambiá `tYaw`/`tPitch` (objetivo), nunca `yaw`/`pitch` directo.
 
 ## Cómo agregar cosas
 - **Una seña**: agregala en `SENAS` de `config.js` con una `expr`; si la cara es nueva, dibujala en

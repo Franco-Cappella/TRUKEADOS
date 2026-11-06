@@ -142,6 +142,13 @@ function noise(ctx, w, h, amount, alpha) {
 }
 
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+// Acerca `cur` a `target` de forma suave e independiente de los FPS (rate: cuán rápido, en 1/s).
+const damp = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
+const CAM_RATE = 14; // suavizado de la cámara
+const HEAD_RATE = 9; // suavizado del giro de cabeza de los personajes
+const THROW_MS = 360; // carta de la mano a la mesa
+const FLY_MS = 260; // carta del mazo a cada jugador
 
 export class TableScene {
   constructor(container) {
@@ -162,8 +169,8 @@ export class TableScene {
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.02, 40);
     this.scene.add(this.camera);
 
-    this.yaw = 0;
-    this.pitch = -0.32;
+    this.yaw = this.tYaw = 0; // actual y objetivo: la cámara se acerca al objetivo suavemente
+    this.pitch = this.tPitch = -0.32;
     this.n = 2;
     this.me = 0;
     this.spectator = false;
@@ -584,7 +591,7 @@ export class TableScene {
     return { bodyYaw, headYaw, down };
   }
 
-  updateCharacter(c, now) {
+  updateCharacter(c, now, dt = 1 / 60) {
     const expr = now < c.exprUntil ? c.state.expr : 'neutral';
     const talking = now < c.talkUntil && Math.floor(now / 130) % 2 === 0;
     const pose = this.poseFor(c);
@@ -594,8 +601,8 @@ export class TableScene {
     const settled = near(st.headYaw ?? 99, pose.headYaw) && near(st.down ?? 99, pose.down);
     if (!c.dirty && settled && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
     // la cabeza gira suave
-    st.headYaw = st.headYaw === undefined ? pose.headYaw : st.headYaw + (pose.headYaw - st.headYaw) * 0.25;
-    st.down = st.down === undefined ? pose.down : st.down + (pose.down - st.down) * 0.25;
+    st.headYaw = st.headYaw === undefined ? pose.headYaw : damp(st.headYaw, pose.headYaw, HEAD_RATE, dt);
+    st.down = st.down === undefined ? pose.down : damp(st.down, pose.down, HEAD_RATE, dt);
     if (near(st.headYaw, pose.headYaw)) st.headYaw = pose.headYaw;
     if (near(st.down, pose.down)) st.down = pose.down;
     drawCharacter(c.ctx, c.look, { ...st, expr, talking });
@@ -610,12 +617,12 @@ export class TableScene {
   placeCamera() {
     if (this.spectator) {
       this.camera.position.set(0, 2.3, this.R + 1.6);
-      this.yaw = 0;
-      this.pitch = -0.55;
+      this.yaw = this.tYaw = 0;
+      this.pitch = this.tPitch = -0.55;
     } else {
       this.camera.position.set(0, EYE_Y, this.R + 0.24);
-      this.yaw = 0;
-      this.pitch = -0.2;
+      this.yaw = this.tYaw = 0;
+      this.pitch = this.tPitch = -0.2;
     }
     this.applyCamera();
   }
@@ -628,8 +635,7 @@ export class TableScene {
       this.camera.lookAt(0, TABLE_Y + this.pitch * 0.6 + 0.3, 0);
       return;
     }
-    this.yaw = THREE.MathUtils.clamp(this.yaw, -2.0, 2.0);
-    this.pitch = THREE.MathUtils.clamp(this.pitch, -1.25, 0.35);
+    this.clampView();
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.y = this.yaw;
@@ -639,10 +645,20 @@ export class TableScene {
     this.camera.position.set(-Math.sin(this.yaw) * 0.12 * lean, EYE_Y + 0.2 * lean, this.R + 0.24 - 0.42 * lean);
   }
 
+  // Límites de hacia dónde se puede mirar (sentado no se da vuelta del todo).
+  clampView() {
+    if (this.spectator) return;
+    const { clamp } = THREE.MathUtils;
+    this.tYaw = clamp(this.tYaw, -2.0, 2.0);
+    this.tPitch = clamp(this.tPitch, -1.25, 0.35);
+    this.yaw = clamp(this.yaw, -2.0, 2.0);
+    this.pitch = clamp(this.pitch, -1.25, 0.35);
+  }
+
   lookAtSeat(seat) {
     if (this.spectator) return;
     if (seat === 'table') {
-      this.animateView(this.yaw * 0.3, -0.78);
+      this.animateView(this.tYaw * 0.3, -0.78);
       return;
     }
     const c = this.chars.get(seat);
@@ -652,14 +668,11 @@ export class TableScene {
     this.animateView(yaw, -0.12);
   }
 
+  // Gira la cabeza hacia (yaw, pitch); el frame la lleva hasta ahí con suavidad.
   animateView(yaw, pitch) {
-    const y0 = this.yaw;
-    const p0 = this.pitch;
-    this.tween(320, (t) => {
-      this.yaw = y0 + (yaw - y0) * ease(t);
-      this.pitch = p0 + (pitch - p0) * ease(t);
-      this.applyCamera();
-    });
+    this.tYaw = yaw;
+    this.tPitch = pitch;
+    this.clampView();
   }
 
   computeLookTarget() {
@@ -691,7 +704,7 @@ export class TableScene {
     el.addEventListener('pointerdown', (e) => {
       this.setPointer(e);
       const card = this.pickHand();
-      down = { x: e.clientX, y: e.clientY, yaw: this.yaw, pitch: this.pitch, card };
+      down = { x: e.clientX, y: e.clientY, yaw: this.tYaw, pitch: this.tPitch, card };
       moved = 0;
       el.setPointerCapture(e.pointerId);
     });
@@ -710,9 +723,9 @@ export class TableScene {
         return;
       }
       const k = 2.6 / el.clientWidth;
-      this.yaw = down.yaw - dx * k * (this.spectator ? 1.4 : 1);
-      this.pitch = down.pitch - dy * k;
-      this.applyCamera();
+      this.tYaw = down.yaw - dx * k * (this.spectator ? 1.4 : 1);
+      this.tPitch = down.pitch - dy * k;
+      this.clampView();
     });
     const up = (e) => {
       if (down && moved <= 6) this.click(e);
@@ -731,8 +744,8 @@ export class TableScene {
       if (card && this.onCardDouble) this.onCardDouble(card.userData.id);
     });
     el.addEventListener('wheel', (e) => {
-      this.pitch -= e.deltaY * 0.0015;
-      this.applyCamera();
+      this.tPitch -= e.deltaY * 0.0015;
+      this.clampView();
     }, { passive: true });
     this.keys = new Set();
     window.addEventListener('keydown', (e) => {
@@ -844,12 +857,21 @@ export class TableScene {
     this.selected = selected;
   }
 
+  // Píxeles de abajo de la pantalla tapados por la interfaz (en celular el panel va a todo el ancho).
+  setBottomInset(px) {
+    this.bottomInset = Math.max(0, px || 0);
+  }
+
   layoutHand(dt) {
     const n = this.handCards.length;
     if (this.handCards.length) this.handOrder = this.handCards.map((c) => c.userData.id);
     // cuanto más mirás para abajo, más se baja la mano (para ver la mesa)
     const lowered = THREE.MathUtils.clamp((-this.pitch - 0.35) / 0.45, 0, 1);
-    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1, -0.62);
+    // si la interfaz tapa la parte de abajo, la mano sube lo justo (suave)
+    const h = this.renderer.domElement.clientHeight || 1;
+    const lift = ((this.bottomInset || 0) / h) * 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.62;
+    this.handLift = damp(this.handLift || 0, lift, 10, dt);
+    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1 + this.handLift, -0.62);
     const mid = (n - 1) / 2;
     this.handCards.forEach((c, i) => {
       const a = (mid - i) * 0.3;
@@ -922,14 +944,14 @@ export class TableScene {
           if (animate) {
             const mine = !this.spectator && seat === this.me;
             const start = (mine && this.lastHandPos?.[p.c]) || this.handOrigin(seat);
-            if (mine) this.reachWith(card, 420);
+            if (mine) this.reachWith(card, THROW_MS);
             const q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, this.seatAngle(seat), 0));
             card.position.copy(start);
             card.quaternion.copy(q0);
-            this.tween(420, (t) => {
-              const e = ease(t);
+            this.tween(THROW_MS, (t) => {
+              const e = easeOut(t);
               card.position.lerpVectors(start, pose.pos, e);
-              card.position.y += Math.sin(Math.PI * t) * 0.12;
+              card.position.y += Math.sin(Math.PI * e) * 0.08;
               card.quaternion.slerpQuaternions(q0, endQ, e);
             });
           } else {
@@ -1088,8 +1110,8 @@ export class TableScene {
     const end = this.handOrigin(seat);
     card.position.copy(start);
     this.scene.add(card);
-    this.tween(240, (t) => {
-      card.position.lerpVectors(start, end, ease(t));
+    this.tween(FLY_MS, (t) => {
+      card.position.lerpVectors(start, end, easeOut(t));
       card.position.y += Math.sin(Math.PI * t) * 0.06;
     }, () => {
       this.scene.remove(card);
@@ -1130,10 +1152,16 @@ export class TableScene {
     const k = this.keys;
     if (k && k.size) {
       const sp = 1.8 * dt;
-      if (k.has('a') || k.has('arrowleft')) this.yaw += sp;
-      if (k.has('d') || k.has('arrowright')) this.yaw -= sp;
-      if (k.has('w') || k.has('arrowup')) this.pitch += sp * 0.8;
-      if (k.has('s') || k.has('arrowdown')) this.pitch -= sp * 0.8;
+      if (k.has('a') || k.has('arrowleft')) this.tYaw += sp;
+      if (k.has('d') || k.has('arrowright')) this.tYaw -= sp;
+      if (k.has('w') || k.has('arrowup')) this.tPitch += sp * 0.8;
+      if (k.has('s') || k.has('arrowdown')) this.tPitch -= sp * 0.8;
+      this.clampView();
+    }
+    // la cámara sigue al objetivo con suavidad (sin saltos al arrastrar ni al elegir a quién mirar)
+    if (Math.abs(this.tYaw - this.yaw) > 1e-4 || Math.abs(this.tPitch - this.pitch) > 1e-4) {
+      this.yaw = damp(this.yaw, this.tYaw, CAM_RATE, dt);
+      this.pitch = damp(this.pitch, this.tPitch, CAM_RATE, dt);
       this.applyCamera();
     }
     // las animaciones que se encadenan (en done) se agregan a la lista nueva, no se pierden
@@ -1163,7 +1191,7 @@ export class TableScene {
       c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
       // respira un poquito
       c.mesh.position.y = CHAR_H / 2 + Math.sin(now / 900 + c.seat) * 0.003;
-      this.updateCharacter(c, now);
+      this.updateCharacter(c, now, dt);
     }
     const target = this.computeLookTarget();
     if (target !== this.lookTarget) {

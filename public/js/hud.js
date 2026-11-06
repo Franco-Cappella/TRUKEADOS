@@ -24,16 +24,16 @@ export function drawFace(target, look, expr) {
 // Los grupos van uno debajo del otro; en partidas a 30 una raya separa las malas de las buenas.
 export function palitos(pts, target) {
   const groups = Math.ceil(target / 5);
-  const gap = 8;
-  const size = 22;
+  const gap = 6;
+  const size = 16;
   const rule = target === 30 ? 12 : 0;
   const h = groups * (size + gap) + rule;
   const wob = [0.6, -0.8, 0.4, -0.5, 0.7, -0.3]; // variaciones fijas: parecen hechos a mano
-  let svg = `<svg viewBox="0 0 34 ${h}" width="34" height="${h}" aria-label="${pts} puntos">`;
+  let svg = `<svg viewBox="0 0 28 ${h}" width="28" height="${h}" aria-label="${pts} puntos">`;
   for (let gI = 0; gI < groups; gI++) {
     const n = Math.max(0, Math.min(5, pts - gI * 5));
     const y = gI * (size + gap) + (rule && gI >= 3 ? rule : 0) + 4;
-    const x = 6;
+    const x = 5;
     const w = wob[gI % wob.length];
     const lines = [
       [x, y + w, x, y + size],
@@ -49,7 +49,7 @@ export function palitos(pts, target) {
   }
   if (rule) {
     const y = 3 * (size + gap) + rule / 2 - 2;
-    svg += `<line x1="0" y1="${y}" x2="34" y2="${y}" stroke="${SCORE.rule}" stroke-width="1" stroke-dasharray="3 3"/>`;
+    svg += `<line x1="0" y1="${y}" x2="28" y2="${y}" stroke="${SCORE.rule}" stroke-width="1" stroke-dasharray="3 3"/>`;
   }
   return svg + '</svg>';
 }
@@ -60,8 +60,8 @@ export function helpHtml() {
     <div class="row between"><h2>Cómo se juega</h2><button class="btn small" data-close>✕</button></div>
     <h3>Controles</h3>
     <ul>
-      <li>Arrastrá con el mouse o el dedo para mirar a los costados y para abajo (a la mesa). También <kbd>A</kbd>/<kbd>D</kbd> y <kbd>W</kbd>/<kbd>S</kbd>, o los botones de la izquierda.</li>
-      <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda) o <b>Dos encimadas</b> (trampa: la de abajo es la que juega y la de arriba queda <b>quemada</b>, se pierde y todos la ven quemada; un rival te puede pedir que muestres las dos). Doble clic la tira directo. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
+      <li>Arrastrá con el mouse o el dedo para mirar a los costados y para abajo (a la mesa). También <kbd>A</kbd>/<kbd>D</kbd> y <kbd>W</kbd>/<kbd>S</kbd>, o “Mirar a” arriba al centro.</li>
+      <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda) o <b>Dos encimadas</b> (trampa: la de abajo es la que juega y la de arriba queda <b>quemada</b>, se pierde y todos la ven quemada; un rival te puede pedir que muestres las dos). Tocala de nuevo (o doble clic) y se tira. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
       <li>“te mira” al lado de un nombre quiere decir que esa persona te está mirando. Las señas no avisan nada: hay que verlas en la cara. Los personajes no parpadean solos: si alguien cierra los ojos, es la seña de “ciego”.</li>
       <li>Mantené apretada la <kbd>Z</kbd> (o el botón Zoom) para hacer zoom y ver mejor la mesa o una cara.</li>
     </ul>
