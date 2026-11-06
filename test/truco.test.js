@@ -174,14 +174,58 @@ test('mentir los tantos: si muestra, lo cazan', () => {
   assert.deepEqual(g.score, [1, 2]);
 });
 
-test('el que se fue al mazo no puede mostrar', () => {
+test('aunque se vaya al mazo en el truco, el que ganó el envido puede mostrar', () => {
   const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]);
   envidoQuerido(g);
   mazoAll(g, 0);
   assert.equal(g.h.phase, 'show');
+  assert.ok(actionsFor(g, 0).mostrar);
+  ok(act(g, 0, { t: 'mostrar' }));
+  assert.deepEqual(g.score, [2, 1]); // envido 2 (mostró bien) + truco 1 para el rival (me fui al mazo)
+});
+
+test('irse al mazo sin mostrar: si le reclaman pierde el envido', () => {
+  const g = fixed([['7E', '4C', '12O'], ['5O', '4O', '12B']]);
+  passToOne(g);
+  ok(act(g, 1, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 0, { t: 'cantar', value: 33 })); // miente: tiene 7
+  ok(act(g, 1, { t: 'buenas' }));
+  mazoAll(g, 0);
+  assert.ok(actionsFor(g, 0).nomostrar);
+  ok(act(g, 0, { t: 'nomostrar' }));
+  assert.equal(g.h.phase, 'show'); // los rivales todavía pueden reclamar
+  assert.equal(actionsFor(g, 0).mostrar, false); // ya no puede mostrar
   assert.ok(act(g, 0, { t: 'mostrar' }).error);
   ok(act(g, 1, { t: 'reclamar' }));
-  assert.deepEqual(g.score, [0, 3]); // envido 2 (no mostró) + truco 1 (se fue al mazo)
+  assert.equal(g.h.result.penalty, 'no-mostro');
+  assert.deepEqual(g.score, [0, 3]); // envido 2 + truco 1 para el rival
+});
+
+test('irse al mazo sin mostrar: si nadie reclama, los tantos valen (aunque haya mentido)', () => {
+  const g = fixed([['7E', '4C', '12O'], ['5O', '4O', '12B']]);
+  passToOne(g);
+  ok(act(g, 1, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 0, { t: 'cantar', value: 33 }));
+  ok(act(g, 1, { t: 'buenas' }));
+  mazoAll(g, 1); // el rival se va al mazo en el truco
+  ok(act(g, 0, { t: 'nomostrar' }));
+  closeShow(g);
+  assert.deepEqual(g.score, [3, 0]); // envido 2 + truco 1
+});
+
+test('mentir y mostrar: pierde el envido aunque tenga más que el rival', () => {
+  const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]); // tiene 33 de verdad
+  passToOne(g);
+  ok(act(g, 1, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 0, { t: 'cantar', value: 31 })); // canta otro número (miente para abajo)
+  ok(act(g, 1, { t: 'buenas' }));
+  mazoAll(g, 1);
+  ok(act(g, 0, { t: 'mostrar' }));
+  assert.equal(g.h.result.penalty, 'mal-cantado');
+  assert.deepEqual(g.score, [1, 2]); // el envido va para el rival; el truco (1) sigue siendo suyo
 });
 
 test('envido envido real envido no querido = 4', () => {

@@ -154,6 +154,12 @@ const damp = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-ra
 const CAM_RATE = 14; // suavizado de la cámara
 const HEAD_RATE = 9; // suavizado del giro de cabeza de los personajes
 const THROW_MS = 360; // carta de la mano a la mesa
+// Campo de visión (grados, vertical). Más amplio = ves más mesa y a los costados.
+const FOV = { landscape: 70, portrait: 84, zoom: 0.38 };
+// La mano se diseñó con estos FOV: al abrir el campo se acerca a la cámara para verse del mismo tamaño.
+const HAND_DESIGN_FOV = { landscape: 62, portrait: 78 };
+const HAND_DEPTH = 0.62; // distancia de la mano a los ojos (antes de compensar el FOV)
+const tanHalf = (deg) => Math.tan(THREE.MathUtils.degToRad(deg / 2));
 const FLY_MS = 260; // carta del mazo a cada jugador
 
 export class TableScene {
@@ -172,7 +178,7 @@ export class TableScene {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(SCENE.background);
     this.scene.fog = new THREE.Fog(SCENE.fog, 7, 16);
-    this.camera = new THREE.PerspectiveCamera(62, 1, 0.02, 40);
+    this.camera = new THREE.PerspectiveCamera(FOV.landscape, 1, 0.02, 40);
     this.scene.add(this.camera);
 
     this.yaw = this.tYaw = 0; // actual y objetivo: la cámara se acerca al objetivo suavemente
@@ -875,9 +881,10 @@ export class TableScene {
     const lowered = THREE.MathUtils.clamp((-this.pitch - 0.35) / 0.45, 0, 1);
     // si la interfaz tapa la parte de abajo, la mano sube lo justo (suave)
     const h = this.renderer.domElement.clientHeight || 1;
-    const lift = ((this.bottomInset || 0) / h) * 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.62;
+    const depth = HAND_DEPTH * this.handGroup.scale.z; // profundidad real después de compensar el FOV
+    const lift = ((this.bottomInset || 0) / h) * 2 * tanHalf(this.camera.fov) * depth;
     this.handLift = damp(this.handLift || 0, lift, 10, dt);
-    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1 + this.handLift, -0.62);
+    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1 + this.handLift, -HAND_DEPTH);
     const mid = (n - 1) / 2;
     this.handCards.forEach((c, i) => {
       const a = (mid - i) * 0.3;
@@ -1185,8 +1192,11 @@ export class TableScene {
     });
     this.tweens = keep.concat(this.tweens);
     // zoom temporal manteniendo Z (o el botón de zoom)
-    const baseFov = this.camera.aspect < 1 ? 78 : 62;
-    const wantFov = (k && k.has('z')) || this.zoomHeld ? baseFov * 0.38 : baseFov;
+    const orient = this.camera.aspect < 1 ? 'portrait' : 'landscape';
+    const baseFov = FOV[orient];
+    const wantFov = (k && k.has('z')) || this.zoomHeld ? baseFov * FOV.zoom : baseFov;
+    // acercar la mano solo en profundidad: con el FOV más amplio se sigue viendo del mismo tamaño
+    this.handGroup.scale.z = tanHalf(HAND_DESIGN_FOV[orient]) / tanHalf(baseFov);
     if (Math.abs(this.camera.fov - wantFov) > 0.05) {
       this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 12);
       this.camera.updateProjectionMatrix();

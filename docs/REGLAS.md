@@ -43,7 +43,8 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | Secuencias: envido, envido-envido, real, falta | `envidoNextOptions` | |
 | Se cantan los tantos desde la mano; cada uno canta más o dice "son buenas" | `startDeclare`, `advanceDeclare` | |
 | Se puede mentir el número; si al mostrar no coincide, pierde los puntos del envido | `actShow` | |
-| El ganador tiene que mostrar: si no muestra y le reclaman, pierde los puntos del envido | `actShow`, `closeShow` | |
+| El ganador tiene que mostrar: si no muestra y le reclaman, pierde los puntos del envido. Puede mostrar aunque se haya ido al mazo en el truco | `actShow`, `closeShow` | |
+| "Irse al mazo sin mostrar": no muestra (por ejemplo, porque mintió). Los rivales tienen unos segundos (`TIMING.foldWindow`) para reclamar; si nadie reclama, los tantos valen | `actShow` (`nomostrar`), `TrucoRoom.onFold` | regla de la mesa |
 | Los puntos se anotan al terminar la mano (envido primero, después truco) | `finishHand` | |
 
 ### Cartas quemadas (regla de la mesa)

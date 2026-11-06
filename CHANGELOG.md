@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.4.0 — irse sin mostrar y campo de visión más amplio
+- **Irse al mazo sin mostrar** los tantos (para hacerse el boludo o tapar que mentiste): los rivales tienen
+  6 s para reclamar (`TIMING.foldWindow`); si nadie reclama, los puntos valen. Los bots rivales pueden reclamar.
+- **Mostrar después de irse al mazo**: antes, si ganabas el envido y te ibas al mazo en el truco, no aparecía
+  el botón para mostrar. Ahora sí.
+- Mentir y mostrar sigue costando el envido aunque tengas más que el rival (test nuevo).
+- **Campo de visión** 70° (antes 62°; 84° en vertical): se ve más mesa. La mano se acerca lo justo para
+  verse del mismo tamaño (`FOV` y `HAND_DESIGN_FOV` en `scene.js`).
+
+
 ## 1.3.0 — cartas quemadas, panel sin scroll y mesa legible
 - **Cartas quemadas** (regla de la mesa): valen como un 4 en la ronda en que cuentan; el envido no cambia.
   Se quema la tapada, la que tirás **fuera de turno** (se puede: es tu jugada de esa ronda) y la de arriba de

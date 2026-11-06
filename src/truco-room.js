@@ -161,6 +161,7 @@ export class TrucoRoom extends DurableObject {
           this.send(ws, { t: 'error', msg: res.error });
           return this.sendState(ws); // por si el cliente tenía un estado viejo
         }
+        if (msg.a?.t === 'nomostrar') this.onFold();
         this.onGameChange();
         return this.commit();
       }
@@ -245,7 +246,7 @@ export class TrucoRoom extends DurableObject {
       // el que ganó el envido muestra (si es bot); los bots rivales reclaman si no muestra; al rato vale igual
       const sh = g.h.show;
       const since = r.showSince || now;
-      if (this.isAway(sh.seat, now) && now - since > BOT_SHOW_DELAY && !g.h.mazo[sh.seat]) {
+      if (this.isAway(sh.seat, now) && now - since > BOT_SHOW_DELAY && !sh.folded) {
         changed = !!act(g, sh.seat, { t: 'mostrar' }).ok;
       } else if (r.botClaimAt && now >= r.botClaimAt) {
         changed = !!act(g, r.botClaimer, { t: 'reclamar' }).ok;
@@ -312,6 +313,15 @@ export class TrucoRoom extends DurableObject {
         r.botClaimAt = r.showSince + BOT_CLAIM_DELAY + Math.floor(rng() * 4000);
       }
     }
+  }
+
+  // El que ganó el envido se fue al mazo sin mostrar: a los rivales les quedan TIMING.foldWindow ms para
+  // reclamar (si hay un bot rival que iba a reclamar, lo hace ahora, un poco después).
+  onFold() {
+    const r = this.room;
+    const now = Date.now();
+    r.showSince = now - TIMING.showWindow + TIMING.foldWindow;
+    if (r.botClaimAt) r.botClaimAt = now + 1200 + Math.floor(rng() * 2000);
   }
 
   // Asiento al que le toca y que debe jugar el servidor (bot o humano ausente).

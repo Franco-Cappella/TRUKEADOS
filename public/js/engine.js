@@ -223,11 +223,12 @@ export function actionsFor(g, seat) {
   const h = g.h;
   const out = {
     play: false, canDouble: false, canDown: false, truco: null, envido: [], quiero: false, noquiero: false,
-    cantar: false, buenas: false, minTanto: 0, mazo: false, denunciar: [], mostrar: false, reclamar: false,
+    cantar: false, buenas: false, minTanto: 0, mazo: false, denunciar: [], mostrar: false, nomostrar: false, reclamar: false, throwOut: false,
   };
   if (!h || g.status !== 'playing' || seat == null) return out;
   if (h.phase === 'show') {
-    out.mostrar = seat === h.show.seat && !h.mazo[seat];
+    out.mostrar = seat === h.show.seat && !h.show.folded;
+    out.nomostrar = out.mostrar;
     out.reclamar = team(seat) !== team(h.show.seat);
     return out;
   }
@@ -471,14 +472,24 @@ function envidoClosedReason(g, seat) {
 function actShow(g, seat, a) {
   const h = g.h;
   const s = h.show;
+  // el envido se muestra aunque te hayas ido al mazo en el truco (las cartas son las mismas)
+  const canShow = seat === s.seat && !s.folded;
   if (a?.t === 'mostrar') {
     if (seat !== s.seat) return { error: 'Tiene que mostrar el que ganó el envido' };
-    if (h.mazo[seat]) return { error: 'Tus cartas ya están en el mazo' };
+    if (!canShow) return { error: 'Ya te fuiste sin mostrar' };
     const real = tanto(h.cards[seat]);
     h.envido.shown = true;
     const ok = real.value === s.value;
     event(g, { type: 'show', seat, value: real.value, said: s.value, cards: real.cards, ok });
     finishHand(g, ok ? null : 'mal-cantado');
+    return { ok: true };
+  }
+  // Irse al mazo sin mostrar ("hacerse el boludo", o tapar que mintió): las cartas ya no se pueden ver.
+  // Los rivales todavía pueden reclamar (y entonces pierde el envido); si nadie reclama, los tantos valen.
+  if (a?.t === 'nomostrar') {
+    if (!canShow) return { error: 'Ya no tenés cartas para mostrar' };
+    s.folded = true;
+    event(g, { type: 'nomuestra', seat });
     return { ok: true };
   }
   if (a?.t === 'reclamar') {

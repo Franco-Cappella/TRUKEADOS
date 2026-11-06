@@ -73,7 +73,7 @@ Servidor → cliente: `state {room, you, isHost, game, now}`, `error {msg}`, `ch
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
 `truco`, `envido {kind}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
-`mostrar`, `reclamar`.
+`mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`.
 
 ## Probar
 ```bash

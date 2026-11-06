@@ -66,7 +66,7 @@ function chooseCard(g, seat, rng) {
 export function botAction(g, seat, rng = Math.random) {
   const h = g.h;
   if (!h || g.status !== 'playing') return null;
-  if (h.phase === 'show') return h.show.seat === seat && !h.mazo[seat] ? { t: 'mostrar' } : null;
+  if (h.phase === 'show') return h.show.seat === seat && !h.show.folded ? { t: 'mostrar' } : null;
   if (h.phase !== 'play') return null;
   const w = waitingFor(g);
   if (!w.seats.includes(seat)) return null;

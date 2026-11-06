@@ -118,6 +118,7 @@ export class RoomClient {
       cantar: () => ['tanto', `${a.value ?? g.h.myTanto}`, `${a.value ?? g.h.myTanto}`],
       buenas: () => ['tanto', 'Son buenas', 'Son buenas'],
       mazo: () => ['mazo', g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', null],
+      nomostrar: () => ['nomuestra', 'Me voy al mazo', null],
     }[a.t]?.();
     if (said) {
       const [type, bubble, voice] = said;
@@ -367,6 +368,11 @@ export class RoomClient {
         this.toast(`Envido para ${this.teamLabel(e.team).toLowerCase()} (${name(e.seat)} con ${e.value}). ${parts}`, us ? 'good' : '', 5000);
         break;
       }
+      case 'nomuestra':
+        if (!shown) this.bubble(e.seat, 'Me voy al mazo', '', 2400);
+        flick(0.15, 0.2);
+        if (e.seat !== me && me != null && team(e.seat) !== team(me)) this.toast(`${name(e.seat)} se fue al mazo sin mostrar los tantos. ¿Le reclamás? Si no, valen.`, 'bad', 5000);
+        break;
       case 'reclamo':
         this.bubble(e.seat, '¡A ver esos tantos!', 'call', 2600);
         say('¡A ver esos tantos!');
@@ -556,7 +562,11 @@ export class RoomClient {
       },
       declare: () => (mine ? 'Cantá tus tantos' : `${who(w.seats[0])} canta los tantos`),
       'next-hand': () => 'Fin de la mano',
-      show: () => (mine ? `Ganaste el envido con ${g.h.show.value}: mostrá las cartas` : `${who(g.h.show.seat)} tiene que mostrar sus ${g.h.show.value}`),
+      show: () => {
+        const sh = g.h.show;
+        if (sh.folded) return sh.seat === me ? 'Te fuiste al mazo sin mostrar' : `${who(sh.seat)} se fue al mazo sin mostrar`;
+        return mine ? `Ganaste el envido con ${sh.value}: mostrá las cartas` : `${who(sh.seat)} tiene que mostrar sus ${sh.value}`;
+      },
     };
     let t = texts[w.kind]?.() || '';
     let hint = '';
@@ -639,7 +649,8 @@ export class RoomClient {
       group('tantos', 'Tus tantos').appendChild(wrap);
     }
     if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }));
-    if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', 'good', acting({ t: 'mostrar' }), 'Si no mostrás y te reclaman, perdés los puntos del envido');
+    if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', 'good', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');
+    if (a.nomostrar) add('mostrar', 'Envido', 'Irme al mazo sin mostrar', '', acting({ t: 'nomostrar' }), 'Si nadie te reclama en unos segundos, los tantos valen; si te reclaman, los perdés');
     if (a.reclamar) add('mostrar', 'Envido', 'A ver esos tantos', 'call', acting({ t: 'reclamar' }), 'Si no los muestra, pierde los puntos del envido');
     if (a.quiero) add('resp', 'Responder', 'Quiero', 'good', acting({ t: 'quiero' }));
     if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', acting({ t: 'noquiero' }));

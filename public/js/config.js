@@ -36,6 +36,7 @@ export const TIMING = {
   dealTail: 260, // margen al final del reparto
   handPause: 4200, // pausa para ver cómo terminó la mano
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
+  foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
   afk: 40_000, // humano desconectado: después de esto juega el bot por él
   botThinkMin: 650, // los bots "piensan" entre 0,65 y 1,3 s: ni instantáneo ni lento
   botThinkRand: 650,
