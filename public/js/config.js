@@ -68,3 +68,16 @@ export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 
 // ------------------------------------------------------------------ validación
 export const PID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 export const CODE_RE = /^[A-Z0-9]{5}$/;
+
+// ------------------------------------------------------------------ opciones de la sala
+// Una sola lista para el servidor, el menú y la sala de espera. `invert`: el checkbox dice lo contrario
+// del valor (ej.: "No permitir trampas" marcado = trampas: false).
+export const ROOM_OPTIONS = [
+  { key: 'flor', def: false, label: 'Jugar con flor', short: 'con flor' },
+  { key: 'muestra', def: false, label: 'Jugar con muestra (las piezas del palo de la carta dada vuelta son las más altas)', short: 'con muestra' },
+  { key: 'trampas', def: true, invert: true, label: 'No permitir trampas (ej.: encimar cartas o mentir en el envido)', short: 'sin trampas' },
+];
+// Opciones válidas a partir de lo que mande el cliente (lo que falte o no sea booleano, por defecto).
+export const roomOptions = (src) => Object.fromEntries(ROOM_OPTIONS.map((o) => [o.key, typeof src?.[o.key] === 'boolean' ? src[o.key] : o.def]));
+// Texto corto para mostrar las opciones activas ("con flor · sin trampas").
+export const roomOptionsText = (cfg) => ROOM_OPTIONS.filter((o) => cfg[o.key] !== o.def).map((o) => o.short).join(' · ');

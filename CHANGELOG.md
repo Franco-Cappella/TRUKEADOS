@@ -1,5 +1,12 @@
 # Cambios
 
+## 1.5.0 — flor, muestra y mesa sin trampas
+- Opciones de sala nuevas (lista única en `config.js` `ROOM_OPTIONS`): **flor**, **muestra** y **no permitir
+  trampas** (reemplaza "mostrar quién ganó cada ronda"). Reglas en `docs/REGLAS.md`.
+- `cards.js`: valor de las cartas (jerarquía, envido, flor, muestra) separado del motor.
+- Bots que cantan y contestan flor y entienden la muestra. Tests nuevos en `test/opciones.test.js`.
+
+
 ## 1.4.1 — reparto sincronizado y quemada a destiempo
 - **"Esperá que terminen de repartir" en primera**: en la primera mano de una sala el cliente no animaba el
   reparto y dejaba tirar mientras el servidor seguía repartiendo; la jugada se rechazaba y la carta volvía a la

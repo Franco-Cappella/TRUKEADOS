@@ -82,10 +82,24 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | Los personajes no parpadean solos: los ojos cerrados son únicamente la seña "ciego" | `characters.js` |
 
 ## No implementadas (todavía)
-- **Flor** (y contraflor, "con flor me achico", etc.). [R] §12.
+- Pedir flor al final de la mano (no hace falta: la flor es obligatoria y el juego la detecta sola). [R] §12.
 - **Partidas de 3** (con gallo), de **8**, y **pica-pica** en 3 vs 3. [R] §3.
 - **Chicos**: la partida termina al llegar a 15/30; no se juega "al mejor de dos chicos". [R] §2.
 - Corte con mínimo de tres cartas por mitad, "golpear el mazo" sin cortar. [R] §17.
 - Carta que cae boca arriba en el reparto (el que la recibe puede pedir nuevo reparto). [R] §17.
 - Expresiones ambiguas ("quieto", "envido mi truco"…): el juego usa botones, no hay ambigüedad. [R] §16.
 - Penalidades por hablar de más / señas indebidas en pica-pica.
+
+### Flor (opción de la sala)
+Tres del mismo palo (con muestra, las piezas sirven de cualquier palo). Obligatoria: en primera, antes de tirar
+(o contestando envido/truco). Anula el envido. Sin flor rival: 3 por flor. Con flor rival: con flor quiero (gana la
+mejor, 3), me achico (3 al que cantó), contraflor (6; no quiero = 3) y contraflor al resto (falta; no quiero = lo
+anterior). No se puede mentir: el motor calcula los valores (`cards.js` `flor`, `engine.js` `actFlor`). [R] §12.
+
+### Muestra (opción de la sala)
+Después de repartir se da vuelta una carta. Piezas: 2, 4, 5, 11 y 10 de ese palo, por encima del ancho de espada;
+si la muestra es pieza, el 12 toma su lugar. Envido: 20 + pieza (10, 9, 8, 7, 7) + la carta más alta de las otras;
+con dos piezas, 20 + las dos. (`cards.js` `piezaOf`, `rank`, `tanto`). Fuente: pagat.com/put/truco_ur.html.
+
+### No permitir trampas (opción de la sala)
+Sin dos encimadas ni mentir en el envido (no hay fase de mostrar) y se ve quién ganó cada ronda.

@@ -1,17 +1,18 @@
 // Jugador automático. Corre solo en el servidor: ve el estado completo del motor pero decide
 // usando únicamente sus propias cartas y lo que está sobre la mesa.
-import { rank, tanto, team, cardNum, playValue, actionsFor, waitingFor, envidoOpenFor } from './engine.js';
+import { rank, tanto, team, cardNum, playValue, actionsFor, waitingFor, envidoOpenFor, florFor } from './engine.js';
 
 const pick = (rng, p) => rng() < p;
 
 // Mejor carta de mi equipo y del rival en la ronda actual.
-function tableBest(h, seat) {
+function tableBest(g, seat) {
+  const h = g.h;
   let mine = -1;
   let theirs = -1;
   const plays = h.rounds[h.r].plays;
   for (const p of plays) {
-    if (team(p.seat) === team(seat)) mine = Math.max(mine, playValue(p));
-    else theirs = Math.max(theirs, playValue(p));
+    if (team(p.seat) === team(seat)) mine = Math.max(mine, playValue(p, g));
+    else theirs = Math.max(theirs, playValue(p, g));
   }
   return { mine, theirs, count: plays.length };
 }
@@ -30,18 +31,22 @@ function roundsWon(h, seat) {
 // 0..1: qué tan buena es la mano para el truco ahora mismo.
 function power(g, seat) {
   const h = g.h;
-  const cards = h.inHand[seat].map(rank).sort((a, b) => b - a);
+  const R = (c) => rank(c, h.muestra);
+  const cards = h.inHand[seat].map(R).sort((a, b) => b - a);
+  const top = 19; // la carta más alta posible (con muestra); sin muestra, 14
   const { won, lost } = roundsWon(h, seat);
-  let p = (cards[0] || 0) / 14 * 0.55 + (cards[1] || 0) / 14 * 0.25 + won * 0.3 - lost * 0.3;
-  const tb = tableBest(h, seat);
+  const max = h.muestra ? top : 14;
+  let p = (cards[0] || 0) / max * 0.55 + (cards[1] || 0) / max * 0.25 + won * 0.3 - lost * 0.3;
+  const tb = tableBest(g, seat);
   if (tb.count && tb.mine > tb.theirs) p += 0.1;
   return Math.max(0, Math.min(1, p));
 }
 
 function chooseCard(g, seat, rng) {
   const h = g.h;
-  const hand = h.inHand[seat].slice().sort((a, b) => rank(a) - rank(b));
-  const tb = tableBest(h, seat);
+  const R = (c) => rank(c, h.muestra);
+  const hand = h.inHand[seat].slice().sort((a, b) => R(a) - R(b));
+  const tb = tableBest(g, seat);
   const lowest = hand[0];
   const highest = hand[hand.length - 1];
   let card;
@@ -52,12 +57,12 @@ function chooseCard(g, seat, rng) {
   } else if (tb.mine > tb.theirs) {
     card = lowest; // ya gana mi compañero
   } else {
-    const beat = hand.find((c) => rank(c) > tb.theirs);
-    const tie = hand.find((c) => rank(c) === tb.theirs);
+    const beat = hand.find((c) => R(c) > tb.theirs);
+    const tie = hand.find((c) => R(c) === tb.theirs);
     card = beat || (tie && h.r === 0 ? tie : lowest); // si no gana, va a la parda en primera
   }
   const a = actionsFor(g, seat);
-  if (a.canDown && tb.count && !hand.some((c) => rank(c) > tb.theirs) && pick(rng, 0.25)) return { t: 'play', card, mode: 'down' };
+  if (a.canDown && tb.count && !hand.some((c) => R(c) > tb.theirs) && pick(rng, 0.25)) return { t: 'play', card, mode: 'down' };
   // muy de vez en cuando hace trampa: tapa su carta con la más baja, que queda quemada
   if (a.canDouble && h.r === 0 && hand.length === 3 && card !== lowest && pick(rng, 0.03)) return { t: 'play2', bottom: card, top: lowest };
   return { t: 'play', card, mode: 'normal' };
@@ -71,12 +76,17 @@ export function botAction(g, seat, rng = Math.random) {
   const w = waitingFor(g);
   if (!w.seats.includes(seat)) return null;
   const a = actionsFor(g, seat);
-  const t = tanto(h.cards[seat]).value;
+  const t = tanto(h.cards[seat], h.muestra).value;
+
+  // flor: si la tiene, la canta (es obligatorio); si le cantan flor, contesta según lo que tiene
+  if (a.flor.includes('flor')) return { t: 'flor', kind: 'flor' };
+  if (w.kind === 'flor') return { t: 'flor', kind: florReply(a.flor, florFor(g, seat).value, rng) };
 
   if (w.kind === 'declare') {
     const best = h.envido.declare.best;
     return !best || t > best.value ? { t: 'cantar' } : { t: 'buenas' };
   }
+
 
   if (w.kind === 'envido') {
     if (a.envido.includes('real') && t >= 31 && pick(rng, 0.6)) return { t: 'envido', kind: 'real' };
@@ -112,6 +122,14 @@ export function botAction(g, seat, rng = Math.random) {
   return null;
 }
 
+// Respuesta a la flor rival según el valor de la propia (los bots no mienten: no se puede).
+function florReply(options, value, rng) {
+  if (options.includes('contraflor') && value >= 33 && pick(rng, 0.6)) return 'contraflor';
+  if (options.includes('resto') && value >= 36 && pick(rng, 0.5)) return 'resto';
+  if (value >= 30 || (value >= 27 && pick(rng, 0.5))) return 'quiero';
+  return options.includes('achico') ? 'achico' : 'noquiero';
+}
+
 // ¿El bot le reclama al rival que no mostró los tantos?
 export function botClaims(g, seat, rng = Math.random) {
   const h = g.h;
@@ -129,7 +147,7 @@ export function botSena(g, seat) {
   if (has('7E')) return 'siete_espada';
   if (has('7O')) return 'siete_oro';
   if (hasNum(3)) return 'tres';
-  if (tanto(h.cards[seat]).value >= 30) return 'envido_alto';
+  if (tanto(h.cards[seat], h.muestra).value >= 30) return 'envido_alto';
   if (hasNum(2)) return 'dos';
   return 'ciego';
 }

@@ -6,7 +6,7 @@ import { SENAS, ROUTES } from './config.js';
 import { FONT } from './theme.js';
 import { $, $$, esc, savedName } from './dom.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
-import { QUICK_PHRASES, helpHtml, drawFace } from './hud.js';
+import { QUICK_PHRASES, helpHtml, drawFace, readOptionChecks } from './hud.js';
 import { initMenu, showMenu, hideMenu } from './menu.js';
 import { RoomClient } from './room-client.js';
 
@@ -143,7 +143,7 @@ function bindGameUI() {
     }
   });
   $('#waiting').addEventListener('change', (e) => {
-    if (e.target.matches('[data-ayudas]')) room?.send({ t: 'config', cfg: { ayudas: e.target.checked } });
+    if (e.target.matches('[data-opt]')) room?.send({ t: 'config', cfg: readOptionChecks($('#waiting')) });
     if (e.target.matches('[data-trucoseg]')) room?.send({ t: 'config', cfg: { trucoDesdeSegunda: e.target.checked } });
   });
 

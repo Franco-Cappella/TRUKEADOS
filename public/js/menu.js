@@ -1,6 +1,8 @@
 // Pantalla de inicio: nombre, partida rápida, crear sala, unirse con código y mesas públicas.
 import { ROUTES, CODE_RE } from './config.js';
 import { $, $$, esc, store, KEYS, myPid, api } from './dom.js';
+import { optionChecks, readOptionChecks } from './hud.js';
+import { roomOptions } from './config.js';
 
 const LOBBY_REFRESH_MS = 7000;
 let lobbyTimer = null;
@@ -14,6 +16,7 @@ export function myName() {
 // go(code): entra a la sala (lo resuelve main.js).
 export function initMenu(go) {
   $('#name').value = store.get(KEYS.name, '');
+  $('#create-options').innerHTML = optionChecks(roomOptions());
   for (const seg of $$('#menu .seg')) {
     seg.addEventListener('click', (e) => {
       const b = e.target.closest('button');
@@ -43,7 +46,7 @@ export function initMenu(go) {
       mode: segVal('mode'),
       target: Number(segVal('target')),
       isPublic: !practice && segVal('isPublic') === '1',
-      ayudas: $('#ayudas').checked,
+      options: readOptionChecks($('#create-options')),
     });
     if (practice) sessionStorage.setItem(KEYS.autostart, r.code);
     go(r.code);
@@ -80,6 +83,7 @@ async function loadPublic() {
     const card = (r, isLive) => `
       <div class="room">
         <div class="top"><span class="mode">${esc(r.mode.replace('v', ' vs '))}</span><span class="muted">${r.target} pts · ${isLive ? 'jugando' : `${r.free} lugar${r.free === 1 ? '' : 'es'}`}</span></div>
+        ${r.options ? `<div class="muted">${esc(r.options)}</div>` : ''}
         <div class="players">${esc(r.players.filter(Boolean).join(', ') || '—')}</div>
         ${isLive && r.score ? `<div class="muted">Van ${r.score[0]} a ${r.score[1]}</div>` : ''}
         <button class="btn ${isLive ? '' : 'primary'} small" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? 'Mirar' : 'Sentarme'}</button>

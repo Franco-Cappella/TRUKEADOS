@@ -1,11 +1,11 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs } from './config.js';
-import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES } from './engine.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText } from './config.js';
+import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor } from './characters.js';
 import { $, esc, store, KEYS, myPid, savedName, takeSession } from './dom.js';
 import { audio, flick, ding, say } from './audio.js';
-import { palitos, drawFace } from './hud.js';
+import { palitos, drawFace, optionChecks } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
@@ -118,6 +118,7 @@ export class RoomClient {
       noquiero: () => ['call', '¡No quiero!', 'No quiero'],
       cantar: () => ['tanto', `${a.value ?? g.h.myTanto}`, `${a.value ?? g.h.myTanto}`],
       buenas: () => ['tanto', 'Son buenas', 'Son buenas'],
+      flor: () => ['call', `¡${FLOR_NAMES[a.kind]}!`, FLOR_NAMES[a.kind]],
       mazo: () => ['mazo', g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', null],
       nomostrar: () => ['nomuestra', 'Me voy al mazo', null],
     }[a.t]?.();
@@ -244,6 +245,7 @@ export class RoomClient {
       this.dealtHand = g.handNo;
       this.handNo = g.handNo;
       scene.setDealer(g.dealer);
+      scene.setMuestra(g.h.muestra);
       const canPick = g.actions.play || g.actions.throwOut;
       if (!canPick || (this.selected && !g.h.myCards.includes(this.selected))) this.selected = null;
       if (this.choosingTop && (!g.actions.canDouble || !g.h.myCards.includes(this.choosingTop))) this.choosingTop = null;
@@ -347,7 +349,7 @@ export class RoomClient {
         }
         break;
       case 'round':
-        if (g.ayudas) {
+        if (!g.trampas) {
           const t = e.result === 'parda' ? 'Parda' : `${e.result === team(me ?? 0) ? 'Ganamos' : 'Perdimos'} la ronda ${e.round + 1}`;
           this.toast(t, '');
         }
@@ -369,6 +371,12 @@ export class RoomClient {
         this.bubble(e.seat, e.ok ? `Mirá: ${e.value}` : `Tenía ${e.value}...`, 'call', 3000);
         if (e.ok) this.toast(`${name(e.seat)} muestra sus ${e.value}<br>${imgs}`, 'good', 5000);
         else this.toast(`${name(e.seat)} cantó ${e.said} pero tenía ${e.value}<br>${imgs}<br>Pierde los puntos del envido.`, 'bad', 6000);
+        break;
+      }
+      case 'flor-done': {
+        const us = me != null && e.team === team(me);
+        const vals = e.values.map((x) => `${name(x.seat)}: ${x.value}`).join(' · ');
+        this.toast(`Flor para ${this.teamLabel(e.team).toLowerCase()}: ${e.pts} punto${e.pts === 1 ? '' : 's'}${e.compared ? `. ${vals}` : ''}`, us ? 'good' : '', 5000);
         break;
       }
       case 'envido-done': {
@@ -397,6 +405,7 @@ export class RoomClient {
         break;
       case 'points':
         if (e.why.startsWith('envido')) this.toast(`Envido: ${e.pts} para ${this.teamLabel(e.team)}`, '', 2500);
+        if (e.why === 'flor') this.toast(`Flor: ${e.pts} para ${this.teamLabel(e.team)}`, '', 2500);
         break;
     }
   }
@@ -524,6 +533,7 @@ export class RoomClient {
     $('#spect').textContent = st.room.spectators ? `${st.room.spectators} mirando` : '';
     const playing = !!st.game && st.room.status === 'playing';
     $('#tools').classList.toggle('hidden', this.you == null || !playing);
+    $('#trampa-dd').classList.toggle('hidden', !st.game?.trampas); // sin trampas no hay dos encimadas que denunciar
     const panel = $('#panel');
     panel.classList.toggle('hidden', !playing);
     panel.classList.toggle('busy', this.busy);
@@ -540,13 +550,15 @@ export class RoomClient {
     const order = this.you != null ? [team(this.you), 1 - team(this.you)] : [0, 1];
     const names = this.you != null ? ['Nosotros', 'Ellos'] : ['Equipo A', 'Equipo B'];
     const el = $('#anotador');
-    const key = `${score}|${target}|${order}`;
+    const muestra = st.game?.h?.muestra || null;
+    const key = `${score}|${target}|${order}|${muestra}`;
     if (el.dataset.key === key) return;
     el.dataset.key = key;
     el.innerHTML = `
       <div class="an-head">${order.map((t, i) => `<span class="t${t}">${names[i]}</span>`).join('')}</div>
       <div class="an-body">${order.map((t) => palitos(score[t], target)).join('<i class="an-sep"></i>')}</div>
-      <div class="an-foot">${order.map((t) => `<b>${score[t]}</b>`).join('')}<small>a ${target}</small></div>`;
+      <div class="an-foot">${order.map((t) => `<b>${score[t]}</b>`).join('')}<small>a ${target}</small></div>
+      ${muestra ? `<div class="an-muestra" title="${esc(cardName(muestra))}"><small>Muestra</small>${cardImg(muestra, cardName(muestra))}</div>` : ''}`;
   }
 
   renderStatus() {
@@ -570,6 +582,10 @@ export class RoomClient {
         return mine ? `Te cantaron ${name}: ¿querés?` : `${name}: esperando respuesta`;
       },
       declare: () => (mine ? 'Cantá tus tantos' : `${who(w.seats[0])} canta los tantos`),
+      flor: () => {
+        const name = FLOR_NAMES[g.h.flor.level === 'flor' ? 'flor' : g.h.flor.level];
+        return mine ? `Te cantaron ${name}: ¿qué hacés?` : `${name}: esperando respuesta`;
+      },
       'next-hand': () => 'Fin de la mano',
       show: () => {
         const sh = g.h.show;
@@ -584,6 +600,7 @@ export class RoomClient {
       hint = 'Elegí la de arriba: será tu carta de la ronda siguiente, quemada (vale un 4).';
     } else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
     else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
+    else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
     else if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none') hint = 'Sos pie: el envido lo cantás vos, en tu turno.';
     el.innerHTML = esc(t) + (hint ? `<small>${esc(hint)}</small>` : '');
     el.classList.toggle('mine', mine);
@@ -614,7 +631,7 @@ export class RoomClient {
         btn(mode).disabled = this.busy || !enabled;
       };
       set('normal', !burnOnly);
-      set('double', !burnOnly, a.canDouble);
+      set('double', !burnOnly && g.trampas, a.canDouble);
       set('down', !burnOnly, a.canDown);
       set('burn', burnOnly);
     }
@@ -624,7 +641,7 @@ export class RoomClient {
   // Arma los grupos de botones (en un contenedor suelto) según lo que el motor permite ahora.
   buildActions(g, a) {
     const out = document.createElement('div');
-    const ORDER = ['tantos', 'mostrar', 'resp', 'cantar', 'mano'];
+    const ORDER = ['flor', 'tantos', 'mostrar', 'resp', 'cantar', 'mano'];
     const groups = {};
     const group = (key, label) => {
       if (!groups[key]) {
@@ -646,18 +663,20 @@ export class RoomClient {
     };
     const acting = (action) => () => this.act(action);
 
-    if (a.cantar) {
+    if (a.cantar && g.h.myTanto >= (a.minTanto ?? 0)) add('tantos', 'Tus tantos', `Cantar ${g.h.myTanto}`, 'call', acting({ t: 'cantar' }), 'Tus tantos de verdad');
+    if (a.lie) {
       const min = a.minTanto ?? 0;
-      if (g.h.myTanto >= min) add('tantos', 'Tus tantos', `Cantar ${g.h.myTanto}`, 'call', acting({ t: 'cantar' }), 'Tus tantos de verdad');
+      const max = g.h.muestra ? 39 : 33;
       // mentir: cantar otro número (si te piden que muestres, perdés los puntos del envido)
       const wrap = document.createElement('span');
       wrap.className = 'lie';
       wrap.title = 'Cantar otro número. Si te piden que muestres, perdés los puntos del envido.';
-      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}"><button class="btn"${this.busy ? ' disabled' : ''}>Cantar otro</button>`;
+      wrap.innerHTML = `<input type="number" min="${min}" max="${max}" value="${Math.max(min, Math.min(max, g.h.myTanto + 3))}"><button class="btn"${this.busy ? ' disabled' : ''}>Cantar otro</button>`;
       wrap.querySelector('button').onclick = () => this.act({ t: 'cantar', value: Number(wrap.querySelector('input').value) });
       group('tantos', 'Tus tantos').appendChild(wrap);
     }
     if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }));
+    for (const k of a.flor) add('flor', 'Flor', FLOR_NAMES[k], k === 'achico' || k === 'noquiero' ? 'danger' : 'call', acting({ t: 'flor', kind: k }), g.h.myFlor != null ? `Tu flor: ${g.h.myFlor}` : '');
     if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', 'good', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');
     if (a.nomostrar) add('mostrar', 'Envido', 'Irme al mazo sin mostrar', '', acting({ t: 'nomostrar' }), 'Si nadie te reclama en unos segundos, los tantos valen; si te reclaman, los perdés');
     if (a.reclamar) add('mostrar', 'Envido', 'A ver esos tantos', 'call', acting({ t: 'reclamar' }), 'Si no los muestra, pierde los puntos del envido');
@@ -779,7 +798,7 @@ export class RoomClient {
       `<div class="seg" data-cfg="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     el.innerHTML = `<div class="card-box">
       <h2>Sala ${esc(r.code)} · ${esc(cfg.mode.replace('v', ' vs '))}</h2>
-      <div class="muted">${cfg.target} puntos · ${cfg.isPublic ? 'pública' : 'privada'}${cfg.ayudas ? ' · con ayudas' : ''}</div>
+      <div class="muted">${cfg.target} puntos · ${cfg.isPublic ? 'pública' : 'privada'}${roomOptionsText(cfg) ? ' · ' + esc(roomOptionsText(cfg)) : ''}</div>
       <div class="share">
         <span class="big-code">${esc(r.code)}</span>
         <button class="btn small" data-copy="${esc(link)}">Copiar enlace</button>
@@ -791,7 +810,7 @@ export class RoomClient {
       ${host ? `<div class="field">Modo ${seg('mode', [['1v1', '1 vs 1'], ['2v2', '2 vs 2'], ['3v3', '3 vs 3']], cfg.mode)}</div>
         <div class="field">Puntos ${seg('target', [[30, '30'], [15, '15']], cfg.target)}</div>
         <div class="field">Sala ${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
-        <label class="check"><input type="checkbox" data-ayudas ${cfg.ayudas ? 'checked' : ''}> Mostrar quién gana cada ronda</label>
+        ${optionChecks(cfg)}
         ${cfg.mode !== '1v1' ? `<label class="check"><input type="checkbox" data-trucoseg ${cfg.trucoDesdeSegunda ? 'checked' : ''}> En equipos, el truco se canta recién desde segunda</label>` : ''}
         <div class="row">
           <button class="btn primary big" data-start="0" ${r.seats.every(Boolean) ? '' : 'disabled'}>Empezar</button>

@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
 import { botAction, botSena, botClaims } from '../public/js/bot.js';
-import { MODES, TARGETS, SENAS, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText } from '../public/js/config.js';
 import { cleanName, cleanPid, rng } from './util.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
@@ -20,11 +20,11 @@ export class TrucoRoom extends DurableObject {
   }
 
   // ---- RPC desde el Worker ----
-  async create({ code, mode, target, ayudas, isPublic, pid, name }) {
+  async create({ code, mode, target, options, isPublic, pid, name }) {
     if (this.room) return { ok: false };
     this.room = {
       code,
-      cfg: { mode, target, ayudas: !!ayudas, isPublic: !!isPublic, trucoDesdeSegunda: true },
+      cfg: { mode, target, isPublic: !!isPublic, trucoDesdeSegunda: true, ...roomOptions(options) },
       seats: Array(MODES[mode]).fill(null),
       host: pid,
       status: 'lobby', // lobby | playing | ended
@@ -131,7 +131,7 @@ export class TrucoRoom extends DurableObject {
         if (!lobbyHost) return;
         const c = msg.cfg || {};
         if (TARGETS.includes(c.target)) r.cfg.target = c.target;
-        for (const k of ['ayudas', 'isPublic', 'trucoDesdeSegunda']) if (typeof c[k] === 'boolean') r.cfg[k] = c[k];
+        for (const k of ['isPublic', 'trucoDesdeSegunda', ...ROOM_OPTIONS.map((o) => o.key)]) if (typeof c[k] === 'boolean') r.cfg[k] = c[k];
         if (MODES[c.mode] && c.mode !== r.cfg.mode) {
           const people = r.seats.filter((s) => s && !s.bot);
           r.cfg.mode = c.mode;
@@ -146,8 +146,8 @@ export class TrucoRoom extends DurableObject {
         if (msg.fillBots) r.seats = r.seats.map((s) => s || { bot: true, name: this.botName() });
         if (r.seats.some((s) => !s)) return this.send(ws, { t: 'error', msg: 'Faltan jugadores (o llená con bots)' });
         r.status = 'playing';
-        const { mode, target, ayudas, trucoDesdeSegunda } = r.cfg;
-        r.game = newGame({ mode, target, ayudas, trucoDesdeSegunda, dealer: Math.floor(rng() * r.seats.length) }, rng);
+        const { mode, target, trucoDesdeSegunda } = r.cfg;
+        r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
         this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
         this.afterDeal();
         return this.commit();
@@ -521,6 +521,7 @@ export class TrucoRoom extends DurableObject {
         free: r.seats.filter((s) => !s).length,
         online: r.seats.filter((s) => s && !s.bot && online.has(s.pid)).length,
         score: r.game?.score ?? null,
+        options: roomOptionsText(r.cfg),
       });
     } catch (e) {
       console.error('lobby update failed', e);

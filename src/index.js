@@ -3,7 +3,7 @@
 import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
 import { cleanName, cleanPid, newRoomCode, json } from './util.js';
-import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS } from '../public/js/config.js';
+import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
 
@@ -35,7 +35,7 @@ export default {
       const code = await createRoom(env, {
         mode: pickMode(body.mode),
         target: TARGETS.includes(Number(body.target)) ? Number(body.target) : DEFAULT_TARGET,
-        ayudas: !!body.ayudas,
+        options: roomOptions(body.options),
         isPublic: !!body.isPublic,
         pid,
         name,
@@ -49,7 +49,7 @@ export default {
       const mode = pickMode(body.mode);
       const found = await lobbyStub(env).findOpen(mode);
       if (found) return json({ code: found, joined: true });
-      const code = await createRoom(env, { mode, target: DEFAULT_TARGET, ayudas: false, isPublic: true, pid, name });
+      const code = await createRoom(env, { mode, target: DEFAULT_TARGET, options: roomOptions(), isPublic: true, pid, name });
       return json({ code, joined: false });
     }
 

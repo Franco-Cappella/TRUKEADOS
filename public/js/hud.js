@@ -1,5 +1,5 @@
 // Piezas de la interfaz que no dependen de la sala: anotador, ayuda, caras de las señas.
-import { SENAS } from './config.js';
+import { SENAS, ROOM_OPTIONS } from './config.js';
 import { drawCharacter, W as CW, H as CH } from './characters.js';
 import { esc } from './dom.js';
 import { SCORE } from './theme.js';
@@ -74,6 +74,12 @@ export function helpHtml() {
       <li>En 2 vs 2 y 3 vs 3 el envido lo canta y lo contesta el <b>pie</b> de cada equipo (el que reparte y el que corta).</li>
       <li>En equipo el truco se canta recién desde segunda (se puede desactivar en la sala).</li>
     </ul>
+    <h3>Opciones de la sala</h3>
+    <ul>
+      <li><b>Flor</b>: tres cartas del mismo palo. Es obligatorio cantarla en primera, antes de tirar (también contestando un envido o un truco). Anula el envido. Si el otro equipo no tiene flor: 3 puntos. Si tiene, contesta: <i>con flor quiero</i> (gana la mejor, 3), <i>con flor me achico</i> (3 para el que cantó), <i>contraflor</i> (6) o <i>contraflor al resto</i>.</li>
+      <li><b>Muestra</b>: después de repartir se da vuelta una carta. Las <b>piezas</b> (2, 4, 5, 11 y 10 de ese palo) son las más altas, por encima del ancho de espada; si la muestra es pieza, el 12 toma su lugar. En el envido valen 30, 29, 28, 27 y 27 (más la carta más alta de las otras) y sirven de cualquier palo para la flor.</li>
+      <li><b>No permitir trampas</b>: no se pueden tirar dos encimadas ni mentir en el envido (y no hace falta mostrar). Se ve quién ganó cada ronda.</li>
+    </ul>
     <h3>Puntos</h3>
     <ul>
       <li>Truco 2 (no querido 1) · Retruco 3 (2) · Vale cuatro 4 (3). Sin cantar: 1.</li>
@@ -84,4 +90,22 @@ export function helpHtml() {
       <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente, quemada. Mientras dura la ronda parece una carta normal; al terminar se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
     </ul>
   </div>`;
+}
+
+// Checkboxes de las opciones de la sala (menú y sala de espera). `cfg`: valores actuales.
+export function optionChecks(cfg = {}) {
+  return ROOM_OPTIONS.map((o) => {
+    const on = o.invert ? cfg[o.key] === false : cfg[o.key] === true;
+    return `<label class="check"><input type="checkbox" data-opt="${o.key}" ${on ? 'checked' : ''}> ${esc(o.label)}</label>`;
+  }).join('');
+}
+
+// Lee los checkboxes de opciones dentro de `root` y devuelve { flor, muestra, trampas }.
+export function readOptionChecks(root) {
+  const out = {};
+  for (const o of ROOM_OPTIONS) {
+    const el = root.querySelector(`[data-opt="${o.key}"]`);
+    if (el) out[o.key] = o.invert ? !el.checked : el.checked;
+  }
+  return out;
 }

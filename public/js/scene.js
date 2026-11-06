@@ -443,6 +443,8 @@ export class TableScene {
 
     // mazo: dos mitades para poder animar el mezclado y el corte
     this.deck = new THREE.Group();
+    this.muestraId = undefined; // el mazo es nuevo: hay que volver a poner la muestra
+    this.muestraCard = null;
     const side = new THREE.MeshLambertMaterial({ color: SCENE.deckSide });
     const half = () => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(CARD_W, 0.01, CARD_H), [side, side, new THREE.MeshLambertMaterial({ map: cardTex('back') }), side, side, side]);
@@ -1048,6 +1050,22 @@ export class TableScene {
   }
 
   // Las dos mitades del mazo, una arriba de la otra, sin desplazamientos: el mazo entero.
+  // La muestra: boca arriba debajo del mazo, cruzada, asomando la mitad (se mueve con el mazo).
+  setMuestra(id) {
+    if (!this.deck || this.muestraId === id) return;
+    this.muestraId = id;
+    if (this.muestraCard) {
+      this.deck.remove(this.muestraCard);
+      this.muestraCard = null;
+    }
+    if (!id) return;
+    const card = makeCard(id, true);
+    card.rotation.set(-Math.PI / 2, 0, Math.PI / 2); // acostada y cruzada respecto del mazo
+    card.position.set(CARD_H * 0.32, 0.0004, 0);
+    this.muestraCard = card;
+    this.deck.add(card);
+  }
+
   resetDeck() {
     this.deckLow.position.set(0, 0.005, 0);
     this.deckHigh.position.set(0, 0.015, 0);
