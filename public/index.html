@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Truco 3D</title>
+  <meta name="description" content="Truco argentino online en 3D: 1 vs 1, 2 vs 2 y 3 vs 3, con señas, chat y salas privadas.">
+  <meta name="theme-color" content="#1a120c">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;1,500;1,700&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/css/truco.css">
+  <script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+  <!-- ============ MENÚ ============ -->
+  <section id="menu" class="screen">
+    <header class="menu-head">
+      <h1>Truco <span>argentino</span></h1>
+      <p class="tag">En 3D, online, con señas de verdad. Sin flor.</p>
+    </header>
+
+    <div class="menu-grid">
+      <div class="panel">
+        <label class="field">Tu nombre
+          <input id="name" maxlength="20" placeholder="¿Cómo te llaman en la mesa?" autocomplete="nickname">
+        </label>
+
+        <h2>Partida rápida</h2>
+        <p class="hint">Te sienta en una mesa pública que esté esperando gente, o abre una nueva.</p>
+        <div class="row three" id="quick">
+          <button class="btn big" data-mode="1v1">1 vs 1</button>
+          <button class="btn big" data-mode="2v2">2 vs 2</button>
+          <button class="btn big" data-mode="3v3">3 vs 3</button>
+        </div>
+
+        <h2>Unirte con código</h2>
+        <form id="join-form" class="row">
+          <input id="join-code" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false">
+          <button class="btn primary">Entrar</button>
+        </form>
+        <p class="hint">También podés entrar con el enlace que te pasen: <code>/sala/CÓDIGO</code></p>
+      </div>
+
+      <div class="panel">
+        <h2>Crear sala</h2>
+        <form id="create-form">
+          <div class="field">Modo
+            <div class="seg" data-name="mode">
+              <button type="button" data-v="1v1" class="on">1 vs 1</button>
+              <button type="button" data-v="2v2">2 vs 2</button>
+              <button type="button" data-v="3v3">3 vs 3</button>
+            </div>
+          </div>
+          <div class="field">Puntos
+            <div class="seg" data-name="target">
+              <button type="button" data-v="30" class="on">30 (malas y buenas)</button>
+              <button type="button" data-v="15">15</button>
+            </div>
+          </div>
+          <div class="field">Sala
+            <div class="seg" data-name="isPublic">
+              <button type="button" data-v="0" class="on">Privada (con código)</button>
+              <button type="button" data-v="1">Pública</button>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="ayudas"> Mostrar quién ganó cada ronda (más fácil, pero arruina la trampa de las dos encimadas)</label>
+          <div class="row">
+            <button class="btn primary big" type="submit">Crear sala</button>
+            <button class="btn big" type="button" id="practice">Practicar con bots</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel wide">
+        <div class="row between">
+          <h2>Mesas públicas</h2>
+          <button class="btn small" id="refresh">Actualizar</button>
+        </div>
+        <div id="public-list" class="room-list"><p class="hint">Cargando…</p></div>
+      </div>
+    </div>
+    <footer class="credits">
+      Cartas: diseño “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
+    </footer>
+  </section>
+
+  <!-- ============ PARTIDA ============ -->
+  <section id="game" class="screen hidden">
+    <div id="stage"></div>
+    <div id="labels"></div>
+
+    <div id="topbar">
+      <button class="btn small ghost" id="leave" title="Salir">✕</button>
+      <button class="code-chip" id="code-chip" title="Copiar enlace"><span>Sala</span><b id="room-code">-----</b></button>
+            <div class="spacer"></div>
+      <span id="spect" class="muted"></span>
+      <button class="btn small ghost" id="voice-toggle" title="Voz de los cantos">Voz: sí</button>
+      <button class="btn small ghost" id="zoom-btn" title="Mantené apretada la tecla Z (o este botón) para hacer zoom">Zoom <kbd>Z</kbd></button>
+      <button class="btn small ghost" id="help-btn" title="Ayuda">?</button>
+      <button class="btn small ghost" id="chat-toggle" title="Chat">Chat<i id="chat-badge" class="badge hidden"></i></button>
+    </div>
+
+    <div id="status-line"></div>
+    <div id="anotador" title="Anotador"></div>
+
+    <div id="look-bar"></div>
+
+    <div id="bottom">
+      <div id="tools">
+        <div class="dropdown" id="senas-dd">
+          <button class="btn" id="senas-btn">Señas</button>
+          <div class="menu hidden" id="senas-menu"></div>
+        </div>
+        <div class="dropdown" id="trampa-dd">
+          <button class="btn danger" id="trampa-btn">Mostrá las dos</button>
+          <div class="menu hidden" id="trampa-menu"></div>
+        </div>
+      </div>
+      <div id="actions"></div>
+      <div id="card-actions" class="hidden">
+        <button class="btn primary" data-play="normal">Tirar</button>
+        <button class="btn" data-play="double" title="Trampa: tapás tu carta con otra. La de abajo es la que juega; la de arriba queda quemada (la perdés y todos la ven quemada). Te pueden pedir que muestres las dos.">Dos encimadas</button>
+        <button class="btn" data-play="down" title="Boca abajo: no gana la ronda">Tirar tapada</button>
+      </div>
+    </div>
+
+    <canvas id="mirror" width="240" height="240" class="hidden" title="Así te ven"></canvas>
+
+    <aside id="chat" class="hidden">
+      <div class="chat-head"><b>Chat</b><button class="btn small ghost" id="chat-close">✕</button></div>
+      <div id="chat-log"></div>
+      <div id="quick-phrases"></div>
+      <form id="chat-form"><input id="chat-input" maxlength="280" placeholder="Escribí algo…" autocomplete="off"><button class="btn primary small">Enviar</button></form>
+    </aside>
+
+    <div id="waiting" class="overlay hidden"></div>
+    <div id="toast-area"></div>
+    <div id="result" class="hidden"></div>
+    <div id="help" class="overlay hidden"></div>
+  </section>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
