@@ -37,8 +37,10 @@ const SPECIAL_RANK = { '1E': 14, '1B': 13, '7E': 12, '7O': 11 };
 const NUM_RANK = { 3: 10, 2: 9, 1: 8, 12: 7, 11: 6, 10: 5, 7: 4, 6: 3, 5: 2, 4: 1 };
 export const rank = (c) => SPECIAL_RANK[c] ?? NUM_RANK[cardNum(c)];
 
-// Valor de una jugada en la ronda: tapada = 0 (pierde con todo), sin carta = -1.
-export const playValue = (p) => (p.none ? -1 : p.faceDown ? 0 : rank(p.c));
+// Carta QUEMADA (tapada, tirada fuera de turno o la de arriba de dos encimadas): en la ronda en que
+// cuenta vale como un 4, la más baja. No cambia el envido (se calcula con las 3 cartas repartidas).
+export const BURNED_VALUE = NUM_RANK[4];
+export const playValue = (p) => (p.burned ? BURNED_VALUE : rank(p.c));
 
 const envVal = (c) => (cardNum(c) <= 7 ? cardNum(c) : 0);
 
@@ -114,7 +116,9 @@ export function deal(g, rng = Math.random) {
     cards, // las 3 cartas originales (para el envido)
     inHand: cards.map((c) => c.slice()),
     mano,
-    table: Array.from({ length: n }, () => []), // por asiento: { c, faceDown, round, under?, burned?, revealed? }
+    // por asiento: { c, faceDown, round, burned?, under?, over?, thrownIn?, revealed? } (ver play/play2)
+    table: Array.from({ length: n }, () => []),
+    pre: Array(n).fill(null), // carta de arriba de dos encimadas: se juega sola (quemada) en la ronda siguiente
     rounds: [{ plays: [], result: null, starter: mano }],
     r: 0,
     turn: mano,
@@ -259,9 +263,12 @@ export function actionsFor(g, seat) {
   // fase de juego normal
   out.mazo = true;
   out.denunciar = teamSeats(g, otherTeam(team(seat)));
-  if (h.turn !== seat) return out;
+  if (h.turn !== seat) {
+    out.throwOut = !outOfTurnBlock(h, seat); // tirar fuera de turno: la carta se quema
+    return out;
+  }
   out.play = true;
-  out.canDouble = h.inHand[seat].length >= 2 && h.r <= 1;
+  out.canDouble = h.inHand[seat].length >= 2 && h.r <= 1 && !h.pre[seat];
   out.canDown = h.r > 0;
   if (trucoOpenFor(g, seat)) out.truco = TRUCO_NAMES[t.level + 1];
   if (envidoOpenFor(g, seat)) out.envido = ['envido', 'real', 'falta'];
@@ -285,25 +292,32 @@ export function act(g, seat, a) {
   const tr = h.truco;
 
   switch (a?.t) {
+    // Tirar una carta. Tapada o fuera de turno, la carta se QUEMA: cuenta en esta ronda como un 4.
+    // Si la tirás fuera de turno, esa es tu jugada de la ronda: cuando te toque, se te saltea.
     case 'play': {
-      const err = checkPlayTurn(h, w, seat);
-      if (err) return err;
+      if (w.kind !== 'play') return { error: 'Hay que contestar el canto primero' };
       const idx = h.inHand[seat].indexOf(a.card);
       if (idx < 0) return { error: 'No tenés esa carta' };
       const faceDown = a.mode === 'down';
       if (faceDown && h.r === 0) return { error: 'En primera no se puede tirar tapada' };
+      const outOfTurn = h.turn !== seat;
+      if (outOfTurn) {
+        const why = outOfTurnBlock(h, seat);
+        if (why) return { error: why };
+      }
+      const burned = faceDown || outOfTurn;
       h.inHand[seat].splice(idx, 1);
-      h.table[seat].push({ c: a.card, faceDown, round: h.r });
-      h.rounds[h.r].plays.push({ seat, c: a.card, faceDown });
-      event(g, { type: 'play', seat, c: faceDown ? null : a.card, faceDown, round: h.r });
-      advanceTurn(g);
+      h.table[seat].push({ c: a.card, faceDown, round: h.r, burned });
+      h.rounds[h.r].plays.push({ seat, c: a.card, burned });
+      event(g, { type: 'play', seat, c: faceDown ? null : a.card, faceDown, burned, outOfTurn, round: h.r });
+      if (!outOfTurn) advanceTurn(g);
       return { ok: true };
     }
 
-    // Tirar dos cartas encimadas (trampa). Por turno se juega UNA carta: la de abajo es la que
-    // juega esta ronda; la de arriba ya quedó sobre la mesa y no se puede levantar, así que
-    // queda QUEMADA (no juega ninguna ronda) y se ve claramente quemada. Sirve para tapar cuál
-    // es tu carta de verdad, a costa de perder una. Ver docs/REGLAS.md.
+    // Dos cartas encimadas (trampa). La de abajo juega esta ronda (los rivales no la ven). La de
+    // arriba ya está en la mesa y no se puede levantar: es tu jugada de la ronda SIGUIENTE, quemada
+    // (vale un 4). Mientras dura esta ronda parece una carta normal; al terminar la ronda se ve
+    // quemada, y ahí los rivales pueden pedir "mostrá las dos". Ver docs/REGLAS.md.
     case 'play2': {
       const err = checkPlayTurn(h, w, seat);
       if (err) return err;
@@ -314,9 +328,10 @@ export function act(g, seat, a) {
       if (!hand.includes(bottom) || !hand.includes(top)) return { error: 'No tenés esas cartas' };
       h.inHand[seat] = hand.filter((c) => c !== bottom && c !== top);
       h.table[seat].push({ c: bottom, faceDown: false, round: h.r, under: true });
-      h.table[seat].push({ c: top, faceDown: false, round: h.r, burned: true });
-      h.rounds[h.r].plays.push({ seat, c: bottom, faceDown: false });
-      event(g, { type: 'play', seat, c: top, double: true, burned: top, round: h.r });
+      h.table[seat].push({ c: top, faceDown: false, round: h.r + 1, over: true, burned: true, thrownIn: h.r });
+      h.rounds[h.r].plays.push({ seat, c: bottom });
+      h.pre[seat] = top;
+      event(g, { type: 'play', seat, c: top, double: true, round: h.r });
       advanceTurn(g);
       return { ok: true };
     }
@@ -405,6 +420,7 @@ export function act(g, seat, a) {
       for (const s of teamSeats(g, T)) {
         h.mazo[s] = true;
         h.inHand[s] = [];
+        h.pre[s] = null;
       }
       event(g, { type: 'mazo', seat, team: T });
       const win = otherTeam(T);
@@ -431,6 +447,15 @@ export function act(g, seat, a) {
 function checkPlayTurn(h, w, seat) {
   if (w.kind !== 'play') return { error: 'Hay que contestar el canto primero' };
   if (h.turn !== seat) return { error: 'Todavía no es tu turno' };
+  return null;
+}
+
+// Por qué no se puede tirar fuera de turno ahora (null = se puede, y la carta se quema).
+function outOfTurnBlock(h, seat) {
+  if (h.phase !== 'play' || h.envido.state === 'pending' || h.envido.state === 'declaring' || h.truco.pending) return 'Hay que contestar el canto primero';
+  if (played(h, seat)) return 'Ya jugaste en esta ronda';
+  if (h.pre[seat]) return 'Tu carta de esta ronda ya está en la mesa';
+  if (!h.inHand[seat].length) return 'No te quedan cartas';
   return null;
 }
 
@@ -520,22 +545,27 @@ function advanceDeclare(g) {
   event(g, { type: 'envido-done', seat: d.best.seat, value: d.best.value, team: e.winner, said: d.said, points: e.points });
 }
 
-// Pasa el turno al siguiente que no jugó. Quien ya no tiene cartas (quemó una con un tiro doble)
-// pasa sin carta: su jugada vale -1 en la ronda.
+// Pasa el turno al siguiente que no jugó en esta ronda (el que tiró fuera de turno ya jugó: se saltea).
 function advanceTurn(g) {
   const h = g.h;
-  const plays = h.rounds[h.r].plays;
   for (let k = 1; k <= g.n; k++) {
     const s = (h.turn + k) % g.n;
-    if (!active(h, s) || plays.some((p) => p.seat === s)) continue;
+    if (!active(h, s) || played(h, s)) continue;
     h.turn = s;
-    if (!h.inHand[s].length) {
-      plays.push({ seat: s, c: null, none: true });
-      return advanceTurn(g);
-    }
-    return;
+    return autoPre(g);
   }
   resolveRound(g);
+}
+
+// La carta de arriba de dos encimadas ya está en la mesa: cuando le toca, se juega sola, quemada.
+function autoPre(g) {
+  const h = g.h;
+  const s = h.turn;
+  const c = h.pre[s];
+  if (h.phase !== 'play' || !c || played(h, s)) return;
+  h.pre[s] = null;
+  h.rounds[h.r].plays.push({ seat: s, c, burned: true });
+  advanceTurn(g);
 }
 
 function resolveRound(g) {
@@ -556,13 +586,10 @@ function resolveRound(g) {
     starter = h.mano;
     for (let k = 0; k < g.n && !active(h, starter); k++) starter = (h.mano + k) % g.n;
   }
+  // la ronda siguiente la empieza el que ganó la anterior (en parda, la mano) — [R] glosario, "Mano"
   h.rounds.push({ plays: [], result: null, starter });
-  // empieza el que ganó (o la mano); si no le quedan cartas, pasa sin jugar
   h.turn = starter;
-  if (!h.inHand[starter].length) {
-    h.rounds[h.r].plays.push({ seat: starter, c: null, none: true });
-    advanceTurn(g);
-  }
+  autoPre(g);
 }
 
 // Devuelve el equipo ganador de la mano o null si hay que seguir.
@@ -635,10 +662,13 @@ export function viewFor(g, seat) {
     myCards: seat != null ? h.inHand[seat] : [],
     myTanto: seat != null ? tanto(h.cards[seat]).value : null,
     table: h.table.map((list, s) =>
-      list.map((p) => {
-        // la tapada y la de abajo de un tiro doble no se ven hasta que termina la mano
-        const hidden = s !== seat && !done && (p.faceDown || (p.under && !p.revealed));
-        return { ...p, c: hidden ? null : p.c, hidden };
+      list.map(({ thrownIn, ...p }) => {
+        const mine = s === seat;
+        // la tapada y la de abajo de dos encimadas no se ven hasta que termina la mano
+        const hidden = !mine && !done && (p.faceDown || (p.under && !p.revealed));
+        // la de arriba de dos encimadas recién se ve quemada cuando termina la ronda en que se tiró
+        const burned = !!p.burned && (mine || done || thrownIn === undefined || h.r > thrownIn);
+        return { ...p, c: hidden ? null : p.c, hidden, burned };
       })
     ),
     rounds: h.rounds.map((r) => ({ result: g.ayudas || done ? r.result : undefined, starter: r.starter })),

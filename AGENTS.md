@@ -70,7 +70,8 @@ Servidor → cliente: `state {room, you, isHost, game, now}`, `error {msg}`, `ch
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
 `notfound`, `pong`.
 
-Acciones (`a.t`): `play {card, mode:'normal'|'down'}`, `play2 {bottom, top}` (top queda quemada),
+Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
+(top = jugada quemada de la ronda siguiente),
 `truco`, `envido {kind}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
 `mostrar`, `reclamar`.
 

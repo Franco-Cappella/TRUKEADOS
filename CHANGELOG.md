@@ -1,5 +1,21 @@
 # Cambios
 
+## 1.3.0 — cartas quemadas, panel sin scroll y mesa legible
+- **Cartas quemadas** (regla de la mesa): valen como un 4 en la ronda en que cuentan; el envido no cambia.
+  Se quema la tapada, la que tirás **fuera de turno** (se puede: es tu jugada de esa ronda) y la de arriba de
+  dos encimadas.
+- **Dos encimadas**: la de arriba es tu jugada quemada de la ronda siguiente (se juega sola). Durante la
+  ronda parece una carta normal y queda casi alineada; al terminar la ronda se ve quemada y aparece el aviso
+  para pedir "mostrá las dos". Ya no se avisa a todos en el momento.
+- **Panel sin scroll**: grilla fija (cantos 2×2, carta elegida en una fila de 3); en celular todo en una
+  grilla de 4 columnas. "Mirar a" ya no scrollea: en pantallas angostas se esconde. Los avisos repetidos no
+  se apilan.
+- **Mesa legible**: menos luz de la lámpara y exposición más baja (`LIGHT` en `theme.js`) y cartas de la
+  mesa 30 % más grandes.
+- Tests: quemada = 4, fuera de turno, tapada, dos encimadas en dos rondas, quién empieza cada ronda en
+  2 vs 2 / 3 vs 3, y que ganar primera y perder segunda lleva a tercera (reglamento).
+
+
 ## 1.2.0 — interfaz despejada, respuesta inmediata y movimiento suave
 - **Botones sin amontonarse**: las acciones pasaron a un panel abajo a la derecha (con el estado como
   título) y se acomodan en una grilla; el centro de abajo queda libre para tu mano. "Mirar a" pasó a una fila

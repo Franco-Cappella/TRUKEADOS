@@ -48,6 +48,15 @@ export const SCENE = {
   deckSide: '#efece4',
 };
 
+// Luces del bar. Más bajas = cartas más legibles (con mucha luz el paño y las caras se queman).
+export const LIGHT = {
+  exposure: 0.92,
+  ambient: 0.75, // luz pareja de todo el salón
+  lamp: 20, // lámpara colgante sobre la mesa
+  lampSoftness: 0.75, // borde del cono de luz (0 duro, 1 muy suave)
+  fill: 5,
+};
+
 // Cartas en la mesa
 export const CARD = {
   blank: '#fbfaf6', // la de abajo de un tiro doble, vista por un rival

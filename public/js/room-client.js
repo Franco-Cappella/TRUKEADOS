@@ -127,15 +127,31 @@ export class RoomClient {
     }
     if (a.t === 'play' || a.t === 'play2') {
       const round = g.h.r;
+      // mismas reglas que el motor: tapada o fuera de turno se quema; la de arriba de dos encimadas también
+      const faceDown = a.mode === 'down';
       const cards = a.t === 'play'
-        ? [{ c: a.card, faceDown: a.mode === 'down', round }]
-        : [{ c: a.bottom, under: true, round }, { c: a.top, burned: true, round }];
+        ? [{ c: a.card, faceDown, round, burned: faceDown || !g.actions.play }]
+        : [{ c: a.bottom, under: true, round }, { c: a.top, over: true, burned: true, round: round + 1 }];
       const used = new Set(cards.map((p) => p.c));
       this.scene.setMyCards(g.h.myCards.filter((c) => !used.has(c)), null);
       this.scene.syncTable(g.h.table.map((list, s) => (s === me ? list.concat(cards) : list)), { animate: true });
       flick();
       this.predicted = { type: 'play', until: Date.now() + PREDICT_MS };
     }
+  }
+
+  // Al terminar la ronda, la de arriba de dos encimadas de un rival pasa a verse quemada: se avisa una vez,
+  // así en la ronda siguiente se le puede pedir "mostrá las dos".
+  noticeBurned(prevGame, g) {
+    if (!prevGame?.h || prevGame.handNo !== g.handNo) return;
+    g.h.table.forEach((list, s) => {
+      if (s === this.you) return;
+      list.forEach((p, i) => {
+        if (p.over && p.burned && !prevGame.h.table[s]?.[i]?.burned) {
+          this.toast(`La carta de arriba de ${esc(this.nameOf(s))} estaba quemada: tiró dos encimadas. Pedile que muestre las dos.`, 'bad', 5000);
+        }
+      });
+    });
   }
 
   // ¿Este evento propio ya se mostró por adelantado con predict()?
@@ -225,10 +241,12 @@ export class RoomClient {
       if (!first && this.handNo !== undefined && g.handNo !== this.handNo) this.startDeal(g);
       this.handNo = g.handNo;
       scene.setDealer(g.dealer);
-      if (!g.actions.play || (this.selected && !g.h.myCards.includes(this.selected))) this.selected = null;
+      const canPick = g.actions.play || g.actions.throwOut;
+      if (!canPick || (this.selected && !g.h.myCards.includes(this.selected))) this.selected = null;
       if (this.choosingTop && (!g.actions.canDouble || !g.h.myCards.includes(this.choosingTop))) this.choosingTop = null;
       this.refreshHand();
       scene.syncTable(g.h.table, { animate: !first });
+      if (!first) this.noticeBurned(prev?.game, g);
       const evs = g.ev || [];
       const lastId = evs.length ? evs[evs.length - 1].id : 0;
       if (this.lastEv !== null && !first) for (const e of evs) if (e.id > this.lastEv) this.onEvent(e, g);
@@ -312,9 +330,10 @@ export class RoomClient {
         break;
       case 'play':
         if (!shown) flick();
-        if (e.burned) {
+        // dos encimadas NO se avisa: se descubre al terminar la ronda (ver noticeBurned)
+        if (e.outOfTurn) {
           const who = e.seat === me ? 'Tiraste' : `${name(e.seat)} tiró`;
-          this.toast(`${who} dos encimadas: quedó quemado el ${esc(cardName(e.burned))}.<br>${cardImg(e.burned)}`, 'bad', 4500);
+          this.toast(`${who} fuera de turno: la carta se quema (vale como un 4).`, 'bad', 3500);
         }
         break;
       case 'round':
@@ -371,9 +390,12 @@ export class RoomClient {
   clickCard(id) {
     const g = this.st?.game;
     if (this.dealing) return;
-    if (!g?.actions.play) return this.toast('Todavía no es tu turno', '', 1200);
     if (this.busy) return;
-    if (this.choosingTop) {
+    if (!g?.actions.play) {
+      // fuera de turno se puede elegir una carta, pero tirarla la quema: solo con el botón, nunca de un toque
+      if (!g?.actions.throwOut) return this.toast('Todavía no es tu turno', '', 1200);
+      this.selected = this.selected === id ? null : id;
+    } else if (this.choosingTop) {
       // tiro doble: la primera elegida va abajo (juega), la segunda arriba (queda quemada)
       const bottom = this.choosingTop;
       this.choosingTop = null;
@@ -388,9 +410,16 @@ export class RoomClient {
     this.render();
   }
 
+  // mode: 'normal' | 'down' (tapada) | 'double' (dos encimadas) | 'burn' (fuera de turno, se quema)
   playCard(id, mode) {
     const g = this.st?.game;
-    if (!g?.actions.play || !id || this.dealing || this.busy) return;
+    if (!id || this.dealing || this.busy) return;
+    if (mode === 'burn') {
+      if (!g?.actions.throwOut) return;
+      this.selected = null;
+      return this.act({ t: 'play', card: id });
+    }
+    if (!g?.actions.play) return;
     if (mode === 'double') {
       this.choosingTop = id;
       return this.render();
@@ -533,8 +562,9 @@ export class RoomClient {
     let hint = '';
     if (this.choosingTop) {
       t = 'Dos encimadas';
-      hint = 'Elegí la carta que va arriba: queda quemada.';
+      hint = 'Elegí la de arriba: será tu carta de la ronda siguiente, quemada (vale un 4).';
     } else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
+    else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
     else if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none') hint = 'Sos pie: el envido lo cantás vos, en tu turno.';
     el.innerHTML = esc(t) + (hint ? `<small>${esc(hint)}</small>` : '');
     el.classList.toggle('mine', mine);
@@ -554,12 +584,20 @@ export class RoomClient {
       box.dataset.key = next.innerHTML;
       box.replaceChildren(...next.children);
     }
-    const cardOn = show && a.play && this.selected && !this.choosingTop;
+    // carta elegida: en tu turno, Tirar / Dos encimadas / Tapada; fuera de turno, solo "Tirarla igual (se quema)"
+    const burnOnly = !!(show && !a.play && a.throwOut && this.selected);
+    const cardOn = !!(show && this.selected && ((a.play && !this.choosingTop) || burnOnly));
     cardBox.classList.toggle('hidden', !cardOn);
     if (cardOn) {
-      cardBox.querySelector('[data-play="normal"]').disabled = this.busy;
-      cardBox.querySelector('[data-play="double"]').disabled = this.busy || !a.canDouble;
-      cardBox.querySelector('[data-play="down"]').disabled = this.busy || !a.canDown;
+      const btn = (mode) => cardBox.querySelector(`[data-play="${mode}"]`);
+      const set = (mode, visible, enabled = true) => {
+        btn(mode).classList.toggle('hidden', !visible);
+        btn(mode).disabled = this.busy || !enabled;
+      };
+      set('normal', !burnOnly);
+      set('double', !burnOnly, a.canDouble);
+      set('down', !burnOnly, a.canDown);
+      set('burn', burnOnly);
     }
     if (show) this.renderDenuncias(a);
   }
@@ -769,6 +807,7 @@ export class RoomClient {
     const t = document.createElement('div');
     t.className = 'toast ' + kind;
     t.innerHTML = html;
+    if ([...area.children].some((x) => x.innerHTML === t.innerHTML)) return; // el mismo aviso no se apila
     area.appendChild(t);
     while (area.children.length > 4) area.firstChild.remove();
     setTimeout(() => t.remove(), ms);

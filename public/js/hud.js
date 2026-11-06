@@ -61,7 +61,7 @@ export function helpHtml() {
     <h3>Controles</h3>
     <ul>
       <li>Arrastrá con el mouse o el dedo para mirar a los costados y para abajo (a la mesa). También <kbd>A</kbd>/<kbd>D</kbd> y <kbd>W</kbd>/<kbd>S</kbd>, o “Mirar a” arriba al centro.</li>
-      <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda) o <b>Dos encimadas</b> (trampa: la de abajo es la que juega y la de arriba queda <b>quemada</b>, se pierde y todos la ven quemada; un rival te puede pedir que muestres las dos). Tocala de nuevo (o doble clic) y se tira. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
+      <li>Tocá una carta para elegirla y tocala de nuevo (o doble clic) para tirarla. Con la carta elegida también podés: <b>Tapada</b> (boca abajo, desde segunda) o <b>Dos encimadas</b>. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
       <li>“te mira” al lado de un nombre quiere decir que esa persona te está mirando. Las señas no avisan nada: hay que verlas en la cara. Los personajes no parpadean solos: si alguien cierra los ojos, es la seña de “ciego”.</li>
       <li>Mantené apretada la <kbd>Z</kbd> (o el botón Zoom) para hacer zoom y ver mejor la mesa o una cara.</li>
     </ul>
@@ -80,7 +80,8 @@ export function helpHtml() {
       <li>Envido 2 · Real envido 3 · Falta envido: lo que le falta al que va ganando. No querido: 1, o lo que se había querido antes.</li>
       <li>Los puntos se anotan al terminar la mano. El que gana el envido tiene que <b>mostrar las cartas</b>: si no las muestra y le reclaman, o si cantó un número falso, pierde los puntos del envido (el truco no cambia).</li>
       <li>En equipo, irse al mazo es por todo el equipo: termina la mano. En primera sin envido cantado, el rival suma 1 de envido + lo del truco.</li>
-      <li>Dos encimadas: cualquier rival te puede pedir que muestres las dos. No hay puntos de por medio: solo se ve la de abajo.</li>
+      <li><b>Cartas quemadas</b>: valen como un 4 en la ronda en que cuentan (el envido no cambia). Se quema la carta tapada, la que tirás <b>fuera de turno</b> (es tu jugada de esa ronda: cuando te toca, se te saltea) y la de arriba de dos encimadas.</li>
+      <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente, quemada. Mientras dura la ronda parece una carta normal; al terminar se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
     </ul>
   </div>`;
 }

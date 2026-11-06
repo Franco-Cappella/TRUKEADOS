@@ -4,10 +4,11 @@ import { drawCharacter, lookFor, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck } from './engine.js';
-import { SCENE, CARD, FONT } from './theme.js';
+import { SCENE, CARD, FONT, LIGHT } from './theme.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
+const TABLE_CARD_SCALE = 1.3; // en la mesa, un poco más grandes que en la vida real: se leen desde lejos
 const TABLE_Y = 0.74;
 const EYE_Y = 1.24;
 const CHAR_H = 1.8; // canvas de 512x1200: del piso (abajo) a la cabeza (arriba)
@@ -85,9 +86,14 @@ function burnCard(card) {
   if (card.userData.burned) return;
   card.userData.burned = true;
   card.userData.front.material.color.set(CARD.burnTint);
-  const scorch = new THREE.Mesh(cardGeo, new THREE.MeshLambertMaterial({ map: burnTex(), transparent: true, depthWrite: false }));
-  scorch.position.z = 0.0006;
-  card.add(scorch);
+  card.userData.back.material.color.set(CARD.burnTint);
+  const mat = new THREE.MeshLambertMaterial({ map: burnTex(), transparent: true, depthWrite: false });
+  for (const side of [1, -1]) {
+    const scorch = new THREE.Mesh(cardGeo, mat);
+    scorch.position.z = 0.0006 * side;
+    if (side < 0) scorch.rotation.y = Math.PI;
+    card.add(scorch);
+  }
 }
 
 const cardGeo = new THREE.PlaneGeometry(CARD_W, CARD_H);
@@ -159,7 +165,7 @@ export class TableScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = LIGHT.exposure;
     maxAniso = this.renderer.capabilities.getMaxAnisotropy();
     container.appendChild(this.renderer.domElement);
 
@@ -204,15 +210,15 @@ export class TableScene {
   // ------------------------------------------------------------ salón
   buildRoom() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, 0.55));
-    const lamp = new THREE.SpotLight(SCENE.lamp, 38, 7, Math.PI / 3.2, 0.55, 1.6);
+    s.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, LIGHT.ambient));
+    const lamp = new THREE.SpotLight(SCENE.lamp, LIGHT.lamp, 7, Math.PI / 3.2, LIGHT.lampSoftness, 1.6);
     lamp.position.set(0, 2.55, 0);
     lamp.target.position.set(0, 0, 0);
     lamp.castShadow = true;
     lamp.shadow.mapSize.set(2048, 2048);
     lamp.shadow.bias = -0.0004;
     s.add(lamp, lamp.target);
-    const fill = new THREE.PointLight(SCENE.fill, 6, 9, 1.4);
+    const fill = new THREE.PointLight(SCENE.fill, LIGHT.fill, 9, 1.4);
     fill.position.set(-2.5, 2.2, -2);
     s.add(fill);
 
@@ -935,6 +941,7 @@ export class TableScene {
         const pose = poses[idx];
         if (!card) {
           card = makeCard(face, true);
+          card.scale.setScalar(TABLE_CARD_SCALE);
           card.userData.faceDown = p.faceDown;
           this.scene.add(card);
           this.tableCards.set(key, card);
@@ -973,13 +980,13 @@ export class TableScene {
   }
 
   // Como en la mesa de verdad: cada carta nueva va encima de la anterior, corrida hacia el centro,
-  // así se ve un pedazo de la de primera y de segunda. La quemada (tiro doble) va cruzada encima.
+  // así se ve un pedazo de la de primera y de segunda. Dos encimadas: la de arriba casi alineada.
   tablePoses(seat, list) {
     const d = this.seatDir(seat);
     const a = this.seatAngle(seat);
     const tangent = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
     const start = this.R * (this.n === 2 ? 0.55 : 0.62);
-    const step = CARD_H * 0.36;
+    const step = CARD_H * TABLE_CARD_SCALE * 0.36;
     const jitter = [0, 0.006, -0.005];
     const tilt = [0.02, -0.05, 0.04];
     const out = [];
@@ -988,11 +995,11 @@ export class TableScene {
     let rot = a;
     list.forEach((p, idx) => {
       if (idx > 0) {
-        if (p.burned) {
-          // tiro doble: la quemada queda encima, cruzada, tapando casi toda la de abajo
-          radial -= 0.012;
-          side += 0.012;
-          rot += 0.32;
+        if (p.over) {
+          // dos encimadas: la de arriba queda casi alineada con la de abajo (apenas se nota)
+          radial -= 0.003;
+          side += 0.002;
+          rot += 0.02;
         } else {
           radial -= step;
           side = jitter[idx % 3];

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, act, rank, tanto, handWinner, waitingFor, viewFor, nextHand, actionsFor, closeShow, isPie } from '../public/js/engine.js';
+import { newGame, act, rank, tanto, handWinner, waitingFor, viewFor, nextHand, actionsFor, closeShow, isPie, playValue, BURNED_VALUE } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
 
 // RNG con semilla para que los tests sean reproducibles.
@@ -266,34 +266,88 @@ test('al mazo en primera sin envido: 1 + 1', () => {
   assert.deepEqual(g.score, [0, 2]);
 });
 
-test('tirar dos encimadas: la de abajo juega y la de arriba queda quemada', () => {
+test('dos encimadas: la de abajo juega; la de arriba es la jugada de la ronda siguiente, quemada', () => {
   const g = fixed([['1E', '4E', '5C'], ['3O', '6O', '12B']]);
-  // el 0 tapa su 4 con el ancho: el ancho queda quemado y no juega nunca
+  // el 0 tapa su 4 con el ancho: en primera parece que tiró el ancho
   ok(act(g, 0, { t: 'play2', bottom: '4E', top: '1E' }));
-  const v = viewFor(g, 1);
+  let v = viewFor(g, 1);
   assert.equal(v.h.table[0][0].c, null); // la de abajo no se ve
   assert.equal(v.h.table[0][1].c, '1E');
-  assert.equal(v.h.table[0][1].burned, true); // la de arriba se ve quemada
+  assert.equal(v.h.table[0][1].burned, false); // durante primera no se nota que está quemada
+  assert.equal(viewFor(g, 0).h.table[0][1].burned, true); // el que la tiró sí lo sabe
   assert.deepEqual(g.h.inHand[0], ['5C']);
-  ok(act(g, 1, { t: 'play', card: '3O' })); // gana primera el 1 (3 > 4)
+  ok(act(g, 1, { t: 'play', card: '3O' })); // primera: 3 > 4, gana el 1
   assert.equal(g.h.rounds[0].result, 1);
-  ok(act(g, 1, { t: 'play', card: '6O' }));
-  ok(act(g, 0, { t: 'play', card: '5C' })); // el ancho NO se juega solo en segunda
-  assert.equal(g.h.phase, 'ended');
-  assert.deepEqual(g.score, [0, 1]); // el 1 ganó primera y segunda
+  v = viewFor(g, 1);
+  assert.equal(v.h.table[0][1].burned, true); // terminó primera: ahora se ve quemada
+  // segunda: empieza el 1 (ganó primera); al 0 se le juega solo el ancho quemado, que vale un 4
+  ok(act(g, 1, { t: 'play', card: '12B' }));
+  assert.deepEqual(g.h.rounds[1].plays.find((p) => p.seat === 0), { seat: 0, c: '1E', burned: true });
+  assert.equal(g.h.phase, 'ended'); // el 1 ganó primera y segunda
+  assert.deepEqual(g.score, [0, 1]);
 });
 
-test('quien quemó una carta y se queda sin cartas pasa la ronda sin jugar', () => {
-  const g = fixed([['4E', '5E', '6C'], ['4O', '5O', '12B']]);
-  ok(act(g, 0, { t: 'play2', bottom: '6C', top: '4E' })); // primera: juega el 6, quema el 4
-  ok(act(g, 1, { t: 'play', card: '4O' })); // gana el 0 (6 > 4)
-  ok(act(g, 0, { t: 'play', card: '5E' })); // segunda: al 0 ya no le quedan cartas
-  ok(act(g, 1, { t: 'play', card: '12B' })); // gana el 1
-  // tercera: empieza el 1 (ganó segunda) y el 0 pasa sin carta
-  ok(act(g, 1, { t: 'play', card: '5O' }));
-  assert.equal(g.h.phase, 'ended');
-  assert.equal(g.h.rounds[2].result, 1);
-  assert.deepEqual(g.score, [0, 1]);
+test('la carta quemada vale como un 4 (empata con un 4, pierde con un 5)', () => {
+  assert.equal(BURNED_VALUE, rank('4C'));
+  assert.equal(playValue({ c: '1E', burned: true }), rank('4O'));
+  assert.ok(playValue({ c: '1E', burned: true }) < rank('5C'));
+  // tapada en segunda contra un 4: parda (y como el 0 ganó primera, gana la mano)
+  const g = fixed([['3E', '4E', '1B'], ['4O', '3O', '4B']]);
+  ok(act(g, 0, { t: 'play', card: '3E' }));
+  ok(act(g, 1, { t: 'play', card: '4O' }));
+  ok(act(g, 0, { t: 'play', card: '1B', mode: 'down' }));
+  ok(act(g, 1, { t: 'play', card: '4B' }));
+  assert.equal(g.h.rounds[1].result, 'parda');
+  assert.deepEqual(g.score, [1, 0]);
+});
+
+test('tirar fuera de turno: la carta se quema y es tu jugada de esa ronda', () => {
+  const g = fixed([['7O', '4E', '5C'], ['3O', '6O', '12B']]);
+  assert.equal(actionsFor(g, 1).throwOut, true);
+  ok(act(g, 1, { t: 'play', card: '3O' })); // le tocaba al 0
+  assert.equal(g.h.turn, 0); // el turno sigue siendo del 0
+  assert.equal(viewFor(g, 0).h.table[1][0].burned, true); // se ve quemada para todos
+  assert.equal(actionsFor(g, 1).throwOut, false); // ya jugó en esta ronda
+  ok(act(g, 0, { t: 'play', card: '5C' })); // 5 le gana al 3 quemado (vale un 4)
+  assert.equal(g.h.rounds[0].result, 0);
+  assert.equal(g.h.r, 1);
+  assert.equal(g.h.turn, 0); // el que ganó primera empieza segunda
+});
+
+test('no se puede tirar fuera de turno con un canto sin contestar', () => {
+  const g = fixed([['7O', '4E', '5C'], ['3O', '6O', '12B']]);
+  ok(act(g, 0, { t: 'truco' }));
+  assert.ok(act(g, 1, { t: 'play', card: '3O' }).error);
+});
+
+test('en 2 vs 2 y 3 vs 3 la ronda siguiente la empieza el que ganó la anterior (parda: la mano)', () => {
+  for (const mode of ['2v2', '3v3']) {
+    for (let seed = 1; seed <= 25; seed++) {
+      const g = newGame({ mode }, seeded(seed));
+      const h = g.h;
+      while (h.phase === 'play') {
+        for (let k = 0; k < g.n && h.phase === 'play'; k++) {
+          const s = h.turn;
+          const card = h.inHand[s].slice().sort((x, y) => rank(y) - rank(x))[0];
+          ok(act(g, s, { t: 'play', card }));
+        }
+        if (h.phase !== 'play') break;
+        const R = h.rounds[h.r - 1];
+        assert.equal(h.turn, R.result === 'parda' ? h.mano : R.winnerSeat, `${mode} seed ${seed} ronda ${h.r + 1}`);
+      }
+    }
+  }
+});
+
+test('ganar primera y perder segunda no termina la mano: se juega tercera', () => {
+  const g = fixed([['3E', '4E', '1B'], ['4O', '3O', '12B']]);
+  ok(act(g, 0, { t: 'play', card: '3E' }));
+  ok(act(g, 1, { t: 'play', card: '4O' })); // primera para el 0
+  ok(act(g, 0, { t: 'play', card: '4E' }));
+  ok(act(g, 1, { t: 'play', card: '3O' })); // segunda para el 1
+  assert.equal(g.h.phase, 'play');
+  assert.equal(g.h.r, 2);
+  assert.equal(g.h.turn, 1); // tercera la empieza el que ganó segunda
 });
 
 test('pedir que muestre las dos: se ve la de abajo y no hay puntos', () => {
@@ -320,14 +374,16 @@ test('en equipo, irse al mazo es por todo el equipo', () => {
   assert.deepEqual(g.h.mazo, [true, false, true, false]);
 });
 
-test('carta tapada no vale en primera y pierde la ronda', () => {
+test('carta tapada: no vale en primera; desde segunda se quema (vale un 4)', () => {
   const g = fixed([['3E', '4E', '5C'], ['4O', '3O', '12B']]);
   assert.ok(act(g, 0, { t: 'play', card: '3E', mode: 'down' }).error);
   ok(act(g, 0, { t: 'play', card: '3E' }));
   ok(act(g, 1, { t: 'play', card: '4O' }));
   ok(act(g, 0, { t: 'play', card: '5C', mode: 'down' }));
+  assert.equal(viewFor(g, 1).h.table[0][1].burned, true);
   ok(act(g, 1, { t: 'play', card: '12B' }));
   assert.equal(g.h.rounds[1].result, 1);
+  assert.equal(g.h.rounds[1].plays[0].burned, true);
   // el rival no ve la carta tapada
   assert.equal(viewFor(g, 1).h.table[0][1].c, null);
   assert.equal(viewFor(g, 0).h.table[0][1].c, '5C');

@@ -45,7 +45,7 @@
   --btn-pad: 12px 20px;
   --btn-min-h: 46px;
   --btn-call-font: 22px;
-  --panel-w: min(340px, 34vw);
+  --panel-w: clamp(300px, 30vw, 380px);
   /* tipografía */
   --font: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --narrow: 78%;
@@ -186,7 +186,7 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 #status-line:empty { display: none; }
 #status-line.mine { color: var(--text); border-bottom: 2px solid var(--accent); }
 
-#look-bar { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: row; align-items: center; gap: 2px; max-width: calc(100% - 600px); overflow-x: auto; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
+#look-bar { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: row; align-items: center; gap: 2px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
 #look-bar:empty { display: none; }
 #look-bar .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 0 6px; white-space: nowrap; }
 #look-bar .btn { flex-direction: column; gap: 0; border: 0; background: none; font-size: 14px; padding: 4px 10px; min-height: 38px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: none; letter-spacing: 0.02em; }
@@ -199,18 +199,23 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 #tools { position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 8px; z-index: 3; }
 #panel {
   position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 3;
-  width: var(--panel-w); max-height: calc(100% - 76px); min-height: 0; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 12px;
+  width: var(--panel-w);
+  display: flex; flex-direction: column; gap: 10px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
-#actions { display: flex; flex-direction: column; gap: 12px; }
+#actions { display: flex; flex-direction: column; gap: 10px; }
 #actions:empty { display: none; }
 #actions.busy .act-group, #panel.busy #card-actions { opacity: 0.55; }
-.act-group, #card-actions { display: flex; flex-direction: column; gap: 6px; }
+.act-group, #card-actions { display: flex; flex-direction: column; gap: 5px; }
 .act-group .lbl, #card-actions .lbl { font-family: var(--font); font-stretch: var(--narrow); font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
 /* botones en grilla: nunca se pisan, se acomodan en filas parejas */
-.act-group .btns, #card-actions .btns { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+/* grilla fija: 2 por fila (los cantos quedan 2×2); la carta elegida, 3 en una fila. Nunca se pisan ni scrollean. */
+.act-group .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#card-actions .btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.act-group .btn:only-child, #card-actions [data-play="burn"] { grid-column: 1 / -1; }
+#panel .btn { min-height: 44px; padding: 8px 10px; font-size: 15px; letter-spacing: 0.04em; line-height: 1.15; }
+#panel .btn.call { font-size: 19px; padding: 6px 10px; }
 .act-group .btn, #card-actions .btn { width: 100%; white-space: normal; text-align: center; }
 #status-line small { display: block; margin-top: 5px; font-size: 13px; font-weight: 500; font-stretch: 100%; text-transform: none; letter-spacing: 0; color: var(--muted); line-height: 1.35; }
 .lie { grid-column: 1 / -1; display: flex; gap: 0; align-items: stretch; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; background: var(--panel); }
@@ -272,19 +277,21 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 #help li { margin: 4px 0; color: var(--text-dim); line-height: 1.45; }
 #help li b { color: var(--text); }
 
+@media (max-width: 1150px) { #look-bar .lbl { display: none; } #look-bar .btn { padding: 4px 7px; } }
+@media (max-width: 1000px) { #look-bar { display: none; } }
+
 @media (max-width: 760px) {
   .menu-grid { grid-template-columns: 1fr; }
   #look-bar { display: none; }
-  #panel { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: 40%; padding: 8px 10px; gap: 6px; }
+  #panel { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; padding: 8px 10px; gap: 6px; }
   #status-line small, .act-group .lbl, #card-actions .lbl { display: none; }
-  #panel .btn { min-height: 40px; padding: 8px 10px; }
-  #panel .btn.call { padding: 6px 10px; }
-  /* en celular: una fila deslizable de botones, así el panel queda bajo y la mano no tapa las caras */
-  #actions { flex-direction: row; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 24px; }
-  .act-group { flex: none; }
-  .act-group .btns, #card-actions .btns { display: flex; gap: 6px; }
-  #panel .act-group .btn, #card-actions .btn { width: auto; white-space: nowrap; }
-  #card-actions .btn { flex: 1; }
+  #panel .btn { min-height: 40px; padding: 6px 8px; font-size: 14px; }
+  #panel .btn.call { font-size: 17px; padding: 4px 8px; }
+  /* en celular todos los botones en una sola grilla de 4 columnas: el panel queda bajo y la mano no tapa las caras */
+  #actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .act-group, .act-group .btns { display: contents; }
+  .act-group .btn:only-child { grid-column: auto; }
+  .lie { grid-column: span 2; }
   #tools { left: 8px; bottom: auto; top: 52px; }
   #tools .btn { min-height: 36px; padding: 7px 11px; font-size: 14px; }
   #tools .dropdown .menu { bottom: auto; top: calc(100% + 6px); }

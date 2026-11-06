@@ -26,7 +26,9 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | Solo sube (retruco, vale cuatro) el equipo que tiene el quiero | `trucoOpenFor` | [R] "no puede retrucarse sin haber dicho quiero" |
 | Subir contestando implica querer lo anterior | `act` truco | |
 | **Se canta en tu turno, antes de tirar** (contestar no requiere turno) | `trucoOpenFor`, `envidoOpenFor` | [R] §11: cada jugador canta "en su turno". Antes se podía cantar fuera de turno: era un bug |
-| Carta tapada: desde segunda, vale 0 (pierde con cualquier carta) | `act` play, `playValue` | |
+| Carta tapada: solo desde segunda, y se quema (vale como un 4) | `act` play, `playValue` | ver "Cartas quemadas" |
+| La segunda y la tercera ronda las empieza quien ganó la anterior (en parda, la mano) | `resolveRound` | [R] glosario: "en las bazas segunda y tercera, el mano es el que ha ganado la baza anterior" |
+| Gana la mano quien gana dos rondas: ganar primera y perder segunda **no** termina la mano, se juega tercera | `handWinner` | [R] "El truco": "para ganar el truco hay que ganar dos de ellas" |
 | Irse al mazo: en equipo se va todo el equipo; el rival cobra lo que valga el truco | `act` mazo | |
 | Irse al mazo en primera sin envido cantado: +1 de envido para el rival | `act` mazo | costumbre de mesa |
 
@@ -44,20 +46,28 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | El ganador tiene que mostrar: si no muestra y le reclaman, pierde los puntos del envido | `actShow`, `closeShow` | |
 | Los puntos se anotan al terminar la mano (envido primero, después truco) | `finishHand` | |
 
-### Trampa: dos cartas encimadas (carta quemada)
-El reglamento no trata esta trampa. Se resolvió con definiciones del glosario de [R]:
-- **"Carta jugada es la que se ha colocado sobre la mesa boca arriba"** y **"una vez jugada no se puede retirar"**.
-- Por turno se juega **una** carta.
+### Cartas quemadas (regla de la mesa)
+El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueño del juego y la que usa el motor
+(`BURNED_VALUE`, `playValue`):
 
-Por eso:
-1. La carta **de abajo** es la que juega la ronda (los rivales no la ven hasta el final de la mano).
-2. La carta **de arriba** ya quedó en la mesa y no se puede levantar, pero no es la jugada del turno:
-   queda **quemada**. No juega ninguna ronda, se pierde, y se ve **claramente quemada** (oscura, con bordes
-   carbonizados y cruzada sobre la otra).
-3. Si al tramposo se le acaban las cartas, en las rondas siguientes **pasa sin carta** (vale -1).
-4. Cualquier rival puede pedir **"mostrá las dos"**: se levanta la quemada y todos ven la de abajo. No hay puntos.
+- Una carta **quemada vale como un 4** (la más baja) en la ronda en que cuenta. **No cambia el envido**: los
+  tantos se calculan siempre con las 3 cartas repartidas.
+- Se quema:
+  1. la carta **tapada** (boca abajo; solo se puede desde segunda);
+  2. la carta tirada **fuera de turno**: es tu jugada de esa ronda (cuando te toca, se te saltea). No se puede
+     con un canto sin contestar ni si ya jugaste en la ronda;
+  3. la carta **de arriba de dos encimadas** (ver abajo).
 
-Antes (en Cadalado) la de arriba se jugaba sola en la ronda siguiente; se cambió a "quemada".
+### Trampa: dos cartas encimadas
+1. Tirás dos cartas juntas en tu turno (en primera o segunda). La **de abajo** es tu jugada de esta ronda y
+   los rivales no la ven hasta el final de la mano.
+2. La **de arriba** ya está en la mesa y no se puede levantar ([R] glosario: "una vez jugada no se puede
+   retirar"): es tu jugada de la **ronda siguiente**, quemada (vale un 4). Cuando te toca, se juega sola.
+3. Mientras dura la ronda en que la tiraste **parece una carta normal** (para que la trampa sirva) y queda
+   casi alineada con la de abajo. **Al terminar esa ronda se ve quemada**, así en la siguiente los rivales se
+   dan cuenta.
+4. Cualquier rival puede pedir **"mostrá las dos"**: se levanta la de arriba y todos ven la de abajo. No hay
+   puntos de por medio.
 
 ### Reglas de la mesa (configurables o decididas por el juego)
 | Regla | Dónde |
