@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.1.0 — tipografía y paleta
+- Tipografía única: **Archivo** (Omnibus-Type, Buenos Aires; Google Fonts, OFL), variable en peso y ancho.
+  Ancho normal para textos y botones; angosta (`font-stretch: var(--narrow)`) para rótulos. Se sacaron
+  Barlow, Barlow Condensed y Alegreya (y todas las itálicas). En canvas se usa `FONT` de `theme.js`.
+- Paleta básica: grises neutros + los cuatro palos de la baraja (`--blue` espada, `--green` basto,
+  `--yellow` oro, `--red` copa). El amarillo es el único acento. Se sacaron el marfil, el latón y los marrones
+  de la interfaz. Variables renombradas: `--bg`, `--surface`, `--line`, `--text`, `--accent`…
+- `theme.js`: `FONT` y `SUIT_COLORS`; anotador y textos del paño en blanco neutro.
+
 ## 1.0.0 — separado de Cadalado.com
 
 Traído desde la rama `truco` de `Arkhram-Organization/Cadalado.com` (solo el truco, sin el ajedrez).

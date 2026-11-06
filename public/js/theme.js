@@ -2,6 +2,12 @@
 // Los colores de la interfaz HTML están en public/css/truco.css (variables en :root).
 // Si cambiás la paleta, tocá los dos lados para que todo combine.
 
+// Tipografía para lo que se dibuja en canvas (la misma que --font en truco.css).
+export const FONT = "'Archivo', system-ui, sans-serif";
+
+// Los cuatro palos: los colores básicos de la paleta (iguales a --blue/--green/--yellow/--red).
+export const SUIT_COLORS = { E: '#2f6fd6', B: '#2e9e57', O: '#f2c12e', C: '#d93b30' };
+
 // Tinta de los contornos de personajes y manos.
 export const INK = '#2b2320';
 
@@ -22,13 +28,13 @@ export const SCENE = {
   frame: '#5a3a1a',
   // cuadros de la pared: [texto, fondo, letra]
   pictures: [
-    ['Boca vs. River', '#1d3b6e', '#f2c230'],
-    ['Gardel', '#2a2a2a', '#e8e0cf'],
-    ['Mate & Truco', '#2f5d3a', '#e8d29b'],
-    ['Mar del Plata', '#3e7fae', '#f4e6c4'],
+    ['Boca vs. River', SUIT_COLORS.E, SUIT_COLORS.O],
+    ['Gardel', '#1c1c1c', '#f5f5f5'],
+    ['Mate & Truco', SUIT_COLORS.B, '#f5f5f5'],
+    ['Mar del Plata', SUIT_COLORS.C, '#f5f5f5'],
   ],
   felt: ['#2e7344', '#225a35', '#1a4529'], // centro -> borde del paño
-  feltInk: 'rgba(230,214,170,0.13)',
+  feltInk: 'rgba(255,255,255,0.12)',
   feltName: 'Truco 3D',
   wood: '#5b3418',
   woodDark: '#8a6a55',
@@ -53,9 +59,9 @@ export const CARD = {
 
 // Anotador de palitos
 export const SCORE = {
-  stick: '#ece6d8',
-  stickOff: 'rgba(236,230,216,0.08)',
-  rule: 'rgba(236,230,216,0.45)',
+  stick: '#f5f5f5',
+  stickOff: 'rgba(255,255,255,0.08)',
+  rule: 'rgba(255,255,255,0.4)',
 };
 
 // Paletas de los personajes (tonos de piel, pelo y ropa reales). Cada piel: [luz, sombra].

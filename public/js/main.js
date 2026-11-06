@@ -3,6 +3,7 @@
 import { TableScene, preloadCards } from './scene.js';
 import { lookFor } from './characters.js';
 import { SENAS, ROUTES } from './config.js';
+import { FONT } from './theme.js';
 import { $, $$, esc, savedName } from './dom.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
 import { QUICK_PHRASES, helpHtml, drawFace } from './hud.js';
@@ -197,6 +198,9 @@ function buildSenasMenu() {
     m.appendChild(b);
   }
 }
+
+// La escena dibuja textos en canvas: esperamos la tipografía (si no carga, sigue con la de respaldo).
+await Promise.race([document.fonts?.load(`700 28px ${FONT}`), new Promise((r) => setTimeout(r, 1500))]).catch(() => {});
 
 initMenu(go);
 window.addEventListener('popstate', route);

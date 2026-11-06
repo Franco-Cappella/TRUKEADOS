@@ -39,13 +39,15 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 1. **Las reglas viven solo en `engine.js`.** El servidor y el cliente nunca deciden si algo es legal:
    el cliente dibuja los botones con `game.actions` (de `actionsFor`) y el servidor llama a `act()`.
    Si un botón aparece cuando no debería, el bug está en `actionsFor`/`act`, no en la UI.
-2. **Números mágicos a `config.js`** (tiempos, límites, rutas, señas) y **colores a `theme.js` / `:root`
+2. **Números mágicos a `config.js`** (tiempos, límites, rutas, señas) y **colores/tipografía a `theme.js` / `:root`
    de `truco.css`**. No escribas `'#abc123'` ni `5200` sueltos en otro lado.
 3. `engine.js`, `bot.js` y `config.js` no pueden usar `window`, `document` ni nada del navegador
    (los importa el Worker).
 4. Todo lo que venga de otros jugadores (nombres, chat) se escapa con `esc()` antes de ir a `innerHTML`.
 5. Cada cambio de reglas lleva test en `test/truco.test.js` y una línea en `docs/REGLAS.md`.
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
+7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
+   palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
 
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`

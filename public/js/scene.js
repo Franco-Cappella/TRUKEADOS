@@ -4,7 +4,7 @@ import { drawCharacter, lookFor, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck } from './engine.js';
-import { SCENE, CARD } from './theme.js';
+import { SCENE, CARD, FONT } from './theme.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
@@ -268,7 +268,7 @@ export class TableScene {
         ctx.fillStyle = bg;
         ctx.fillRect(14, 14, w - 28, h - 28);
         ctx.fillStyle = fg;
-        ctx.font = 'bold 28px Georgia';
+        ctx.font = `700 28px ${FONT}`;
         ctx.textAlign = 'center';
         ctx.fillText(text, w / 2, h / 2 + 10);
       });
@@ -314,13 +314,13 @@ export class TableScene {
       }
       ctx.globalAlpha = 1;
       noise(ctx, w, h, 14);
-      ctx.strokeStyle = 'rgba(230,214,170,0.12)';
+      ctx.strokeStyle = SCENE.feltInk;
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, w * 0.16, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = SCENE.feltInk;
-      ctx.font = 'italic 46px Georgia';
+      ctx.font = `600 46px ${FONT}`;
       ctx.textAlign = 'center';
       ctx.fillText(SCENE.feltName, w / 2, h / 2 + 14);
     });
