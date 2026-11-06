@@ -66,7 +66,7 @@ Cliente → servidor: `join {pid,name,spectate}`, `sit {seat}`, `stand`, `addbot
 `kick {seat}`, `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
 `rematch`, `to-lobby`, `ping`.
 
-Servidor → cliente: `state {room, you, isHost, game, now}`, `error {msg}`, `chat {msg}`,
+Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
 `notfound`, `pong`.
 

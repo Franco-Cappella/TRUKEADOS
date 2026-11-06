@@ -677,8 +677,9 @@ export function viewFor(g, seat) {
         const mine = s === seat;
         // la tapada y la de abajo de dos encimadas no se ven hasta que termina la mano
         const hidden = !mine && !done && (p.faceDown || (p.under && !p.revealed));
-        // la de arriba de dos encimadas recién se ve quemada cuando termina la ronda en que se tiró
-        const burned = !!p.burned && (mine || done || thrownIn === undefined || h.r > thrownIn);
+        // la de arriba de dos encimadas recién se ve quemada (para todos, también el que la tiró)
+        // cuando termina la ronda en que se tiró
+        const burned = !!p.burned && (done || thrownIn === undefined || h.r > thrownIn);
         return { ...p, c: hidden ? null : p.c, hidden, burned };
       })
     ),

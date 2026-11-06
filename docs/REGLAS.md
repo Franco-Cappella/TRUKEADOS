@@ -64,7 +64,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
    los rivales no la ven hasta el final de la mano.
 2. La **de arriba** ya está en la mesa y no se puede levantar ([R] glosario: "una vez jugada no se puede
    retirar"): es tu jugada de la **ronda siguiente**, quemada (vale un 4). Cuando te toca, se juega sola.
-3. Mientras dura la ronda en que la tiraste **parece una carta normal** (para que la trampa sirva) y queda
+3. Mientras dura la ronda en que la tiraste **parece una carta normal para todos, también para vos** (para que la trampa sirva) y queda
    casi alineada con la de abajo. **Al terminar esa ronda se ve quemada**, así en la siguiente los rivales se
    dan cuenta.
 4. Cualquier rival puede pedir **"mostrá las dos"**: se levanta la de arriba y todos ven la de abajo. No hay

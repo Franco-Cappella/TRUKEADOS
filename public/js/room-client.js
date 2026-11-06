@@ -9,7 +9,8 @@ import { palitos, drawFace } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
-const PREDICT_MS = 4000; // un evento propio dentro de este tiempo ya se mostró por adelantado
+const PREDICT_MS = 4000;
+const DEAL_MARGIN_MS = 80; // margen sobre el fin del reparto del servidor (por la latencia) // un evento propio dentro de este tiempo ya se mostró por adelantado
 const cardImg = (c, alt = '') => `<img src="${ROUTES.card(c)}" alt="${esc(alt)}">`;
 
 export class RoomClient {
@@ -132,7 +133,7 @@ export class RoomClient {
       const faceDown = a.mode === 'down';
       const cards = a.t === 'play'
         ? [{ c: a.card, faceDown, round, burned: faceDown || !g.actions.play }]
-        : [{ c: a.bottom, under: true, round }, { c: a.top, over: true, burned: true, round: round + 1 }];
+        : [{ c: a.bottom, under: true, round }, { c: a.top, over: true, burned: false, round: round + 1 }];
       const used = new Set(cards.map((p) => p.c));
       this.scene.setMyCards(g.h.myCards.filter((c) => !used.has(c)), null);
       this.scene.syncTable(g.h.table.map((list, s) => (s === me ? list.concat(cards) : list)), { animate: true });
@@ -239,7 +240,8 @@ export class RoomClient {
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
-      if (!first && this.handNo !== undefined && g.handNo !== this.handNo) this.startDeal(g);
+      if (st.dealLeft > 0 && g.handNo !== this.dealtHand) this.startDeal(g, st.dealLeft);
+      this.dealtHand = g.handNo;
       this.handNo = g.handNo;
       scene.setDealer(g.dealer);
       const canPick = g.actions.play || g.actions.throwOut;
@@ -279,9 +281,11 @@ export class RoomClient {
     this.scene.setMyCards(mine, this.selected);
   }
 
-  startDeal(g) {
+  // Mientras se reparte no hay botones ni se puede tirar: el servidor rechazaría la jugada.
+  // Termina cuando terminan la animación y el tiempo de reparto del servidor (`left` ms), lo último.
+  startDeal(g, left = dealMs(g.n)) {
     const counts = Array(g.n).fill(0);
-    const deal = { counts };
+    const deal = { counts, anim: false, server: false };
     this.dealing = deal;
     this.selected = null;
     this.choosingTop = null;
@@ -291,8 +295,13 @@ export class RoomClient {
       this.refreshHand();
       this.render();
     };
-    // Si la pestaña estuvo oculta la animación se congela: igual se destraba al tiempo del servidor.
-    setTimeout(finish, dealMs(g.n) + 600);
+    const done = (part) => {
+      deal[part] = true;
+      if (deal.anim && deal.server) finish();
+    };
+    setTimeout(() => done('server'), left + DEAL_MARGIN_MS);
+    // si la pestaña estuvo oculta la animación se congela: igual se destraba poco después del servidor
+    setTimeout(finish, left + DEAL_MARGIN_MS + 1500);
     this.scene.dealAnim({
       dealer: g.dealer,
       cutter: g.h.cutter,
@@ -304,7 +313,7 @@ export class RoomClient {
         flick(0.08, 0.05);
         this.refreshHand();
       },
-      onDone: finish,
+      onDone: () => done('anim'),
     });
   }
 

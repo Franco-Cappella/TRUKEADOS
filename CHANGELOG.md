@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.4.1 — reparto sincronizado y quemada a destiempo
+- **"Esperá que terminen de repartir" en primera**: en la primera mano de una sala el cliente no animaba el
+  reparto y dejaba tirar mientras el servidor seguía repartiendo; la jugada se rechazaba y la carta volvía a la
+  mano (también pasaba con la carta quemada fuera de turno). Ahora el servidor manda `dealLeft` (ms de reparto
+  que faltan) y el cliente no muestra botones hasta que terminan la animación y el reparto del servidor.
+- **Dos encimadas**: la de arriba se ve quemada recién al pasar a la ronda siguiente, para todos (antes el
+  que la tiraba la veía quemada en el momento).
+- Test nuevo: fuera de turno en 2 vs 2 (se saltea el turno y la carta no vuelve a la mano).
+
+
 ## 1.4.0 — irse sin mostrar y campo de visión más amplio
 - **Irse al mazo sin mostrar** los tantos (para hacerse el boludo o tapar que mentiste): los rivales tienen
   6 s para reclamar (`TIMING.foldWindow`); si nadie reclama, los puntos valen. Los bots rivales pueden reclamar.

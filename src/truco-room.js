@@ -476,6 +476,7 @@ export class TrucoRoom extends DurableObject {
       you: seat,
       isHost: !!pid && pid === r.host,
       game: r.game ? viewFor(r.game, seat) : null,
+      dealLeft: r.status === 'playing' ? Math.max(0, (r.dealUntil || 0) - Date.now()) : 0, // ms de reparto que faltan
       now: Date.now(),
     };
   }
