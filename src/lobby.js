@@ -5,6 +5,11 @@ const MIN = 60_000;
 const MAX_LISTED = 50;
 
 const BRAIN_GLOBAL = 'brain:*';
+// Memoria de situaciones de los bots (ver BotMemo en public/js/bot.js). Cada situación es una clave
+// "memo:<hash>"; se guardan como mucho MEMO_MAX y al arrancar una sala se traen MEMO_LOAD.
+const MEMO_MAX = 200_000;
+const MEMO_LOAD = 20_000;
+const MEMO_COUNT = 'memo#';
 const fresh = (b) => (b && b.v === BRAIN_VERSION ? b : null);
 
 // Un único Durable Object ("global") con un resumen de cada sala para el menú
@@ -16,6 +21,25 @@ export class Lobby extends DurableObject {
     const out = { global };
     for (const pid of new Set(pids)) out[pid] = fresh(await this.ctx.storage.get('brain:' + pid)) || newBrain(global);
     return out;
+  }
+
+  // Situaciones de los bots que ya maduraron: [[hash, sumas]].
+  async memoPut(entries = []) {
+    let count = (await this.ctx.storage.get(MEMO_COUNT)) || 0;
+    const fresh = entries.filter(([k, v]) => typeof k === 'string' && k.length < 40 && v && typeof v.n === 'number');
+    for (let i = 0; i < fresh.length && count < MEMO_MAX; i += 100) {
+      const chunk = fresh.slice(i, i + 100);
+      const old = await this.ctx.storage.get(chunk.map(([k]) => 'memo:' + k));
+      count += chunk.filter(([k]) => !old.has('memo:' + k)).length;
+      await this.ctx.storage.put(Object.fromEntries(chunk.map(([k, v]) => ['memo:' + k, v])));
+    }
+    await this.ctx.storage.put(MEMO_COUNT, count);
+    return count;
+  }
+
+  async memoGet(limit = MEMO_LOAD) {
+    const m = await this.ctx.storage.list({ prefix: 'memo:', limit });
+    return [...m].map(([k, v]) => [k.slice(5), v]);
   }
 
   // Ejemplos de una mano ({ pid, key, x, y }): entrena el cerebro de cada uno y el global.

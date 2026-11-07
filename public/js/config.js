@@ -82,6 +82,7 @@ export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se a
 // Cómo piensan (ver bot.js y brain.js). Las trampas solo valen en mesas que las permiten.
 export const BOT = {
   samples: 40, // manos imaginadas del rival por decisión (Monte Carlo)
+  memoSamples: 160, // memoria: con tantas manos imaginadas juntadas en una situación ya no piensa (ver BotMemo)
   temp: 0.15, // ruido al elegir entre cantos (en puntos): más alto = más impredecible
   peek: 0.15, // trampa: espía las cartas de los rivales en esa mano
   peekBehind: 0.35, // ... si va perdiendo por mucho

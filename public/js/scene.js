@@ -1051,7 +1051,13 @@ export class TableScene {
     let rot = a;
     list.forEach((p, idx) => {
       if (idx > 0) {
-        if (p.over) {
+        if (p.over && !this.spectator && seat === this.me) {
+          // tus dos encimadas, en tu pantalla: la de arriba corrida para que veas que abajo hay otra
+          // (los demás las siguen viendo casi alineadas)
+          radial -= step * 0.45;
+          side += 0.035;
+          rot += 0.14;
+        } else if (p.over) {
           // dos encimadas: la de arriba queda casi alineada con la de abajo (apenas se nota)
           radial -= 0.003;
           side += 0.002;

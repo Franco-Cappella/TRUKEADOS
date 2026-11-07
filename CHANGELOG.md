@@ -1,5 +1,17 @@
 # Cambios
 
+## 1.8.3 — bots con memoria y a prueba de fallas
+- **Memoria de situaciones**: los bots guardan lo que calcularon en cada situación (por el valor de las cartas: dos
+  cuatros juegan igual). Cuando vuelven a una, suman a lo que ya sabían y, después de juntar 160 manos imaginadas,
+  deciden directo sin simular. Se comparte entre salas y se guarda en el Lobby. En 3.000 partidas de prueba, el 44%
+  de las decisiones ya salían de memoria, con la mitad del tiempo y la misma fuerza (gana el 50% contra el bot sin
+  memoria).
+- **No se traba en producción**: si un bot falla o elige una jugada inválida, juega una de respaldo; si falla la
+  alarma de la sala, se registra y se vuelve a programar. Medido: una decisión tarda 1 a 3 ms (13 ms en el peor
+  caso con el servidor recién arrancado).
+- **Tus dos encimadas**: en tu pantalla la carta de arriba queda corrida, así ves que abajo hay otra. Los demás
+  las siguen viendo alineadas.
+
 ## 1.8.2 — frases de los bots que tienen sentido
 - "Primera para nosotros" (y "segunda", "tercera") solo en la ronda que nombra; antes salía al ganar cualquier ronda.
 - Cuando un rival tira una carta brava, la frase nombra esa carta ("Uh, el siete bravo") o es genérica; antes decía

@@ -1,11 +1,16 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
-import { botAction, botSena, botClaims, botShow, stackDeck } from '../public/js/bot.js';
+import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
+
+// Memoria de situaciones de los bots (ver BotMemo en bot.js): una por isolate, compartida por todas las salas
+// que corren en él. Al arrancar se trae lo que guardó el Lobby; lo que madura se le manda al terminar cada mano.
+const MEMO = new BotMemo(60000);
+let memoLoaded = false;
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
 const REACT_MS = 1100; // las reacciones de los bots salen un poco después de lo que las provocó
@@ -288,7 +293,20 @@ export class TrucoRoom extends DurableObject {
   }
 
   // Bots, AFK, pausa entre manos y miradas de los bots.
+  // Si algo falla adentro, se avisa en los logs y se vuelve a programar: la partida no se traba.
   async alarm() {
+    try {
+      await this.tick();
+    } catch (e) {
+      console.error('alarm failed', e);
+      try {
+        await this.save();
+        await this.scheduleAlarm();
+      } catch {}
+    }
+  }
+
+  async tick() {
     const r = this.room;
     if (!r || r.status !== 'playing') return;
     const g = r.game;
@@ -320,8 +338,27 @@ export class TrucoRoom extends DurableObject {
       const ctx = actor != null && this.botCtx(actor);
       const before = waitingFor(g);
       const ev0 = g.evId;
-      const a = actor != null && botAction(g, actor, rng, ctx);
-      if (a && act(g, actor, a).ok) {
+      let a = null;
+      if (actor != null) {
+        try {
+          a = botAction(g, actor, rng, ctx);
+        } catch (e) {
+          console.error('bot failed', e);
+        }
+      }
+      let ok = !!a && !!act(g, actor, a).ok;
+      // si el bot falló o eligió algo que no vale, juega lo primero que entre (nunca se traba la mesa)
+      if (!ok && actor != null && waitingFor(g).seats.includes(actor)) {
+        for (const f of fallbackActions(g, actor)) {
+          if (act(g, actor, f).ok) {
+            console.warn('bot fallback', JSON.stringify(a), '->', JSON.stringify(f));
+            a = f;
+            ok = true;
+            break;
+          }
+        }
+      }
+      if (ok) {
         // contestó por el equipo sin esperar al compañero humano
         const partner = before.seats.some((s) => !r.seats[s].bot && !this.isAway(s, now));
         const speaker = r.seats[actor].bot ? actor : partner ? this.teamBot(actor) : null;
@@ -387,6 +424,14 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     return {
       peek: !!r.botPeek?.[seat],
+      memo: MEMO,
+      // de quién es el modelo con el que se imagina a cada rival (parte de la clave de la memoria)
+      brainKey: (s) => {
+        const p = r.seats[s];
+        const b = p && !p.bot ? this.brains?.[p.pid] : null;
+        if (b && b.hands >= 20) return p.pid + ':' + Math.floor(b.hands / 50);
+        return p?.bot ? 'bot' : 'g:' + Math.floor((this.brains?.global?.hands || 0) / 500);
+      },
       senas: r.senaSeen?.[seat] || [],
       bots: r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0),
       brainOf: (s) => {
@@ -408,6 +453,14 @@ export class TrucoRoom extends DurableObject {
       console.error('brains load failed', e);
       this.brains = {};
     }
+    if (!memoLoaded) {
+      memoLoaded = true;
+      try {
+        MEMO.load(await this.lobby().memoGet());
+      } catch (e) {
+        console.error('memo load failed', e);
+      }
+    }
   }
 
   // Al terminar la mano: lo que hicieron las personas va al Lobby, que entrena y devuelve los cerebros nuevos.
@@ -415,6 +468,14 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     for (const pid of r.claimWatch || []) this.learnBuf.push({ pid, key: 'claim', y: false });
     r.claimWatch = null;
+    const ripe = MEMO.takeRipe();
+    if (ripe.length) {
+      try {
+        await this.lobby().memoPut(ripe);
+      } catch (e) {
+        console.error('memo save failed', e);
+      }
+    }
     const batch = this.learnBuf.splice(0);
     if (!batch.length) return;
     try {

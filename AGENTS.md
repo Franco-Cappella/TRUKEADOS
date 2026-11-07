@@ -112,6 +112,14 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
 - **Trampas** (solo con la opción de trampas activa, ver `BOT` en config.js): espían las cartas de los rivales
   algunas manos (`botPeek`), el bot que reparte se acomoda una carta buena (`stackDeck`), mienten en el envido y
   se van sin mostrar (menos contra quien suele reclamar), y tiran dos encimadas. Más seguido si van perdiendo.
+- **Memoria de situaciones** (`BotMemo` en bot.js, como el programa de damas de Samuel): guarda las sumas de
+  la simulación (chance de ganar, de que quieran el truco, por carta) por situación, con los asientos contados
+  desde el bot y las cartas por su valor. Cada vez que vuelve a una situación suma manos imaginadas; con
+  `BOT.memoSamples` ya no simula. Una memoria por isolate (`MEMO` en truco-room.js); lo que madura se guarda en
+  el Lobby (`memoPut`) y al arrancar se trae (`memoGet`). Si cambia lo que calcula la simulación o la clave,
+  cambiar el `kind` en `simStats` para no mezclar con lo viejo.
+- **Nunca se traba la mesa**: si `botAction` falla o elige algo inválido, la sala prueba `fallbackActions`; si
+  falla la alarma entera, se registra y se reprograma.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).
 - **Leen las señas** (`ctx.senas`, lo anota `deliverSena` en `room.senaSeen`): todas las de su compañero y las de
   un rival si justo lo miraban. Una seña de carta hace que casi siempre imaginen esa carta en esa mano

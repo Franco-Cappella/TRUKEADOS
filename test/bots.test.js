@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims, imagine } from '../public/js/bot.js';
+import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkEvent, BOT_TALK } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
@@ -270,4 +270,66 @@ test('frases que nombran la ronda o la carta: solo cuando corresponde', () => {
   assert.ok(s7.every((t) => !/ancho|macho|basto|oro/i.test(t)), s7.join(' | '));
   const s1 = said({ type: 'play', seat: 1, c: '1B', round: 0 });
   assert.ok(s1.every((t) => !/siete|espada|macho/i.test(t)), s1.join(' | '));
+});
+
+test('memoria: la misma situación se piensa hasta juntar BOT.memoSamples y después sale de memoria', () => {
+  const memo = new BotMemo();
+  const g = newGame({ mode: '1v1', dealer: 1 });
+  const cards = [['3E', '4C', '12O'], ['5O', '6O', '11B']];
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  g.h.envido.state = 'done'; // el envido ya pasó: decide truco y carta (lo que usa la memoria)
+  const rng = seeded(5);
+  const visits = BOT.memoSamples / BOT.samples;
+  for (let i = 0; i < visits; i++) botAction(g, 0, rng, { memo });
+  const misses = memo.misses;
+  assert.ok(misses > 0);
+  assert.equal(memo.hits, 0);
+  // ya maduró: no vuelve a simular
+  for (let i = 0; i < 5; i++) botAction(g, 0, rng, { memo });
+  assert.equal(memo.misses, misses);
+  assert.ok(memo.hits > 0);
+  assert.ok(memo.takeRipe().length > 0); // lo maduro queda listo para guardarse en el Lobby
+  // los mismos valores con otros palos (4 de oro en vez de 4 de copa) son la misma situación
+  const g2 = newGame({ mode: '1v1', dealer: 1 });
+  const c2 = [['3E', '4O', '12C'], ['5O', '6O', '11B']];
+  g2.h.cards = c2.map((c) => c.slice());
+  g2.h.inHand = c2.map((c) => c.slice());
+  g2.h.envido.state = 'done';
+  const h0 = memo.hits;
+  botAction(g2, 0, rng, { memo });
+  assert.ok(memo.hits > h0);
+});
+
+test('memoria: el bot con memoria juega igual de bien que sin ella', () => {
+  const rng = seeded(21);
+  const memo = new BotMemo();
+  let wins = 0;
+  const G = 60;
+  for (let gi = 0; gi < G; gi++) {
+    const g = newGame({ mode: '1v1', target: 15, trampas: false }, rng);
+    const mt = gi % 2;
+    for (let i = 0; i < 3000 && g.status === 'playing'; i++) {
+      if (g.h.phase === 'ended') { nextHand(g, rng); continue; }
+      if (g.h.phase === 'show') { closeShow(g); continue; }
+      const s = waitingFor(g).seats[0];
+      const a = botAction(g, s, rng, s % 2 === mt ? { memo } : {});
+      if (!a || !act(g, s, a).ok) break;
+    }
+    if (g.winner === mt) wins++;
+  }
+  assert.ok(wins / G > 0.35, 'gana ' + wins + ' de ' + G);
+});
+
+test('respaldo: si el bot elige algo que no vale, alguna jugada de respaldo entra', () => {
+  const rng = seeded(9);
+  for (let k = 0; k < 30; k++) {
+    const g = newGame({ mode: '2v2', target: 15 }, rng);
+    for (let i = 0; i < 40 && g.status === 'playing' && g.h.phase === 'play'; i++) {
+      const s = waitingFor(g).seats[0];
+      assert.ok(fallbackActions(g, s).some((f) => act(structuredClone(g), s, f).ok), 'sin respaldo en ' + waitingFor(g).kind);
+      const a = botAction(g, s, rng, {});
+      if (!a || !act(g, s, a).ok) break;
+    }
+  }
 });
