@@ -1,11 +1,11 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, APP_NAME } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
-import { lookFor } from './characters.js';
-import { $, esc, store, KEYS, myPid, savedName, takeSession } from './dom.js';
+import { lookFor, biteAt } from './characters.js';
+import { $, esc, store, KEYS, myPid, savedName, takeSession, initial } from './dom.js';
 import { audio, flick, ding, say } from './audio.js';
-import { palitos, drawFace, optionChecks } from './hud.js';
+import { palitos, drawFace } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
@@ -38,10 +38,7 @@ export class RoomClient {
     scene.onCardClick = (id) => this.clickCard(id);
     scene.onCardDouble = (id) => this.playCard(id, 'normal');
     scene.onFrame = () => this.updateLabels();
-    if (store.get(KEYS.zoomTip) !== '1') {
-      store.set(KEYS.zoomTip, '1');
-      setTimeout(() => this.toast('Mantené apretada la <b>Z</b> para hacer zoom. Arrastrá las cartas de tu mano para ordenarlas.', '', 6000), 1500);
-    }
+    this.zoomTip = store.get(KEYS.zoomTip) !== '1'; // se muestra al empezar la partida, no en la sala de espera
     this.connect();
   }
 
@@ -263,6 +260,13 @@ export class RoomClient {
       scene.setMyCards([], null);
       scene.syncTable([], { animate: false });
       this.lastEv = null;
+    }
+
+    // consejo de zoom: una sola vez, cuando arranca la primera partida (en la sala de espera estorba)
+    if (this.zoomTip && st.room.status === 'playing') {
+      this.zoomTip = false;
+      store.set(KEYS.zoomTip, '1');
+      setTimeout(() => this.toast('Mantené apretada la <b>Z</b> para hacer zoom. Arrastrá las cartas de tu mano para ordenarlas.', '', 6000), 1500);
     }
 
     // arranque automático en modo práctica
@@ -776,52 +780,87 @@ export class RoomClient {
     if (st.room.status !== 'lobby') return el.classList.add('hidden');
     el.classList.remove('hidden');
     const r = st.room;
+    const cfg = r.cfg;
     const host = st.isHost;
-    const link = this.link;
+    const seated = st.you != null;
+    const hostName = r.seats.find((p) => p?.host)?.name;
+    const free = r.seats.filter((p) => !p).length;
+
+    // Un lugar: avatar + nombre, o un "lugar libre" que se toca para sentarse.
     const seatHtml = (i) => {
       const p = r.seats[i];
-      const me = i === st.you;
       if (!p) {
-        return `<div class="seat empty"><span class="nm">Lugar libre</span>
-          <button class="btn small" data-sit="${i}">Sentarme</button>
-          ${host ? `<button class="btn small" data-bot="${i}">Agregar bot</button>` : ''}</div>`;
+        return `<div class="w-seat free" data-seat="${i}">
+          <button type="button" class="w-sit" data-sit="${i}"><span class="w-av">+</span>${seated ? 'Pasarme acá' : 'Sentarme acá'}</button>
+          ${host ? `<button type="button" class="w-mini" data-bot="${i}" title="Sentar un bot en este lugar">+ bot</button>` : ''}</div>`;
       }
-      return `<div class="seat ${me ? 'me' : ''}"><span class="nm">${esc(p.name)}${p.bot ? ' <span class="muted">(bot)</span>' : ''}${p.host ? ' <span class="muted">(anfitrión)</span>' : ''}${me ? ' (vos)' : ''}</span>
-        ${!p.online ? '<span class="muted">desconectado</span>' : ''}
-        ${host && p.bot ? `<button class="btn small" data-unbot="${i}">Sacar</button>` : ''}
-        ${host && !p.bot && !me && !p.host ? `<button class="btn small" data-kick="${i}">Echar</button>` : ''}</div>`;
+      const me = i === st.you;
+      const tags = [me && 'vos', p.host && 'anfitrión', p.bot && 'bot', !p.online && 'desconectado'].filter(Boolean);
+      return `<div class="w-seat ${me ? 'me' : ''} ${p.online ? '' : 'off'} ${host ? 'drag' : ''}" data-seat="${i}" ${host ? 'title="Arrastralo a otro lugar para cambiarlo de equipo"' : ''}>
+        ${host ? '<span class="w-grip" aria-hidden="true">⠿</span>' : ''}<span class="w-av">${esc(initial(p.name))}</span>
+        <span class="w-nm">${esc(p.name)}${tags.length ? `<small>${tags.join(' · ')}</small>` : ''}</span>
+        ${host && p.bot ? `<button type="button" class="w-mini" data-unbot="${i}" title="Sacar el bot">Sacar</button>` : ''}
+        ${host && !p.bot && !me && !p.host ? `<button type="button" class="w-mini" data-kick="${i}" title="Echar de la mesa">Echar</button>` : ''}</div>`;
     };
-    const cols = [0, 1]
+    const teams = [0, 1]
       .map((t) => {
         const idx = r.seats.map((_, i) => i).filter((i) => team(i) === t);
-        return `<div class="team-col t${t}"><h3>Equipo ${t === 0 ? 'A' : 'B'}</h3>${idx.map(seatHtml).join('')}</div>`;
+        const label = cfg.mode === '1v1' ? '' : `<h3>Equipo ${t === 0 ? 'A' : 'B'}</h3>`;
+        return `<div class="w-team t${t}">${label}${idx.map(seatHtml).join('')}</div>`;
       })
-      .join('');
-    const cfg = r.cfg;
+      .join('<div class="w-vs">vs</div>');
+
+    // Ajustes (solo el anfitrión los cambia; el resto los ve en el resumen de arriba).
     const seg = (name, opts, cur) =>
       `<div class="seg" data-cfg="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-    el.innerHTML = `<div class="card-box">
-      <h2>Sala ${esc(r.code)} · ${esc(cfg.mode.replace('v', ' vs '))}</h2>
-      <div class="muted">${cfg.target} puntos · ${cfg.isPublic ? 'pública' : 'privada'}${roomOptionsText(cfg) ? ' · ' + esc(roomOptionsText(cfg)) : ''}</div>
-      <div class="share">
-        <span class="big-code">${esc(r.code)}</span>
-        <button class="btn small" data-copy="${esc(link)}">Copiar enlace</button>
-        <button class="btn small" data-copy="${esc(r.code)}">Copiar código</button>
-        <a class="btn small" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('¿Un truquito? Entrá a mi mesa: ' + link)}">WhatsApp</a>
-        ${navigator.share ? '<button class="btn small" data-share="1">Compartir…</button>' : ''}
+    const pill = (attr, on, text, title) =>
+      `<label class="w-pill" title="${esc(title)}"><input type="checkbox" ${attr} ${on ? 'checked' : ''}><span>${esc(text)}</span></label>`;
+    const pills = ROOM_OPTIONS.map((o) => pill(`data-opt="${o.key}"`, o.invert ? cfg[o.key] === false : cfg[o.key] === true, o.short[0].toUpperCase() + o.short.slice(1), o.label));
+    if (cfg.mode !== '1v1') pills.push(pill('data-trucoseg', cfg.trucoDesdeSegunda, 'Truco desde segunda', 'En equipos, el truco se canta recién desde la segunda ronda'));
+    const settings = host && this.showRules
+      ? `<div class="w-settings">
+          <h3>Reglas de la mesa</h3>
+          <div class="w-row">${seg('mode', Object.keys(MODES).map((m) => [m, modeLabel(m)]), cfg.mode)}</div>
+          <div class="w-row two">${seg('target', [[15, 'A 15'], [30, 'A 30']], cfg.target)}${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
+          <div class="w-pills n${pills.length}">${pills.join('')}</div>
+        </div>`
+      : '';
+
+    const summary = [modeLabel(cfg.mode), `a ${cfg.target}`, cfg.isPublic ? 'pública' : 'privada', roomOptionsText(cfg)].filter(Boolean).join(' · ');
+    const startLabel = free ? `Empezar con ${free} bot${free > 1 ? 's' : ''}` : 'Empezar';
+    const footer = host
+      ? `<div class="w-actions">
+          <button type="button" class="btn big w-rules ${this.showRules ? 'on' : ''}" data-rules="1" aria-expanded="${!!this.showRules}">${this.showRules ? 'Listo' : 'Reglas'}</button>
+          <button class="btn primary big w-start" data-start="${free ? 1 : 0}">${startLabel}</button>
+        </div>`
+      : `<p class="w-note">${seated ? `Esperando que ${esc(hostName || 'el anfitrión')} empiece…` : 'Estás mirando. Tocá un lugar libre para sumarte.'}</p>`;
+
+    el.innerHTML = `<div class="card-box w-box">
+      <header class="w-head">
+        <div>
+          <h2>${hostName ? `La mesa de ${esc(hostName)}` : 'La mesa'}</h2>
+          <div class="muted">${esc(summary)}</div>
+        </div>
+        <button type="button" class="w-exit" data-exit="1" title="Salir de la sala">Salir</button>
+      </header>
+      ${settings || `<div class="w-invite">
+        <button type="button" class="w-code" data-copy="${esc(r.code)}" title="Copiar código">
+          <small>Código · tocá para copiar</small>
+          <b>${esc(r.code)}</b>
+        </button>
+        <div class="w-share">
+          ${navigator.share ? '<button type="button" class="btn small" data-share="1">Compartir</button>' : `<button type="button" class="btn small" data-copy="${esc(this.link)}">Copiar enlace</button>`}
+        </div>
       </div>
-      <div class="seats">${cols}</div>
-      ${host ? `<div class="field">Modo ${seg('mode', [['1v1', '1 vs 1'], ['2v2', '2 vs 2'], ['3v3', '3 vs 3']], cfg.mode)}</div>
-        <div class="field">Puntos ${seg('target', [[30, '30'], [15, '15']], cfg.target)}</div>
-        <div class="field">Sala ${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
-        ${optionChecks(cfg)}
-        ${cfg.mode !== '1v1' ? `<label class="check"><input type="checkbox" data-trucoseg ${cfg.trucoDesdeSegunda ? 'checked' : ''}> En equipos, el truco se canta recién desde segunda</label>` : ''}
-        <div class="row">
-          <button class="btn primary big" data-start="0" ${r.seats.every(Boolean) ? '' : 'disabled'}>Empezar</button>
-          <button class="btn big" data-start="1">Empezar llenando con bots</button>
-        </div>` : '<p class="hint">Esperando que el anfitrión empiece la partida…</p>'}
-      ${st.you == null ? '<p class="hint">Estás mirando. Tocá “Sentarme” en un lugar libre para jugar.</p>' : ''}
+      <div class="w-teams">${teams}</div>`}
+      <footer class="w-foot">${footer}</footer>
     </div>`;
+  }
+
+  // El anfitrión abre y cierra los ajustes de la sala (cerrados, la sala de espera entra en pantalla).
+  toggleRules() {
+    this.showRules = !this.showRules;
+    this.renderWaiting();
   }
 
   renderResult() {
@@ -859,9 +898,23 @@ export class RoomClient {
   // Manda una seña y muestra el "espejo": así te ven los que te miran.
   doSena(id) {
     this.send({ t: 'sena', sena: id });
-    const mirror = drawFace($('#mirror'), lookFor(savedName(), this.you), SENAS[id].expr);
+    const look = lookFor(savedName(), this.you);
+    const expr = SENAS[id].expr;
+    const mirror = drawFace($('#mirror'), look, expr);
     mirror.classList.remove('hidden');
     clearTimeout(this.mirrorT);
-    this.mirrorT = setTimeout(() => mirror.classList.add('hidden'), SENA_MS);
+    cancelAnimationFrame(this.mirrorRaf);
+    if (expr === 'bite') {
+      // el mordisco se anima en el espejo igual que en la mesa
+      const tick = (t) => {
+        drawFace(mirror, look, expr, { bite: biteAt(t) });
+        this.mirrorRaf = requestAnimationFrame(tick);
+      };
+      this.mirrorRaf = requestAnimationFrame(tick);
+    }
+    this.mirrorT = setTimeout(() => {
+      cancelAnimationFrame(this.mirrorRaf);
+      mirror.classList.add('hidden');
+    }, SENA_MS);
   }
 }

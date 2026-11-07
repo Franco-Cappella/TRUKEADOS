@@ -28,7 +28,7 @@ const CONTRAFLOR_POINTS = 6;
 const MAX_EVENTS = 40;
 
 export const team = (seat) => seat % 2;
-export const otherTeam = (t) => 1 - t;
+const otherTeam = (t) => 1 - t;
 
 // Carta QUEMADA (tapada, tirada fuera de turno o la de arriba de dos encimadas): en la ronda en que
 // cuenta vale como un 4, la más baja. No cambia el envido (se calcula con las 3 cartas repartidas).
@@ -149,7 +149,7 @@ const florOwed = (g, seat) => {
 
 // ¿Puede `seat` cantar flor ahora? En su turno de primera, o contestando un envido o un truco
 // ("la flor está primero").
-export function florOpenFor(g, seat) {
+function florOpenFor(g, seat) {
   const h = g.h;
   if (!h || h.phase !== 'play' || !florOwed(g, seat)) return false;
   const w = waitingFor(g);

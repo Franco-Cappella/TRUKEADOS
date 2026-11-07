@@ -8,7 +8,7 @@ import { APP_NAME } from './config.js';
 export const FONT = "'Archivo', system-ui, sans-serif";
 
 // Los cuatro palos: los colores básicos de la paleta (iguales a --blue/--green/--yellow/--red).
-export const SUIT_COLORS = { E: '#2f6fd6', B: '#2e9e57', O: '#f2c12e', C: '#d93b30' };
+const SUIT_COLORS = { E: '#2f6fd6', B: '#2e9e57', O: '#f2c12e', C: '#d93b30' };
 
 // Tinta de los contornos de personajes y manos.
 export const INK = '#2b2320';

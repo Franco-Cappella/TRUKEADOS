@@ -1,6 +1,6 @@
 // Escena 3D del truco: salón, mesa con paño, personajes 2D (recortes), cartas y cámara en primera persona.
 import * as THREE from 'three';
-import { drawCharacter, lookFor, W as CW, H as CH } from './characters.js';
+import { drawCharacter, lookFor, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck } from './engine.js';
@@ -613,14 +613,16 @@ export class TableScene {
     st.bodyYaw = pose.bodyYaw;
     const near = (a, b) => Math.abs(a - b) < 0.015;
     const settled = near(st.headYaw ?? 99, pose.headYaw) && near(st.down ?? 99, pose.down);
-    if (!c.dirty && settled && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
+    const bite = expr === 'bite' ? biteAt(now) : 1;
+    if (!c.dirty && settled && bite === c.drawnBite && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
     // la cabeza gira suave
     st.headYaw = st.headYaw === undefined ? pose.headYaw : damp(st.headYaw, pose.headYaw, HEAD_RATE, dt);
     st.down = st.down === undefined ? pose.down : damp(st.down, pose.down, HEAD_RATE, dt);
     if (near(st.headYaw, pose.headYaw)) st.headYaw = pose.headYaw;
     if (near(st.down, pose.down)) st.down = pose.down;
-    drawCharacter(c.ctx, c.look, { ...st, expr, talking });
+    drawCharacter(c.ctx, c.look, { ...st, expr, talking, bite });
     c.tex.needsUpdate = true;
+    c.drawnBite = bite;
     c.drawnExpr = expr;
     c.drawnTalk = talking;
     c.drawnBody = pose.bodyYaw;

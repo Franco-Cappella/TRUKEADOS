@@ -8,17 +8,19 @@ export const APP_NAME = 'Trukeados';
 // ------------------------------------------------------------------ partida
 export const MODES = { '1v1': 2, '2v2': 4, '3v3': 6 };
 export const DEFAULT_MODE = '1v1';
+export const modeLabel = (mode) => mode.replace('v', ' vs '); // '2v2' -> '2 vs 2'
 export const TARGETS = [15, 30]; // a cuántos puntos se juega
 export const DEFAULT_TARGET = 30;
 export const MAX_NAME = 20;
 export const MAX_CHAT_TEXT = 280;
 export const MAX_CHAT_HISTORY = 120;
-export const ROOM_CODE_LEN = 5;
+export const ROOM_CODE_LEN = 4; // solo números: fácil de dictar y de tipear en el celular
+export const ROOM_REUSE_MS = 3 * 60 * 60 * 1000; // una sala vacía e inactiva hace 3 h libera su código
 
 // ------------------------------------------------------------------ rutas
 export const ROUTES = {
   room: (code) => `/sala/${code}`, // enlace para compartir
-  roomRe: /^\/sala\/([A-Za-z0-9]{5})/,
+  roomRe: /^\/sala\/(\d{4})/,
   home: '/',
   api: {
     rooms: '/api/rooms',
@@ -65,12 +67,13 @@ export const SENAS = {
   nada_envido: { label: 'No tengo envido', expr: 'frown', desc: 'Boca para abajo' },
 };
 export const SENA_MS = 2200; // cuánto dura la cara de una seña
+export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
 
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 
 // ------------------------------------------------------------------ validación
 export const PID_RE = /^[A-Za-z0-9_-]{8,64}$/;
-export const CODE_RE = /^[A-Z0-9]{5}$/;
+export const CODE_RE = /^\d{4}$/;
 
 // ------------------------------------------------------------------ opciones de la sala
 // Una sola lista para el servidor, el menú y la sala de espera. `invert`: el checkbox dice lo contrario

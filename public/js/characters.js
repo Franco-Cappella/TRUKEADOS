@@ -3,9 +3,13 @@
 // (de frente, de tres cuartos o casi de perfil), hacia dónde mira y qué cara pone (señas y hablar).
 // No parpadean solos: los ojos cerrados son SOLO la seña "ciego", para que no se confunda.
 import { INK, PALETTE, FACE, mix } from './theme.js';
+import { SENA_BITE_MS } from './config.js';
 
 export const W = 512;
 export const H = 1200;
+
+// Seña del tres: el labio entra y sale de los dientes (0 = suelto, 1 = mordido), un ciclo cada SENA_BITE_MS.
+export const biteAt = (ms) => Math.min(1, (0.5 - 0.5 * Math.cos(((ms % SENA_BITE_MS) / SENA_BITE_MS) * Math.PI * 2)) * 1.35);
 const WAIST = 730; // cintura (el resto es cadera, piernas y zapatos, sentado)
 
 const STYLES = ['short', 'swept', 'long', 'bun', 'receding', 'curly', 'boina', 'cap', 'buzz'];
@@ -61,8 +65,9 @@ function fillStroke(ctx, fill, stroke = INK, lw = 3) {
 //  bodyYaw / headYaw: radianes, 0 = de frente a quien mira, >0 = girado hacia la derecha de la imagen
 //  down: 0..1 cuánto mira hacia abajo (la mesa)
 //  expr, talking, cards
+//  bite: 0..1 para animar la seña del tres (por defecto, mordido del todo)
 export function drawCharacter(ctx, look, state) {
-  const { expr = 'neutral', talking = false, cards = 0 } = state;
+  const { expr = 'neutral', talking = false, cards = 0, bite = 1 } = state;
   const bodyYaw = clamp(state.bodyYaw || 0, -1.3, 1.3);
   const headYaw = clamp(state.headYaw ?? bodyYaw, -1.35, 1.35);
   const down = clamp(state.down || 0, 0, 1);
@@ -78,7 +83,7 @@ export function drawCharacter(ctx, look, state) {
   drawLegs(ctx, look, bx, bodyYaw);
   drawTorso(ctx, look, bx, bodyYaw);
   drawNeck(ctx, look, bx, hx, hy);
-  drawHead(ctx, look, hx, hy, headYaw, down, expr, talking);
+  drawHead(ctx, look, hx, hy, headYaw, down, expr, talking, bite);
   drawArms(ctx, look, bx, bodyYaw, cards);
 }
 
@@ -272,7 +277,7 @@ function drawLegs(ctx, look, bx, yaw) {
 }
 
 // ------------------------------------------------------------------ cabeza
-function drawHead(ctx, look, cx, cy, yaw, down, expr, talking) {
+function drawHead(ctx, look, cx, cy, yaw, down, expr, talking, bite) {
   const [skin, skinD] = look.skin;
   const fw = look.fw;
   const fh = look.fh;
@@ -377,7 +382,7 @@ function drawHead(ctx, look, cx, cy, yaw, down, expr, talking) {
   drawBrows(ctx, look, px, vis, eyeY, expr, down);
   drawNose(ctx, look, px, cy, fh, yaw, expr);
   // el beso va por encima del bigote: si no, la seña del dos no se ve
-  const mouth = () => drawMouth(ctx, look, px, vis, cy + fh * 0.6 + down * 4, yaw, expr, talking);
+  const mouth = () => drawMouth(ctx, look, px, vis, cy + fh * 0.6 + down * 4, yaw, expr, talking, bite);
   if (expr !== 'kiss') mouth();
   if (look.mustache || look.beard) drawMustache(ctx, look, px, cy + fh * 0.48 + down * 4, yaw, expr);
   if (expr === 'kiss') mouth();
@@ -552,7 +557,7 @@ function drawNose(ctx, look, px, cy, fh, yaw, expr) {
   }
 }
 
-function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
+function drawMouth(ctx, look, px, vis, y, yaw, expr, talking, bite = 1) {
   const s = Math.sin(yaw);
   const x = px(0, 0.95) + s * 5;
   const w = 22 * (0.5 + 0.5 * Math.cos(yaw));
@@ -576,27 +581,55 @@ function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
       return;
     }
     case 'bite': {
-      // dientes de arriba mordiendo el labio de abajo
+      // morderse el labio: los dientes de arriba bajan sobre el labio de abajo, que se mete para adentro.
+      // `bite` va de 0 (labio suelto, carnoso) a 1 (mordido); animado se ve el gesto entero.
+      const b = clamp(bite, 0, 1);
+      const lw = w * (0.8 + b * 0.15); // al morderlo, el labio se aplasta y se ensancha
+      const lipTop = y + 4 - b * 4; // y sube hacia los dientes
+      const lipH = 12 - b * 3;
+      // labio de abajo, grande y del color de la boca para que se distinga de la piel
       ctx.beginPath();
-      ctx.moveTo(x - w, y - 2);
-      ctx.quadraticCurveTo(x, y - 8, x + w, y - 2);
-      ctx.lineTo(x + w * 0.8, y + 4);
-      ctx.lineTo(x - w * 0.8, y + 4);
+      ctx.moveTo(x - lw, lipTop);
+      ctx.quadraticCurveTo(x, lipTop - 3, x + lw, lipTop);
+      ctx.quadraticCurveTo(x + lw * 0.6, lipTop + lipH, x, lipTop + lipH + 1);
+      ctx.quadraticCurveTo(x - lw * 0.6, lipTop + lipH, x - lw, lipTop);
+      fillStroke(ctx, FACE.kissLip, INK, 2.2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)'; // brillo
+      ellipse(ctx, x - lw * 0.2, lipTop + lipH * 0.55, lw * 0.25, 1.6);
+      ctx.fill();
+      // dientes de arriba: bajan hasta clavarse en el labio
+      // solo los de adelante: si se ven todos parece una sonrisa
+      const tb = lipTop + 1 + b * (lipH * 0.5);
+      ctx.beginPath();
+      ctx.moveTo(x - w * 0.42, y - 4);
+      ctx.lineTo(x + w * 0.42, y - 4);
+      ctx.lineTo(x + w * 0.38, tb);
+      ctx.quadraticCurveTo(x, tb + 2, x - w * 0.38, tb);
       ctx.closePath();
-      fillStroke(ctx, FACE.teeth, INK, 2.5);
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      fillStroke(ctx, FACE.teeth, INK, 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.28)';
       ctx.lineWidth = 1.2;
-      for (const dx of [-0.4, 0, 0.4]) {
+      for (const dx of [-0.2, 0, 0.2]) {
         ctx.beginPath();
-        ctx.moveTo(x + dx * w, y - 6);
-        ctx.lineTo(x + dx * w, y + 4);
+        ctx.moveTo(x + dx * w, y - 3);
+        ctx.lineTo(x + dx * w, tb);
         ctx.stroke();
       }
+      // el labio se hunde bajo los dientes (sombra) y la comisura se tira para un costado
+      ctx.strokeStyle = `rgba(90,30,30,${0.25 + b * 0.35})`;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(x - w * 0.85, y + 5);
-      ctx.quadraticCurveTo(x, y + 14, x + w * 0.85, y + 5);
-      ctx.quadraticCurveTo(x, y + 8, x - w * 0.85, y + 5);
-      fillStroke(ctx, lip, INK, 2);
+      ctx.moveTo(x - w * 0.36, tb + 2);
+      ctx.quadraticCurveTo(x, tb + 4 + b * 2, x + w * 0.36, tb + 2);
+      ctx.stroke();
+      // labio de arriba sobre los dientes, con media sonrisa pícara
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x - w * 1.05, y - 2 + b * 2);
+      ctx.quadraticCurveTo(x - w * 0.3, y - 7, x, y - 5);
+      ctx.quadraticCurveTo(x + w * 0.4, y - 7, x + w * 1.1, y - 6 - b * 4);
+      ctx.stroke();
       return;
     }
     case 'kiss': {

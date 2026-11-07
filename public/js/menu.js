@@ -1,29 +1,27 @@
-// Pantalla de inicio: nombre, partida rápida, crear sala, unirse con código y mesas públicas.
-import { ROUTES, CODE_RE } from './config.js';
-import { $, $$, esc, store, KEYS, myPid, api } from './dom.js';
-import { optionChecks, readOptionChecks } from './hud.js';
-import { roomOptions, APP_NAME } from './config.js';
+// Pantalla de inicio: tu nombre, armar una mesa, entrar con código, partida rápida, práctica y mesas públicas.
+// Las reglas de la mesa (modo, puntos, flor…) se eligen adentro, en la sala de espera.
+import { ROUTES, CODE_RE, APP_NAME, modeLabel } from './config.js';
+import { $, esc, store, KEYS, myPid, api, savedName, initial } from './dom.js';
 
 const LOBBY_REFRESH_MS = 7000;
+const PUBLIC_MAX = 3; // mesas públicas a la vista como mucho; en pantallas bajas, las que entren sin scroll
 let lobbyTimer = null;
 
-export function myName() {
+// Guarda el nombre escrito (si hay) y devuelve el que se usa en la mesa.
+function myName() {
   const v = $('#name').value.trim();
   if (v) store.set(KEYS.name, v);
-  return v || store.get(KEYS.name) || 'Invitado';
+  return v || savedName();
 }
 
 // go(code): entra a la sala (lo resuelve main.js).
 export function initMenu(go) {
-  $('#name').value = store.get(KEYS.name, '');
-  $('#create-options').innerHTML = optionChecks(roomOptions());
-  for (const seg of $$('#menu .seg')) {
-    seg.addEventListener('click', (e) => {
-      const b = e.target.closest('button');
-      if (b) seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-    });
-  }
-  const segVal = (name) => $(`.seg[data-name="${name}"] .on`)?.dataset.v;
+  const name = $('#name');
+  name.value = store.get(KEYS.name, '');
+  const paintAv = () => ($('#name-av').textContent = initial(name.value));
+  name.addEventListener('input', paintAv);
+  paintAv();
+
   const tryGo = (fn) => async (e) => {
     try {
       await fn(e);
@@ -31,42 +29,39 @@ export function initMenu(go) {
       alert(err.message);
     }
   };
-
-  $('#quick').addEventListener('click', tryGo(async (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    const r = await api(ROUTES.api.quick, { pid: myPid(), name: myName(), mode: b.dataset.mode });
-    go(r.code);
-  }));
-
-  const create = tryGo(async (practice) => {
-    const r = await api(ROUTES.api.rooms, {
-      pid: myPid(),
-      name: myName(),
-      mode: segVal('mode'),
-      target: Number(segVal('target')),
-      isPublic: !practice && segVal('isPublic') === '1',
-      options: readOptionChecks($('#create-options')),
+  const lastMode = () => store.get(KEYS.lastMode) || '1v1';
+  const create = (mode, practice) =>
+    api(ROUTES.api.rooms, { pid: myPid(), name: myName(), mode, isPublic: false, options: {} }).then((r) => {
+      if (practice) sessionStorage.setItem(KEYS.autostart, r.code);
+      go(r.code);
     });
-    if (practice) sessionStorage.setItem(KEYS.autostart, r.code);
-    go(r.code);
-  });
-  $('#create-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    create(false);
-  });
-  $('#practice').addEventListener('click', () => create(true));
 
+  // armar una mesa privada: se abre con el último modo que usaste y las reglas se tocan adentro
+  $('#create').addEventListener('click', tryGo(() => create(lastMode(), false)));
+
+  // filas de modos (partida rápida y práctica): recuerdan el modo para la próxima mesa
+  const onMode = (el, fn) =>
+    el.addEventListener('click', tryGo(async (e) => {
+      const mode = e.target.closest('button[data-mode]')?.dataset.mode;
+      if (!mode) return;
+      store.set(KEYS.lastMode, mode);
+      await fn(mode);
+    }));
+  onMode($('#practice'), (mode) => create(mode, true));
+  onMode($('#quick'), async (mode) => go((await api(ROUTES.api.quick, { pid: myPid(), name: myName(), mode })).code));
+
+  const code = $('#join-code');
+  code.addEventListener('input', () => (code.value = code.value.replace(/\D/g, '').slice(0, 4)));
   $('#join-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const code = $('#join-code').value.trim().toUpperCase();
-    if (!CODE_RE.test(code)) return alert('El código tiene 5 letras o números');
-    const info = await api(ROUTES.api.room(code)).catch(() => ({ exists: false }));
-    if (!info.exists) return alert('No existe una sala con ese código');
+    const c = code.value.trim();
+    if (!CODE_RE.test(c)) return code.focus();
+    const info = await api(ROUTES.api.room(c)).catch(() => ({ exists: false }));
+    if (!info.exists) return alert('No hay ninguna mesa con ese código');
     myName();
-    go(code);
+    go(c);
   });
-  $('#refresh').addEventListener('click', loadPublic);
+
   $('#public-list').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-code]');
     if (!b) return;
@@ -76,22 +71,34 @@ export function initMenu(go) {
   });
 }
 
+// Lista corta de mesas públicas: primero las que esperan gente, después las que se están jugando.
 async function loadPublic() {
-  const el = $('#public-list');
+  const wrap = $('#public-wrap');
   try {
     const { open, live } = await api(ROUTES.api.lobby);
-    const card = (r, isLive) => `
-      <div class="room">
-        <div class="top"><span class="mode">${esc(r.mode.replace('v', ' vs '))}</span><span class="muted">${r.target} pts · ${isLive ? 'jugando' : `${r.free} lugar${r.free === 1 ? '' : 'es'}`}</span></div>
-        ${r.options ? `<div class="muted">${esc(r.options)}</div>` : ''}
-        <div class="players">${esc(r.players.filter(Boolean).join(', ') || '—')}</div>
-        ${isLive && r.score ? `<div class="muted">Van ${r.score[0]} a ${r.score[1]}</div>` : ''}
-        <button class="btn ${isLive ? '' : 'primary'} small" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? 'Mirar' : 'Sentarme'}</button>
-      </div>`;
-    const html = open.map((r) => card(r, false)).join('') + live.map((r) => card(r, true)).join('');
-    el.innerHTML = html || '<p class="hint">No hay mesas públicas ahora. ¡Abrí una con “Partida rápida”!</p>';
+    const all = [...open.map((r) => [r, false]), ...live.map((r) => [r, true])];
+    wrap.classList.toggle('hidden', !all.length);
+    const list = $('#public-list');
+    list.innerHTML = all
+      .slice(0, PUBLIC_MAX)
+      .map(([r, isLive]) => {
+        const state = isLive ? (r.score ? `van ${r.score[0]} a ${r.score[1]}` : 'jugando') : `${r.free === 1 ? 'falta 1' : `faltan ${r.free}`}`;
+        return `<div class="m-table">
+          <span class="m-tmode">${esc(modeLabel(r.mode))}</span>
+          <span class="m-tinfo"><b>${esc(r.players.filter(Boolean).join(', ') || '—')}</b><small>a ${r.target} · ${esc(state)}${r.options ? ' · ' + esc(r.options) : ''}</small></span>
+          <button class="btn small ${isLive ? '' : 'primary'}" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? 'Mirar' : 'Sentarme'}</button>
+        </div>`;
+      })
+      .join('');
+    // si el menú no entra en pantalla, se sacan mesas de la lista; si no entra ninguna, la lista se esconde
+    // (la partida rápida igual te sienta en esas mesas)
+    const menu = $('#menu');
+    while (list.children.length && menu.scrollHeight > menu.clientHeight) list.lastElementChild.remove();
+    const shown = list.children.length;
+    wrap.classList.toggle('hidden', !shown);
+    $('#public-count').textContent = all.length > shown ? `${shown} de ${all.length}` : '';
   } catch {
-    el.innerHTML = '<p class="hint">No se pudo cargar la lista.</p>';
+    wrap.classList.add('hidden');
   }
 }
 

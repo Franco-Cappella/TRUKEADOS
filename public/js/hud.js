@@ -9,11 +9,11 @@ export const QUICK_PHRASES = ['¡Buenas!', 'Jugá, che', 'Uh, qué mano…', 'La
 
 // Recorte de la cara de un personaje con una expresión (para el menú de señas y el espejo).
 const FACE_CROP = { x: 106, y: 100, size: 300 };
-export function drawFace(target, look, expr) {
+export function drawFace(target, look, expr, extra = {}) {
   const full = document.createElement('canvas');
   full.width = CW;
   full.height = CH;
-  drawCharacter(full.getContext('2d'), look, { expr, cards: 0 });
+  drawCharacter(full.getContext('2d'), look, { expr, cards: 0, ...extra });
   const ctx = target.getContext('2d');
   ctx.clearRect(0, 0, target.width, target.height);
   ctx.drawImage(full, FACE_CROP.x, FACE_CROP.y, FACE_CROP.size, FACE_CROP.size, 0, 0, target.width, target.height);
@@ -92,15 +92,7 @@ export function helpHtml() {
   </div>`;
 }
 
-// Checkboxes de las opciones de la sala (menú y sala de espera). `cfg`: valores actuales.
-export function optionChecks(cfg = {}) {
-  return ROOM_OPTIONS.map((o) => {
-    const on = o.invert ? cfg[o.key] === false : cfg[o.key] === true;
-    return `<label class="check"><input type="checkbox" data-opt="${o.key}" ${on ? 'checked' : ''}> ${esc(o.label)}</label>`;
-  }).join('');
-}
-
-// Lee los checkboxes de opciones dentro de `root` y devuelve { flor, muestra, trampas }.
+// Lee las opciones (checkboxes data-opt) dentro de `root` y devuelve { flor, muestra, trampas }.
 export function readOptionChecks(root) {
   const out = {};
   for (const o of ROOM_OPTIONS) {

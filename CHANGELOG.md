@@ -1,5 +1,21 @@
 # Cambios
 
+## 1.6.0 — menú y sala de espera nuevos
+- **Menú de inicio** en una sola tarjeta y sin scroll: tu nombre con tu inicial, **Armar una mesa** (las reglas se
+  eligen adentro), código de 4 números para entrar, y filas iguales de **Partida rápida** y **Practicar** por modo.
+  Las mesas públicas aparecen solo si hay, y nada más las que entran en pantalla.
+- **Sala de espera** rediseñada: el código bien grande (se copia con un toque), equipos con avatares, botón
+  **Salir**, y las reglas (modo, puntos, pública/privada, flor, muestra, trampas, truco desde segunda) detrás de
+  **Reglas**. Un solo botón de empezar ("Empezar con N bots"). Entra en pantalla sin scroll, también en celular.
+- El anfitrión **arrastra** jugadores y bots a otro lugar para cambiarlos de equipo (mensaje `move {from, to}`).
+- **Códigos de sala de 4 números**. Una sala vacía e inactiva hace 3 h (`ROOM_REUSE_MS`) libera su código.
+- Se sacó WhatsApp de la sala (queda Compartir / Copiar enlace).
+- **Seña del tres** animada: el labio entra y sale de los dientes (`SENA_BITE_MS`), en la mesa y en el espejo.
+- El consejo del zoom aparece al empezar la partida, no en la sala de espera.
+- Limpieza: `modeLabel` e `initial` compartidos, copiar al portapapeles avisa si falla, arrastre en su propia
+  función, y se podaron estilos y exports sin uso.
+
+
 ## 1.5.3 — el pie en "Mirar a"
 - En 2 vs 2 y 3 vs 3, la lista "Mirar a" marca quién es **pie** en cada mano (se actualiza sola).
 - Arreglado: al empezar llenando con bots podían salir dos bots con el mismo nombre.

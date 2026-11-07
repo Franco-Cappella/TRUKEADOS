@@ -16,74 +16,56 @@
 <body>
   <!-- ============ MENÚ ============ -->
   <section id="menu" class="screen">
-    <header class="menu-head">
-      <h1>Truke<span>ados</span></h1>
-      <p class="tag">Truco argentino en 3D, online, con señas de verdad.</p>
-    </header>
+    <div class="m-wrap">
+      <header class="m-head">
+        <h1>Truke<span>ados</span></h1>
+        <p class="tag">Truco argentino en 3D, con señas de verdad.</p>
+      </header>
 
-    <div class="menu-grid">
-      <div class="panel">
-        <label class="field">Tu nombre
+      <div class="m-card">
+        <label class="m-name">
+          <span class="w-av" id="name-av">?</span>
           <input id="name" maxlength="20" placeholder="¿Cómo te llaman en la mesa?" autocomplete="nickname">
         </label>
 
-        <h2>Partida rápida</h2>
-        <p class="hint">Te sienta en una mesa pública que esté esperando gente, o abre una nueva.</p>
-        <div class="row three" id="quick">
-          <button class="btn big" data-mode="1v1">1 vs 1</button>
-          <button class="btn big" data-mode="2v2">2 vs 2</button>
-          <button class="btn big" data-mode="3v3">3 vs 3</button>
+        <div class="m-main">
+          <button class="btn primary big m-create" id="create" type="button">Armar una mesa<small>Elegís las reglas adentro e invitás a quien quieras</small></button>
+          <form id="join-form" class="m-join">
+            <input id="join-code" maxlength="4" placeholder="····" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" aria-label="Código de la mesa">
+            <button class="btn big">Entrar</button>
+            <small>¿Te pasaron un código? Ponelo acá.</small>
+          </form>
         </div>
 
-        <h2>Unirte con código</h2>
-        <form id="join-form" class="row">
-          <input id="join-code" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false">
-          <button class="btn primary">Entrar</button>
-        </form>
-        <p class="hint">También podés entrar con el enlace que te pasen: <code>/sala/CÓDIGO</code></p>
-      </div>
-
-      <div class="panel">
-        <h2>Crear sala</h2>
-        <form id="create-form">
-          <div class="field">Modo
-            <div class="seg" data-name="mode">
-              <button type="button" data-v="1v1" class="on">1 vs 1</button>
-              <button type="button" data-v="2v2">2 vs 2</button>
-              <button type="button" data-v="3v3">3 vs 3</button>
+        <div class="m-modes">
+          <div class="m-mode" id="quick">
+            <h3>Partida rápida <small>con gente</small></h3>
+            <div class="m-pills">
+              <button type="button" data-mode="1v1">1 vs 1</button>
+              <button type="button" data-mode="2v2">2 vs 2</button>
+              <button type="button" data-mode="3v3">3 vs 3</button>
             </div>
           </div>
-          <div class="field">Puntos
-            <div class="seg" data-name="target">
-              <button type="button" data-v="30" class="on">30 (malas y buenas)</button>
-              <button type="button" data-v="15">15</button>
+          <div class="m-mode" id="practice">
+            <h3>Practicar <small>contra bots</small></h3>
+            <div class="m-pills">
+              <button type="button" data-mode="1v1">1 vs 1</button>
+              <button type="button" data-mode="2v2">2 vs 2</button>
+              <button type="button" data-mode="3v3">3 vs 3</button>
             </div>
           </div>
-          <div class="field">Sala
-            <div class="seg" data-name="isPublic">
-              <button type="button" data-v="0" class="on">Privada (con código)</button>
-              <button type="button" data-v="1">Pública</button>
-            </div>
-          </div>
-          <div id="create-options"></div>
-          <div class="row">
-            <button class="btn primary big" type="submit">Crear sala</button>
-            <button class="btn big" type="button" id="practice">Practicar con bots</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="panel wide">
-        <div class="row between">
-          <h2>Mesas públicas</h2>
-          <button class="btn small" id="refresh">Actualizar</button>
         </div>
-        <div id="public-list" class="room-list"><p class="hint">Cargando…</p></div>
+
+        <div class="m-public hidden" id="public-wrap">
+          <h3>Mesas públicas <small id="public-count"></small></h3>
+          <div id="public-list" class="m-tables"></div>
+        </div>
       </div>
+
+      <footer class="credits">
+        Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
+      </footer>
     </div>
-    <footer class="credits">
-      Cartas: diseño “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
-    </footer>
   </section>
 
   <!-- ============ PARTIDA ============ -->

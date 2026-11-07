@@ -12,7 +12,7 @@ const roomStub = (env, code) => env.TRUCO_ROOM.get(env.TRUCO_ROOM.idFromName('tr
 const pickMode = (m) => (MODES[m] ? m : DEFAULT_MODE);
 
 async function createRoom(env, opts) {
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 30; i++) { // con 4 dígitos puede tocar uno ocupado: se prueba otro
     const code = newRoomCode();
     if ((await roomStub(env, code).create({ code, ...opts })).ok) return code;
   }
@@ -55,10 +55,10 @@ export default {
 
     if (path === '/api/lobby' && method === 'GET') return json(await lobbyStub(env).list());
 
-    const info = path.match(/^\/api\/rooms\/([A-Z0-9]{5})$/);
+    const info = path.match(/^\/api\/rooms\/(\d{4})$/);
     if (info && method === 'GET') return json(await roomStub(env, info[1]).info());
 
-    const ws = path.match(/^\/api\/rooms\/([A-Z0-9]{5})\/ws$/);
+    const ws = path.match(/^\/api\/rooms\/(\d{4})\/ws$/);
     if (ws) {
       if (request.headers.get('Upgrade') !== 'websocket') return new Response('Se esperaba un WebSocket', { status: 426 });
       return roomStub(env, ws[1]).fetch(request);

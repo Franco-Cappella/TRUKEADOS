@@ -18,11 +18,9 @@ export function json(data, status = 200) {
   });
 }
 
-// Sin I, O, 0 ni 1 para que no se confundan al dictarlo.
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// Código de sala: solo dígitos (ej. "4827"), para pasarlo de palabra o tipearlo con el teclado numérico.
 export function newRoomCode(len = ROOM_CODE_LEN) {
-  const bytes = crypto.getRandomValues(new Uint8Array(len));
-  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
+  return Array.from(crypto.getRandomValues(new Uint32Array(len)), (n) => n % 10).join('');
 }
 
 // Número al azar en [0, 1) con el generador seguro de la plataforma.

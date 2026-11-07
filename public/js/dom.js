@@ -31,6 +31,7 @@ export const KEYS = {
   zoomTip: 'truco-zoom-tip',
   spectate: 'truco-spectate', // sessionStorage
   autostart: 'truco-autostart', // sessionStorage
+  lastMode: 'truco-last-mode', // último modo elegido (para armar la mesa)
 };
 
 // Identificador anónimo y estable de este navegador (el servidor lo usa para el asiento).
@@ -44,6 +45,9 @@ export function myPid() {
 }
 
 export const savedName = () => store.get(KEYS.name) || 'Invitado';
+
+// Primera letra de un nombre para los avatares (sin escapar: el que la pone en innerHTML usa esc()).
+export const initial = (name) => [...String(name ?? '').trim()][0]?.toUpperCase() || '?';
 
 // Lee una vez y borra (para pasar un dato de una pantalla a otra).
 export function takeSession(key, value) {

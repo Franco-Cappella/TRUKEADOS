@@ -18,6 +18,12 @@ function go(code) {
   route();
 }
 
+// Copia al portapapeles y avisa si salió bien o no (el portapapeles puede estar bloqueado).
+function copy(text, okHtml) {
+  const p = navigator.clipboard?.writeText(text) ?? Promise.reject();
+  p.then(() => room?.toast(okHtml, 'good', 1600), () => room?.toast('No se pudo copiar: ' + esc(text), 'bad'));
+}
+
 function goHome() {
   history.pushState({}, '', ROUTES.home);
   route();
@@ -47,11 +53,7 @@ function openRoom(code) {
 // Eventos de los elementos fijos de la pantalla de partida (se enlazan una sola vez).
 function bindGameUI() {
   $('#leave').onclick = goHome;
-  $('#code-chip').onclick = () => {
-    if (!room) return;
-    navigator.clipboard?.writeText(room.link);
-    room.toast('Enlace copiado: ' + esc(room.link), 'good');
-  };
+  $('#code-chip').onclick = () => room && copy(room.link, 'Enlace copiado: ' + esc(room.link));
 
   const vt = $('#voice-toggle');
   const paintVoice = () => (vt.textContent = isVoiceOn() ? 'Voz: sí' : 'Voz: no');
@@ -131,10 +133,10 @@ function bindGameUI() {
     else if (d.unbot) room.send({ t: 'removebot', seat: Number(d.unbot) });
     else if (d.kick) room.send({ t: 'kick', seat: Number(d.kick) });
     else if (d.start) room.send({ t: 'start', fillBots: d.start === '1' });
-    else if (d.copy) {
-      navigator.clipboard?.writeText(d.copy);
-      room.toast('Copiado', 'good', 1200);
-    } else if (d.share) navigator.share?.({ title: APP_NAME, text: '¿Un truquito?', url: room.link }).catch(() => {});
+    else if (d.rules) room.toggleRules();
+    else if (d.exit) goHome();
+    else if (d.copy) copy(d.copy, 'Copiado');
+    else if (d.share) navigator.share?.({ title: APP_NAME, text: '¿Un truquito?', url: room.link }).catch(() => {});
     else if (d.v !== undefined) {
       const name = b.closest('[data-cfg]')?.dataset.cfg;
       if (!name) return;
@@ -142,6 +144,8 @@ function bindGameUI() {
       room.send({ t: 'config', cfg: { [name]: v } });
     }
   });
+  bindSeatDrag();
+
   $('#waiting').addEventListener('change', (e) => {
     if (e.target.matches('[data-opt]')) room?.send({ t: 'config', cfg: readOptionChecks($('#waiting')) });
     if (e.target.matches('[data-trucoseg]')) room?.send({ t: 'config', cfg: { trucoDesdeSegunda: e.target.checked } });
@@ -177,6 +181,53 @@ function bindGameUI() {
 }
 
 // Menú de señas: cada una con la cara que vas a poner.
+// Sala de espera: el anfitrión arrastra a un jugador (o bot) a otro lugar y se manda `move`.
+// Con eventos de puntero, así funciona igual con mouse y con el dedo.
+function bindSeatDrag() {
+  let drag = null;
+  const waiting = $('#waiting');
+  const seatAt = (e) => document.elementFromPoint(e.clientX, e.clientY)?.closest('#waiting .w-seat');
+  const clearOver = (keep) => waiting.querySelectorAll('.w-seat.over').forEach((s) => s !== keep && s.classList.remove('over'));
+  waiting.addEventListener('pointerdown', (e) => {
+    const seat = e.target.closest('.w-seat.drag');
+    if (!seat || e.target.closest('button') || e.button > 0) return;
+    drag = { from: Number(seat.dataset.seat), x: e.clientX, y: e.clientY, src: seat, ghost: null };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+      const r = drag.src.getBoundingClientRect();
+      drag.ghost = drag.src.cloneNode(true);
+      drag.ghost.classList.add('w-ghost');
+      drag.ghost.style.width = r.width + 'px';
+      drag.dx = drag.x - r.left;
+      drag.dy = drag.y - r.top;
+      document.body.append(drag.ghost);
+      waiting.classList.add('dragging');
+    }
+    e.preventDefault();
+    drag.ghost.style.transform = `translate(${e.clientX - drag.dx}px, ${e.clientY - drag.dy}px)`;
+    const over = seatAt(e);
+    clearOver(over);
+    if (over && Number(over.dataset.seat) !== drag.from) over.classList.add('over');
+  }, { passive: false });
+  const endDrag = (e) => {
+    if (!drag) return;
+    if (drag.ghost) {
+      drag.ghost.remove();
+      const over = e.type === 'pointerup' && seatAt(e);
+      const to = over ? Number(over.dataset.seat) : NaN;
+      if (Number.isInteger(to) && to !== drag.from) room?.send({ t: 'move', from: drag.from, to });
+      clearOver();
+      waiting.classList.remove('dragging');
+    }
+    drag = null;
+  };
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+}
+
 function buildSenasMenu() {
   const m = $('#senas-menu');
   const tgt = scene.lookTarget;

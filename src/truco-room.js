@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
 import { botAction, botSena, botClaims } from '../public/js/bot.js';
-import { MODES, TARGETS, SENAS, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, cleanPid, rng } from './util.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
@@ -21,7 +21,12 @@ export class TrucoRoom extends DurableObject {
 
   // ---- RPC desde el Worker ----
   async create({ code, mode, target, options, isPublic, pid, name }) {
-    if (this.room) return { ok: false };
+    if (this.room && !this.reusable()) return { ok: false };
+    // código reciclado: se arranca de cero (sin chat ni miradas de la sala anterior)
+    this.chat = [];
+    this.gaze = {};
+    await this.ctx.storage.put('chat', this.chat);
+    await this.ctx.storage.deleteAlarm();
     this.room = {
       code,
       cfg: { mode, target, isPublic: !!isPublic, trucoDesdeSegunda: true, ...roomOptions(options) },
@@ -37,6 +42,12 @@ export class TrucoRoom extends DurableObject {
     await this.save();
     await this.updateLobby();
     return { ok: true };
+  }
+
+  // Una sala vieja (nadie conectado y sin movimiento hace rato) presta su código a una nueva.
+  reusable() {
+    const r = this.room;
+    return !this.online().size && Date.now() - (r.lastActive || r.createdAt || 0) > ROOM_REUSE_MS;
   }
 
   async info() {
@@ -97,6 +108,16 @@ export class TrucoRoom extends DurableObject {
         const me = seat != null ? r.seats[seat] : { pid, name: ws.deserializeAttachment()?.name || 'Invitado' };
         if (seat != null) r.seats[seat] = null;
         r.seats[to] = me;
+        return this.commit();
+      }
+
+      case 'move': {
+        // el anfitrión arrastra a alguien a otro lugar (si está ocupado, se intercambian)
+        if (!lobbyHost) return;
+        const { from, to } = msg;
+        const ok = (i) => Number.isInteger(i) && i >= 0 && i < r.seats.length;
+        if (!ok(from) || !ok(to) || from === to || !r.seats[from]) return;
+        [r.seats[from], r.seats[to]] = [r.seats[to], r.seats[from]];
         return this.commit();
       }
 
@@ -408,6 +429,7 @@ export class TrucoRoom extends DurableObject {
   }
 
   async save() {
+    this.room.lastActive = Date.now();
     await this.ctx.storage.put('room', this.room);
   }
 

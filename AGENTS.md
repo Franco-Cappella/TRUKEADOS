@@ -67,7 +67,7 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 
 ## Protocolo WebSocket (`/api/rooms/CÓDIGO/ws`)
 Cliente → servidor: `join {pid,name,spectate}`, `sit {seat}`, `stand`, `addbot {seat}`, `removebot {seat}`,
-`kick {seat}`, `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
+`kick {seat}`, `move {from, to}` (anfitrión: cambia o intercambia lugares en la sala de espera), `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
 `rematch`, `to-lobby`, `ping`.
 
 Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
