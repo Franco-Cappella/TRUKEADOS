@@ -153,3 +153,21 @@ test('sala: si los bots fallan al decidir, juegan una de respaldo y la partida n
   }
   assert.equal(r.status, 'ended');
 });
+
+test('sala: "¿Le canto truco?" solo cuando tu equipo lo puede cantar y todavía no tiraste en la ronda', async () => {
+  // reparte el 3: es mano la persona (0)
+  const { h, ws, r } = await table({ dealer: 3 });
+  h.room.broadcastState();
+  assert.equal(h.state(ws[0]).ask.can.truco, true);
+  // si el truco lo tienen los rivales (lo quisieron ellos), tu equipo no lo puede subir
+  r.game.h.truco.level = 2;
+  r.game.h.truco.holder = 1;
+  h.room.broadcastState();
+  assert.equal(h.state(ws[0]).ask.can.truco, false);
+  r.game.h.truco.holder = 0;
+  h.room.broadcastState();
+  assert.equal(h.state(ws[0]).ask.can.truco, true);
+  // ya tiraste en esta ronda: no tiene sentido preguntar
+  await h.send(ws[0], { t: 'act', a: { t: 'play', card: r.game.h.inHand[0][0] } });
+  assert.equal(h.state(ws[0]).ask.can.truco, false);
+});

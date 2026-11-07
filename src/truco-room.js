@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices } from '../public/js/engine.js';
+import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable } from '../public/js/engine.js';
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
@@ -580,7 +580,8 @@ export class TrucoRoom extends DurableObject {
       const h = g.h;
       return h.r === 0 && h.envido.state === 'none' && envidoVoices(g, T).includes(seat) && !h.rounds[0].plays.some((p) => p.seat === seat);
     }
-    if (kind === 'truco') return g.h.truco.level < 4 && !g.h.truco.pending;
+    // el truco, si el equipo lo puede cantar o subir en esta mano y al que pregunta todavía le toca en esta ronda
+    if (kind === 'truco') return trucoCallable(g, seat);
     return false;
   }
 

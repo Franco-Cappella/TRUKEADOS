@@ -179,6 +179,15 @@ export function envidoOpenFor(g, seat) {
   return h.turn === seat;
 }
 
+// ¿El equipo de `seat` puede cantar (o subir) el truco en esta mano, cuando le toque a `seat` en esta ronda?
+// (para la consulta al compañero: "¿le canto truco?" solo tiene sentido si se puede)
+export function trucoCallable(g, seat) {
+  const h = g.h;
+  const t = h.truco;
+  return h.phase === 'play' && active(h, seat) && !t.pending && !trucoBlocked(g) && t.level < 4 &&
+    (t.holder === null || t.holder === team(seat)) && !played(h, seat);
+}
+
 // ¿Puede `seat` cantar truco (o subirlo) en la fase de juego normal? Solo en su turno.
 function trucoOpenFor(g, seat) {
   const t = g.h.truco;

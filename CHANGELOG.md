@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.10.2 — consultas que tienen sentido y chat más corto
+- "¿Le canto truco?" solo aparece si tu equipo puede cantar o subir el truco en esa mano (no si lo tienen los
+  rivales, ni si ya está en vale cuatro, ni en primera cuando se canta desde segunda) y todavía no tiraste en esa
+  ronda. "¿Tienen tantos?" ya era solo para el pie.
+- El chat de la derecha ya no ocupa todo el alto: como mucho 400 px.
+
 ## 1.10.1 — consulta sin trabas, tu mano no tapa tus cartas y tests de la sala
 - **Arreglado**: si le consultabas al compañero bot justo cuando le tocaba, jugaba primero y te contestaba después.
   Ahora contesta y recién después juega.
