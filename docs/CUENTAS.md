@@ -56,6 +56,16 @@ prendido, Supabase manda un mail para confirmar la cuenta; el servidor de mail q
 direcciones del equipo del proyecto y muy pocos por hora. Para gente de verdad hace falta un SMTP propio
 (Authentication → Emails → SMTP, por ejemplo Resend) o apagar "Confirm email" mientras tanto.
 
+## Si no podés entrar
+
+- **Entrás con mail y contraseña y el juego vuelve a la pantalla de entrada**, o aparece "No pudimos completar el
+  pedido": Supabase Auth te deja entrar, pero el Worker no puede leer tu perfil. En los logs del Worker (`npx
+  wrangler tail`, o Workers & Pages → trukeados → Logs) aparece `Supabase respondió 401`: la clave secreta
+  (`SUPABASE_SECRET_KEY`) falta o ya no es la vigente. Copiá la de **Project Settings → API Keys → Secret keys** y
+  cargala otra vez con `npx wrangler secret put SUPABASE_SECRET_KEY` (y en `.dev.vars` para `npm run dev`).
+- **"Entrar con Google" te lleva a una página de Supabase que dice `provider is not enabled`**: el proveedor de
+  Google no está activado. Se activa con el paso 3 de arriba.
+
 ## Pendiente (próximas etapas)
 - Historial de partidas y rebobinado mano por mano.
 - ELO por modo (las columnas `elo_*` y `games_*` ya están; todavía nadie las actualiza).

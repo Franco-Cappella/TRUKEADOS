@@ -61,12 +61,18 @@ export async function verifyToken(env, token) {
 const bearer = (request) => request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
 
 // ------------------------------------------------------------------ base de datos (PostgREST)
+// La clave secreta es un secreto del Worker (SUPABASE_SECRET_KEY). Si falta o Supabase la rechaza, el motivo queda
+// en los logs del Worker y el jugador recibe un aviso genérico (index.js), no una pantalla de entrada muda.
 function rest(env, path, init = {}) {
+  if (!env.SUPABASE_SECRET_KEY) throw new Error('Falta SUPABASE_SECRET_KEY en el Worker (ver docs/CUENTAS.md)');
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: { apikey: env.SUPABASE_SECRET_KEY, 'content-type': 'application/json', ...init.headers },
   });
 }
+
+const dbError = (res, what) =>
+  new Error(`${what}: Supabase respondió ${res.status}${res.status === 401 ? ' (revisá SUPABASE_SECRET_KEY en el Worker, ver docs/CUENTAS.md)' : ''}`);
 
 const PROFILE_FIELDS = 'id,username,coins,elo_1v1,elo_2v2,elo_3v3,games_1v1,games_2v2,games_3v3,created_at';
 
@@ -77,7 +83,7 @@ export async function getProfile(env, id) {
   const hit = cache.get(id);
   if (hit && Date.now() - hit.at < AUTH.profileTtl) return hit.profile;
   const res = await rest(env, `profiles?id=eq.${encodeURIComponent(id)}&select=${PROFILE_FIELDS}`);
-  if (!res.ok) throw new Error('No se pudo leer el perfil');
+  if (!res.ok) throw dbError(res, 'No se pudo leer el perfil');
   const profile = (await res.json())[0] || null;
   if (profile) cache.set(id, { profile, at: Date.now() });
   return profile;
@@ -96,7 +102,7 @@ export async function createProfile(env, id, username) {
     const taken = (await res.json().catch(() => ({}))).message?.includes('username');
     return { error: taken ? 'Ese nombre ya lo usa otra persona' : 'Ya tenés un perfil' };
   }
-  if (!res.ok) throw new Error('No se pudo crear el perfil');
+  if (!res.ok) throw dbError(res, 'No se pudo crear el perfil');
   const profile = (await res.json())[0];
   cache.set(id, { profile, at: Date.now() });
   return { profile };

@@ -7,6 +7,7 @@ import { api, setTokenGetter, store, KEYS } from './dom.js';
 
 let client = null;
 let me = null; // { user: { id, email }, profile: { username, coins, elo_1v1… } | null }
+let loadError = ''; // por qué no se pudo leer la cuenta cuando no fue falta de sesión (ver loadMe)
 
 /** Arranca Supabase Auth (y completa el regreso de Google si la URL trae ?code=). Devuelve si hay sesión. */
 export async function initAuth() {
@@ -38,10 +39,18 @@ function cleanUrl() {
 
 export const onAuthChange = (fn) => client.onAuthStateChange((event) => fn(event));
 export const currentMe = () => me;
+export const lastLoadError = () => loadError;
 
-/** Lee el perfil del servidor. null si no hay sesión válida. */
+/** Lee el perfil del servidor. null si no hay sesión válida (lastLoadError dice si fue otra cosa). */
 export async function loadMe() {
-  me = await api(ROUTES.api.me).catch(() => null);
+  loadError = '';
+  try {
+    me = await api(ROUTES.api.me);
+  } catch (err) {
+    me = null;
+    // 401 es "no hay sesión"; si la base o el servidor fallan, o no hay conexión, la persona tiene que enterarse
+    if (err.status !== 401) loadError = err.status ? err.message : 'No hay conexión con el servidor. Probá de nuevo.';
+  }
   if (me?.profile) store.set(KEYS.name, me.profile.username);
   return me;
 }
@@ -88,4 +97,5 @@ export async function signUp(email, password) {
 export async function signOut() {
   await client.signOut().catch(() => {});
   me = null;
+  loadError = '';
 }

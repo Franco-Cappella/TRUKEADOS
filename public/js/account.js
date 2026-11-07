@@ -15,6 +15,12 @@ export function showEntry(which) {
   }
 }
 
+/** Aviso en la pantalla de entrada (p. ej. que la cuenta no se pudo leer); vacío para quitarlo. */
+export function showLoginError(text) {
+  $('#login-msg').textContent = text || '';
+  $('#login-msg').classList.toggle('bad', !!text);
+}
+
 // done(): ya hay sesión y perfil (main.js sigue con la ruta). out(): volver al inicio de sesión.
 export function initAccount(done, out) {
   let creating = false; // el formulario de mail sirve para entrar o para crear la cuenta

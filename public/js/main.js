@@ -9,8 +9,8 @@ import { $, $$, esc, savedName } from './dom.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
 import { QUICK_PHRASES, helpHtml, drawFace, readOptionChecks } from './hud.js';
 import { initMenu, showMenu, hideMenu } from './menu.js';
-import { initAuth, loadMe, currentMe, onAuthChange, signOut } from './auth.js';
-import { initAccount, showEntry } from './account.js';
+import { initAuth, loadMe, currentMe, lastLoadError, onAuthChange, signOut } from './auth.js';
+import { initAccount, showEntry, showLoginError } from './account.js';
 import { RoomClient } from './room-client.js';
 
 let scene = null;
@@ -38,7 +38,9 @@ function route() {
   if (!me?.profile) {
     room?.close();
     room = null;
-    return showEntry(me ? '#onboard' : '#login');
+    showEntry(me ? '#onboard' : '#login');
+    if (!me) showLoginError(lastLoadError()); // si la cuenta no se pudo leer, se le dice por qué
+    return;
   }
   showEntry(null);
   const m = location.pathname.match(ROUTES.roomRe);
