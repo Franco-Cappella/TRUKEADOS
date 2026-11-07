@@ -1,10 +1,10 @@
 // Escena 3D del truco: salón, mesa con paño, personajes 2D (recortes), cartas y cámara en primera persona.
 import * as THREE from 'three';
-import { drawCharacter, lookFor, biteAt, W as CW, H as CH } from './characters.js';
+import { drawCharacter, lookFor, dressed, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
-import { SCENE, CARD, FONT, LIGHT } from './theme.js';
+import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
@@ -145,6 +145,128 @@ function noise(ctx, w, h, amount, alpha) {
     img.data[i + 3] = alpha ?? img.data[i + 3];
   }
   ctx.putImageData(img, 0, 0);
+}
+
+// Paño: del color dado (centro, medio, borde) con trama, costura alrededor y el nombre al centro.
+function feltTex(colors) {
+return canvasTex(1024, 1024, (ctx, w, h) => {
+    const grd = ctx.createRadialGradient(w / 2, h / 2, 60, w / 2, h / 2, w / 2);
+    grd.addColorStop(0, colors[0]);
+    grd.addColorStop(0.8, colors[1]);
+    grd.addColorStop(1, colors[2]);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 0.06;
+    ctx.strokeStyle = '#000';
+    for (let y = 0; y < h; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    noise(ctx, w, h, 14);
+    ctx.strokeStyle = SCENE.feltInk;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, w * 0.16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = SCENE.feltInk;
+    ctx.font = `600 46px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(SCENE.feltName, w / 2, h / 2 + 14);
+  });
+}
+
+// Dorso de las cartas de la tienda: fondo, borde y rombos del color de la tinta, con el nombre al medio.
+function backCanvas([bg, ink]) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 394;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fbfaf6';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 256, 394, 16);
+  ctx.fill();
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(12, 12, 232, 370, 10);
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = ink;
+  ctx.globalAlpha = 0.28;
+  ctx.lineWidth = 2;
+  for (let k = -400; k < 400; k += 22) {
+    ctx.beginPath();
+    ctx.moveTo(k, 0);
+    ctx.lineTo(k + 394, 394);
+    ctx.moveTo(k + 394, 0);
+    ctx.lineTo(k, 394);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(24, 24, 208, 346);
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.ellipse(128, 197, 62, 40, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = ink;
+  ctx.font = `700 46px ${FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('T', 128, 199);
+  return c;
+}
+
+// Lo que cada uno tiene delante en la mesa (tienda, ranura "objeto"). colors: los de COSMETIC_LOOK.
+function tableObject(id) {
+  const col = COSMETIC_LOOK[id]?.colors;
+  if (!col) return null;
+  const g = new THREE.Group();
+  const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+  if (id === 'mate') {
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 16, 0, Math.PI * 2, 0.35, Math.PI * 0.7), std(col[0], { roughness: 0.7 }));
+    cup.position.y = 0.04;
+    const yerba = new THREE.Mesh(new THREE.CircleGeometry(0.038, 20), new THREE.MeshLambertMaterial({ color: col[1] }));
+    yerba.rotation.x = -Math.PI / 2;
+    yerba.position.y = 0.083;
+    const bomb = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16), std(col[2], { metalness: 0.9, roughness: 0.2 }));
+    bomb.position.set(0.012, 0.11, 0);
+    bomb.rotation.z = -0.25;
+    g.add(cup, yerba, bomb);
+  } else if (id === 'cafe') {
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.008, 24), std(col[0], { roughness: 0.3 }));
+    plate.position.y = 0.004;
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.026, 0.055, 20), std(col[2], { roughness: 0.3 }));
+    cup.position.y = 0.035;
+    const coffee = new THREE.Mesh(new THREE.CircleGeometry(0.029, 20), new THREE.MeshLambertMaterial({ color: col[1] }));
+    coffee.rotation.x = -Math.PI / 2;
+    coffee.position.y = 0.0625;
+    g.add(plate, cup, coffee);
+  } else if (id === 'porron') {
+    const bottle = new THREE.Mesh(
+      new THREE.LatheGeometry([[0, 0], [0.032, 0], [0.032, 0.15], [0.012, 0.21], [0.011, 0.25], [0, 0.25]].map(([x, y]) => new THREE.Vector2(x, y)), 20),
+      std(col[0], { roughness: 0.15, metalness: 0.1 }),
+    );
+    const label = new THREE.Mesh(new THREE.CylinderGeometry(0.0325, 0.0325, 0.06, 20, 1, true), std(col[1]));
+    label.position.y = 0.08;
+    g.add(bottle, label);
+  } else {
+    const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.03, 0.13, 20, 1, true), std(col[0], { roughness: 0.05, transparent: true, opacity: 0.3 }));
+    glass.position.y = 0.065;
+    const drink = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.029, 0.09, 20), std(col[1], { roughness: 0.2 }));
+    drink.position.y = 0.047;
+    const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.033, 0.018, 20), std(col[2], { roughness: 0.9 }));
+    foam.position.y = 0.1;
+    g.add(glass, drink, foam);
+  }
+  g.traverse((o) => (o.castShadow = true));
+  return g;
 }
 
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -326,33 +448,7 @@ export class TableScene {
 
     const R = this.R;
     // paño: verde con trama, costura alrededor y el nombre al centro
-    const felt = canvasTex(1024, 1024, (ctx, w, h) => {
-      const grd = ctx.createRadialGradient(w / 2, h / 2, 60, w / 2, h / 2, w / 2);
-      grd.addColorStop(0, SCENE.felt[0]);
-      grd.addColorStop(0.8, SCENE.felt[1]);
-      grd.addColorStop(1, SCENE.felt[2]);
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalAlpha = 0.06;
-      ctx.strokeStyle = '#000';
-      for (let y = 0; y < h; y += 3) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      noise(ctx, w, h, 14);
-      ctx.strokeStyle = SCENE.feltInk;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(w / 2, h / 2, w * 0.16, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = SCENE.feltInk;
-      ctx.font = `600 46px ${FONT}`;
-      ctx.textAlign = 'center';
-      ctx.fillText(SCENE.feltName, w / 2, h / 2 + 14);
-    });
+    const felt = feltTex(this.feltColors || SCENE.felt);
     // madera con veta
     const woodTex = canvasTex(512, 128, (ctx, w, h) => {
       ctx.fillStyle = SCENE.wood;
@@ -402,6 +498,8 @@ export class TableScene {
     const span = (R / Math.cos(Math.PI / sides)) * 2;
     for (let k = 0; k < pos.count; k++) uv.setXY(k, pos.getX(k) / span + 0.5, pos.getY(k) / span + 0.5);
     const top = new THREE.Mesh(feltGeo, new THREE.MeshLambertMaterial({ map: felt }));
+    this.feltMesh = top;
+    this.seatObjs = new Map(); // la mesa es nueva: los objetos de cada uno se vuelven a poner
     top.rotation.x = -Math.PI / 2;
     top.position.y = TABLE_Y;
     top.receiveShadow = true;
@@ -540,12 +638,15 @@ export class TableScene {
   }
 
   setPlayers(seats, handCounts) {
+    seats.forEach((p, seat) => this.setSeatObject(seat, p?.cos?.objeto));
     for (const [seat, c] of this.chars) {
       const p = seats[seat];
       const name = p?.name || '';
-      if (name !== c.name) {
+      const key = name + JSON.stringify(p?.cos || {});
+      if (key !== c.key) {
+        c.key = key;
         c.name = name;
-        c.look = lookFor(name, seat);
+        c.look = dressed(lookFor(name, seat), p?.cos);
         c.dirty = true;
       }
       c.mesh.visible = !!p;
@@ -555,6 +656,46 @@ export class TableScene {
         c.dirty = true;
       }
     }
+  }
+
+  // Lo que tiene delante cada uno (tienda): a la derecha de su lugar, sobre el paño.
+  setSeatObject(seat, id) {
+    const cur = this.seatObjs?.get(seat);
+    if ((cur?.id || null) === (id || null) || !this.seatObjs) return;
+    if (cur) this.tableGroup.remove(cur.obj);
+    this.seatObjs.delete(seat);
+    const obj = id && tableObject(id);
+    if (!obj) return;
+    const d = this.seatDir(seat);
+    const side = new THREE.Vector3(-d.z, 0, d.x); // a la derecha de quien está sentado ahí
+    const p = d.clone().multiplyScalar(this.R * 0.72).add(side.multiplyScalar(this.R * 0.42));
+    obj.position.set(p.x, TABLE_Y, p.z);
+    this.tableGroup.add(obj);
+    this.seatObjs.set(seat, { id, obj });
+  }
+
+  // El paño y el dorso del mazo del anfitrión (tienda). null = los de siempre.
+  setTable({ pano = null, dorso = null } = {}) {
+    const felt = COSMETIC_LOOK[pano]?.felt || SCENE.felt;
+    if (this.feltColors !== felt) {
+      this.feltColors = felt;
+      if (this.feltMesh) {
+        this.feltMesh.material.map?.dispose();
+        this.feltMesh.material.map = feltTex(felt);
+        this.feltMesh.material.needsUpdate = true;
+      }
+    }
+    const back = COSMETIC_LOOK[dorso]?.back || null;
+    if (this.backKey === (dorso || null)) return;
+    const t = cardTex('back');
+    // el dorso de siempre es una imagen que puede no haber llegado todavía: se espera
+    if (!t.userData.orig) {
+      if (!t.image?.complete) return setTimeout(() => this.setTable({ pano, dorso }), 300);
+      t.userData.orig = t.image;
+    }
+    this.backKey = dorso || null;
+    t.image = back ? backCanvas(back) : t.userData.orig;
+    t.needsUpdate = true;
   }
 
   setGaze(seat, target) {

@@ -2,7 +2,7 @@
 // Se dibujan en un canvas según hacia dónde está girado el cuerpo y la cabeza respecto de quien mira
 // (de frente, de tres cuartos o casi de perfil), hacia dónde mira y qué cara pone (señas y hablar).
 // No parpadean solos: los ojos cerrados son SOLO la seña "ciego", para que no se confunda.
-import { INK, PALETTE, FACE, mix } from './theme.js';
+import { INK, PALETTE, FACE, COSMETIC_LOOK, mix } from './theme.js';
 import { SENA_BITE_MS } from './config.js';
 
 export const W = 512;
@@ -19,6 +19,13 @@ function hash(str) {
   let h = 2166136261;
   for (const ch of String(str)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h >>> 0;
+}
+
+// El personaje con lo que tiene puesto de la tienda (cos = { ropa, gorro, anteojos }).
+export function dressed(look, cos) {
+  const out = { ...look };
+  for (const id of [cos?.ropa, cos?.gorro, cos?.anteojos]) if (COSMETIC_LOOK[id]) Object.assign(out, COSMETIC_LOOK[id]);
+  return out;
 }
 
 export function lookFor(name, seat) {

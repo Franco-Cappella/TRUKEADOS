@@ -250,7 +250,7 @@ function buildSenasMenu() {
   const m = $('#senas-menu');
   const tgt = scene.lookTarget;
   const who = tgt === 'table' ? 'la mesa' : tgt != null && room?.st ? room.nameOf(tgt, true) : 'nadie';
-  const look = lookFor(savedName(), room?.you ?? 0);
+  const look = room ? room.myLook() : lookFor(savedName(), 0);
   m.innerHTML = `<div class="tip">La seña <b>solo la ven los que te están mirando</b> en ese momento (fijate quién dice “te mira” en los nombres). Ahora estás mirando a: <b>${esc(who)}</b>.</div>`;
   for (const [id, s] of Object.entries(SENAS)) {
     const b = document.createElement('button');

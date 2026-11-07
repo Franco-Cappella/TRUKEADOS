@@ -74,7 +74,7 @@ export function rest(env, path, init = {}) {
 const dbError = (res, what) =>
   new Error(`${what}: Supabase respondió ${res.status}${res.status === 401 ? ' (revisá SUPABASE_SECRET_KEY en el Worker, ver docs/CUENTAS.md)' : ''}`);
 
-const PROFILE_FIELDS = 'id,username,coins,elo_1v1,elo_2v2,elo_3v3,games_1v1,games_2v2,games_3v3,created_at';
+const PROFILE_FIELDS = 'id,username,coins,elo_1v1,elo_2v2,elo_3v3,games_1v1,games_2v2,games_3v3,equipped,created_at';
 
 // Perfiles leídos hace poco (por isolate): cada pedido y cada "join" no tiene que ir a la base.
 const cache = new Map();

@@ -101,6 +101,27 @@ export const PALETTE = {
   fallbackCloth: '#4a4a4a',
 };
 
+// Cómo se ve cada cosa de la tienda (COSMETICS en config.js, misma clave).
+export const COSMETIC_LOOK = {
+  'remera-celeste': { shirt: 'tee', cloth: '#6fa3d6' },
+  'chomba-verde': { shirt: 'polo', cloth: '#2f6b47' },
+  'pulover-bordo': { shirt: 'sweater', cloth: '#6e2f3a' },
+  'saco-negro': { shirt: 'jacket', cloth: '#d8d4cc', cloth2: '#1f1f22' },
+  boina: { style: 'boina' },
+  gorra: { style: 'cap' },
+  lentes: { glasses: true },
+  mate: { colors: ['#6b4a2a', '#6f8f3a', '#d9d9d9'] },
+  cafe: { colors: ['#f2efe8', '#3b2416', '#f2efe8'] },
+  porron: { colors: ['#5a3a12', '#c9a36b', '#e8e2d0'] },
+  fernet: { colors: ['#dfe8ec', '#2a1410', '#dfe8ec'] },
+  'pano-azul': { felt: ['#2f5f8f', '#244b73', '#1a3857'] },
+  'pano-bordo': { felt: ['#7a2e38', '#62242d', '#4a1a22'] },
+  'pano-negro': { felt: ['#333536', '#26282a', '#1a1b1c'] },
+  'dorso-azul': { back: ['#2f6fd6', '#f5f5f5'] },
+  'dorso-verde': { back: ['#2e7344', '#f5f5f5'] },
+  'dorso-negro': { back: ['#1c1c1c', '#f2c12e'] },
+};
+
 // Oscurece (k < 1) o aclara (k > 1) un color #rrggbb. Devuelve rgb().
 export function mix(hex, k) {
   if (!hex?.startsWith('#')) hex = PALETTE.fallbackCloth;

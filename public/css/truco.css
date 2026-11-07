@@ -596,3 +596,26 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
   .r-hand, .r-slot { min-height: 46px; }
   .hi-info small { white-space: normal; }
 }
+
+/* ---------- tienda y personalizar ---------- */
+.sh-list { display: flex; flex-direction: column; gap: 16px; }
+.sh-slot h4, .cu-slot h4 { margin: 0 0 8px 2px; font-size: 15px; font-weight: 600; }
+.sh-slot h4 small, .cu-slot h4 small { font-weight: 400; color: var(--text-dim); font-size: 13px; margin-left: 6px; }
+.sh-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.sh-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px; border-radius: var(--radius-soft); background: var(--surface-2); text-align: center; }
+.sh-item canvas { max-width: 100%; height: auto; }
+.sh-item b { font-weight: 600; font-size: 14px; }
+.sh-item .btn { border-radius: 999px; }
+.sh-own { font-size: 13px; color: var(--good-ink); padding: 7px 0; }
+.cu-wrap { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.cu-preview { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px; border-radius: var(--radius-soft); background: radial-gradient(ellipse at 50% 30%, var(--glow), var(--surface-2) 80%); }
+.cu-preview #cu-bust { width: 200px; height: auto; }
+.cu-table { display: flex; gap: 10px; align-items: center; }
+.cu-slots { display: flex; flex-direction: column; gap: 14px; }
+.cu-pills { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.cu-pills button { text-transform: none; letter-spacing: 0; font-stretch: 100%; font-weight: 500; font-size: 14px; }
+.cu-pills button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+@media (max-width: 560px) {
+  .cu-wrap { grid-template-columns: 1fr; }
+  .sh-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -7,6 +7,7 @@ import { Lobby } from './lobby.js';
 import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
+import { ownedItems, buyItem, equipItem } from './shop.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -108,6 +109,27 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     const match = await getMatch(env, auth.user.id, matchId[1]);
     return match ? json({ match }) : json({ error: 'No encontramos esa partida' }, 404);
+  }
+
+  // tienda: lo que tenés, comprar y ponerte algo
+  if (path === '/api/shop' && method === 'GET') {
+    const auth = await requireUser(env, request, { fresh: true });
+    if (auth.error) return auth.error;
+    return json({ owned: await ownedItems(env, auth.user.id), coins: auth.profile.coins, equipped: auth.profile.equipped || {} });
+  }
+  if (path === '/api/shop/buy' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await buyItem(env, auth.user.id, body.item);
+    return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+  if (path === '/api/shop/equip' && method === 'POST') {
+    const auth = await requireUser(env, request, { fresh: true });
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await equipItem(env, auth.user.id, auth.profile, body.slot, body.item ?? null);
+    return r.error ? json({ error: r.error }, 400) : json(r);
   }
 
   if (path === '/api/lobby' && method === 'GET') return json(await lobbyStub(env).list());
