@@ -1,5 +1,12 @@
 # Cambios
 
+## 1.8.2 — frases de los bots que tienen sentido
+- "Primera para nosotros" (y "segunda", "tercera") solo en la ronda que nombra; antes salía al ganar cualquier ronda.
+- Cuando un rival tira una carta brava, la frase nombra esa carta ("Uh, el siete bravo") o es genérica; antes decía
+  "sacó el ancho" aunque fuera un 7.
+- "¡Eso es truco!" solo si la mano se jugó por truco; "compañero" solo en equipo; "Parda, esto se pone bueno" no
+  en tercera (ya terminó).
+
 ## 1.8.1 — "30 en mesa" y bots que leen las señas
 - **Mostrar los tantos**: el que muestra dice "30 en mesa" (globo y voz) y tira a la mesa, boca arriba, las cartas
   de sus tantos que le quedaban en la mano (las tapadas se dan vuelta). Ya no aparece el cartelito con las cartas.

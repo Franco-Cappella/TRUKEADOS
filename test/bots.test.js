@@ -245,3 +245,29 @@ test('señas de tantos: pesa más las manos que cuadran con "30 o más"', () => 
   assert.ok(ws.some((x) => !t30(x))); // hay manos imaginadas que no cuadran...
   for (const x of ws) assert.ok(t30(x) ? x.w >= 0.5 : x.w < 0.5); // ...y pesan mucho menos
 });
+
+test('frases que nombran la ronda o la carta: solo cuando corresponde', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const rng = seeded(11);
+  const said = (e) => {
+    const out = new Set();
+    for (let i = 0; i < 3000; i++) {
+      const t = talkEvent(g, 0, e, [], rng);
+      if (t) out.add(t);
+    }
+    return [...out];
+  };
+  // ganó segunda (perdió primera): nunca dice "primera"
+  const r2 = said({ type: 'round', round: 1, result: 0, seat: 0 });
+  assert.ok(r2.length > 0);
+  assert.ok(r2.every((t) => !/primera|tercera/i.test(t)), r2.join(' | '));
+  assert.ok(r2.some((t) => /segunda/i.test(t)));
+  // parda en tercera: no dice "esto se pone bueno" (ya terminó)
+  assert.deepEqual(said({ type: 'round', round: 2, result: 'parda', seat: null }), []);
+  // un rival tira el 7 de espada: nunca habla de un ancho
+  const s7 = said({ type: 'play', seat: 1, c: '7E', round: 0 });
+  assert.ok(s7.length > 0);
+  assert.ok(s7.every((t) => !/ancho|macho|basto|oro/i.test(t)), s7.join(' | '));
+  const s1 = said({ type: 'play', seat: 1, c: '1B', round: 0 });
+  assert.ok(s1.every((t) => !/siete|espada|macho/i.test(t)), s1.join(' | '));
+});
