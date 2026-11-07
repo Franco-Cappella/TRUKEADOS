@@ -1,5 +1,39 @@
 # Cambios
 
+## 1.7.0 — bots que aprenden, farolean y hacen trampa
+- **Bots mucho más difíciles**: cada decisión sale de imaginar muchos repartos posibles de las cartas que no ven
+  (Monte Carlo) y jugarlos hasta el final. Eligen qué carta tirar, cuándo cantar y cuándo querer según los puntos
+  que esperan ganar, medidos por cuánto cambia la chance de ganar la partida.
+- **Aprenden de cada persona**: después de cada mano se entrena un modelo (regresiones logísticas en `brain.js`)
+  con lo que hizo cada uno y las cartas que tenía de verdad: cuándo canta truco o envido, cuándo quiere, cuánto
+  miente y cuánto reclama. Se guarda en el Lobby por jugador, más uno global para los que no conoce.
+- **Farolean** cuando el modelo dice que el rival se va a achicar, y desconfían de los que farolean seguido.
+- **Trampas** (solo en mesas que las permiten): a veces espían las cartas de los rivales, el que reparte se acomoda
+  una carta buena, mienten en el envido y se van sin mostrar, y tiran dos encimadas. Hacen más trampa si van
+  perdiendo por mucho. Le reclaman más a quien suele mentir.
+- **Hablan en el chat** con frases de mesa ("Truco, y no me hagas perder tiempo", "Me mataste", "¿Y si te digo
+  que no tenía nada?") según la chance de ganar que calcularon, sin delatarse.
+- **Charlan mucho más**: más de 200 frases de mesa (`talk.js`). Chicanean cuando cantás, festejan el macho y el
+  siete bravo, se burlan si te vas al mazo o no querés, te apuran si tardás, felicitan o retan al compañero, y
+  a veces se contestan entre ellos. Farolean más seguido (`BOT.aggro`).
+- **Charla en orden**: cuando un bot canta o contesta con una frase, la frase dice el canto de verdad ("Sin miedo al
+  éxito: retruco") y reemplaza al "¡Retruco!" de siempre, así no se repite. Las reacciones de los demás salen un
+  momento después de lo que las provocó, para que se lea como una conversación.
+- **La charla se calla si la mesa sigue**: si jugás, cantás o alguien tira una carta antes de que un bot diga su
+  frase, la frase ya no se dice (y la que estaba diciendo se corta). Los cantos se dicen siempre y antes que la
+  charla. Una frase que no llegó a decirse en 4 s se descarta (`hush` y la cola de `say` en audio.js).
+- **Los mensajes del chat se dicen en voz alta** (con la voz activada) y salen en un globo arriba del que lo
+  escribió, bots incluidos. Cada asiento tiene su tono de voz, también en los cantos.
+- El botón para irse sin mostrar los tantos ahora dice solo **Irme al mazo** (y a los rivales no se les avisa que
+  no mostró): se tienen que dar cuenta solos. "Mostrar mis cartas" e "Irme al mazo" tienen el mismo color.
+- **El compañero bot contesta los cantos** por el equipo si no contestás en unos segundos.
+- **Dos encimadas que matan**: si la de abajo gana la ronda, la de arriba **no se quema**: vale normal, porque
+  arrancás vos la siguiente. Si no mata (perdés, mata tu compañero o es parda, aunque seas mano), se quema.
+  Los bots también lo usan cuando juegan últimos y matan.
+- Contra los bots de antes, en 1 vs 1: 50 % sin aprender, ~62 % aprendiendo, ~77 % con trampas.
+- Tests nuevos en `test/bots.test.js`.
+
+
 ## 1.6.0 — menú y sala de espera nuevos
 - **Menú de inicio** en una sola tarjeta y sin scroll: tu nombre con tu inicial, **Armar una mesa** (las reglas se
   eligen adentro), código de 4 números para entrar, y filas iguales de **Partida rápida** y **Practicar** por modo.

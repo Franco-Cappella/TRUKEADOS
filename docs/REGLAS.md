@@ -57,16 +57,21 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
   1. la carta **tapada** (boca abajo; solo se puede desde segunda);
   2. la carta tirada **fuera de turno**: es tu jugada de esa ronda (cuando te toca, se te saltea). No se puede
      con un canto sin contestar ni si ya jugaste en la ronda;
-  3. la carta **de arriba de dos encimadas** (ver abajo).
+  3. la carta **de arriba de dos encimadas**, salvo que la de abajo haya matado (ver abajo).
 
 ### Trampa: dos cartas encimadas
 1. Tirás dos cartas juntas en tu turno (en primera o segunda). La **de abajo** es tu jugada de esta ronda y
    los rivales no la ven hasta el final de la mano.
 2. La **de arriba** ya está en la mesa y no se puede levantar ([R] glosario: "una vez jugada no se puede
-   retirar"): es tu jugada de la **ronda siguiente**, quemada (vale un 4). Cuando te toca, se juega sola.
+   retirar"): es tu jugada de la **ronda siguiente**. Cuando te toca, se juega sola.
+   - Si **la de abajo mató** (ganaste vos la ronda, así que arrancás la siguiente), la de arriba **vale
+     normal**: era tu turno de jugarla. Ej.: sos el último en primera, matás con la de abajo y ya dejás la
+     de segunda arriba.
+   - Si no, **se quema** (vale un 4): la tiraste antes de que te tocara. También si mató tu compañero o si
+     fue parda, aunque seas mano.
 3. Mientras dura la ronda en que la tiraste **parece una carta normal para todos, también para vos** (para que la trampa sirva) y queda
-   casi alineada con la de abajo. **Al terminar esa ronda se ve quemada**, así en la siguiente los rivales se
-   dan cuenta.
+   casi alineada con la de abajo. **Al terminar esa ronda se ve quemada** (si se quemó), así en la siguiente
+   los rivales se dan cuenta.
 4. Cualquier rival puede pedir **"mostrá las dos"**: se levanta la de arriba y todos ven la de abajo. No hay
    puntos de por medio.
 

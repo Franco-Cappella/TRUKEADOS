@@ -1,10 +1,13 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
-import { botAction, botSena, botClaims } from '../public/js/bot.js';
-import { MODES, TARGETS, SENAS, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
+import { botAction, botSena, botClaims, botShow, stackDeck } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply } from '../public/js/talk.js';
+import { observe } from '../public/js/brain.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, cleanPid, rng } from './util.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
+const REACT_MS = 1100; // las reacciones de los bots salen un poco después de lo que las provocó
 const BOT_CLAIM_DELAY = 6000; // + hasta 4 s al azar: un bot rival reclama si el humano no muestra
 
 // Una sala de truco = un Durable Object. Guarda la sala, valida jugadas y reparte el estado por WebSocket.
@@ -13,6 +16,8 @@ export class TrucoRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.gaze = {}; // asiento -> a quién mira (asiento, 'table' o null). Vive en memoria.
+    this.brains = null; // lo que los bots saben de cada persona (pid -> cerebro, + global). Lo guarda el Lobby.
+    this.learnBuf = []; // lo que hicieron las personas en esta mano, para aprender al terminarla
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || null;
       this.chat = (await ctx.storage.get('chat')) || [];
@@ -170,6 +175,7 @@ export class TrucoRoom extends DurableObject {
         r.status = 'playing';
         const { mode, target, trucoDesdeSegunda } = r.cfg;
         r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
+        await this.loadBrains();
         this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
         this.afterDeal();
         return this.commit();
@@ -178,10 +184,17 @@ export class TrucoRoom extends DurableObject {
       case 'act': {
         if (r.status !== 'playing' || seat == null) return;
         if (Date.now() < (r.dealUntil || 0)) return this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
+        const seen = observe(r.game, seat, msg.a);
         const res = act(r.game, seat, msg.a);
         if (res.error) {
           this.send(ws, { t: 'error', msg: res.error });
           return this.sendState(ws); // por si el cliente tenía un estado viejo
+        }
+        for (const e of seen) this.learnBuf.push({ pid, ...e });
+        if (msg.a?.t === 'reclamar' && r.claimWatch?.includes(pid)) {
+          this.learnBuf.push({ pid, key: 'claim', y: true });
+          this.botSay(r.game.h.show?.seat, talkCaught(rng));
+          r.claimWatch = r.claimWatch.filter((p) => p !== pid);
         }
         if (msg.a?.t === 'nomostrar') this.onFold();
         this.onGameChange();
@@ -259,6 +272,7 @@ export class TrucoRoom extends DurableObject {
     const g = r.game;
     const now = Date.now();
     let changed = false;
+    if (!this.brains) await this.loadBrains();
 
     if (g.h.phase === 'ended' && g.status === 'playing' && now - r.handEndedAt >= TIMING.handPause) {
       nextHand(g, rng);
@@ -269,7 +283,10 @@ export class TrucoRoom extends DurableObject {
       const sh = g.h.show;
       const since = r.showSince || now;
       if (this.isAway(sh.seat, now) && now - since > BOT_SHOW_DELAY && !sh.folded) {
-        changed = !!act(g, sh.seat, { t: 'mostrar' }).ok;
+        // si mintió en el envido, se va sin mostrar y reza que no le reclamen
+        const a = botShow(g, sh.seat);
+        changed = !!act(g, sh.seat, a).ok;
+        if (changed && a.t === 'nomostrar') this.onFold(sh.seat);
       } else if (r.botClaimAt && now >= r.botClaimAt) {
         changed = !!act(g, r.botClaimer, { t: 'reclamar' }).ok;
       } else if (now - since >= TIMING.showWindow) {
@@ -278,14 +295,27 @@ export class TrucoRoom extends DurableObject {
       if (changed) this.onGameChange();
     } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0)) {
       const actor = this.autoActor();
-      const a = actor != null && botAction(g, actor, rng);
+      const ctx = actor != null && this.botCtx(actor);
+      const before = waitingFor(g);
+      const ev0 = g.evId;
+      const a = actor != null && botAction(g, actor, rng, ctx);
       if (a && act(g, actor, a).ok) {
+        // contestó por el equipo sin esperar al compañero humano
+        const partner = before.seats.some((s) => !r.seats[s].bot && !this.isAway(s, now));
+        const speaker = r.seats[actor].bot ? actor : partner ? this.teamBot(actor) : null;
+        // la frase dice el canto que hizo de verdad (truco, retruco, real envido...)
+        const canto = g.ev.find((e) => e.id > ev0 && e.type === 'call' && e.seat === actor)?.text || '';
+        const t = talkFor(a, before.kind, ctx.out, rng, partner, canto);
+        // si contesta por el compañero, el "quiero" es del compañero: el bot solo avisa que contesta él
+        if (t && !(t.call && speaker !== actor)) this.botSay(speaker, t.text, { call: t.call });
+        if (a.t === 'truco' && (ctx.out?.p ?? 1) < 0.4) r.bluff = { seat: actor, hand: g.handNo };
         this.onGameChange();
         changed = true;
       }
     }
     this.botGlances();
     this.botSenas(now);
+    this.botChatter(now);
     if (changed) await this.commit();
     else await this.scheduleAlarm();
   }
@@ -298,11 +328,155 @@ export class TrucoRoom extends DurableObject {
     r.botClaimAt = 0;
     r.dealUntil = Date.now() + dealMs(r.game.n);
     r.botSenaDue = {};
+    r.claimWatch = null;
+    this.botCheats();
+    this.botReact();
     if (r.game.n > 2) {
       r.seats.forEach((s, i) => {
         if (s?.bot) r.botSenaDue[i] = r.dealUntil + 400 + Math.floor(rng() * 2500);
       });
     }
+  }
+
+  // Trampas de los bots al empezar la mano (solo en mesas que las permiten): alguno espía las cartas
+  // de los rivales y, si reparte un bot, a veces se acomoda una carta buena. Más seguido si va perdiendo.
+  botCheats() {
+    const r = this.room;
+    const g = r.game;
+    r.botPeek = {};
+    if (!g.trampas) return;
+    const behind = (s) => g.score[1 - team(s)] - g.score[team(s)] > g.target * BOT.behind;
+    r.seats.forEach((s, i) => {
+      if (s?.bot && rng() < (behind(i) ? BOT.peekBehind : BOT.peek)) r.botPeek[i] = true;
+    });
+    if (r.seats[g.dealer]?.bot && rng() < (behind(g.dealer) ? BOT.stackBehind : BOT.stack)) stackDeck(g, g.dealer, rng);
+  }
+
+  // Lo que necesita un bot para decidir: si espía esta mano, quiénes son bots (sus compañeros bots le
+  // pasan las cartas por señas) y lo aprendido de cada rival.
+  botCtx(seat) {
+    const r = this.room;
+    return {
+      peek: !!r.botPeek?.[seat],
+      bots: r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0),
+      brainOf: (s) => {
+        const p = r.seats[s];
+        return !p || p.bot ? null : this.brains?.[p.pid] || this.brains?.global || null;
+      },
+    };
+  }
+
+  lobby() {
+    return this.env.LOBBY.get(this.env.LOBBY.idFromName('global'));
+  }
+
+  async loadBrains() {
+    const pids = this.room.seats.filter((s) => s && !s.bot).map((s) => s.pid);
+    try {
+      this.brains = await this.lobby().brains(pids);
+    } catch (e) {
+      console.error('brains load failed', e);
+      this.brains = {};
+    }
+  }
+
+  // Al terminar la mano: lo que hicieron las personas va al Lobby, que entrena y devuelve los cerebros nuevos.
+  async flushLearning() {
+    const r = this.room;
+    for (const pid of r.claimWatch || []) this.learnBuf.push({ pid, key: 'claim', y: false });
+    r.claimWatch = null;
+    const batch = this.learnBuf.splice(0);
+    if (!batch.length) return;
+    try {
+      this.brains = { ...this.brains, ...(await this.lobby().learn(batch)) };
+    } catch (e) {
+      console.error('learn failed', e);
+    }
+  }
+
+  // Un bot dice algo en el chat (como mucho uno cada TIMING.botChatGap).
+  // A veces otro bot (mejor un rival) le contesta un rato después: se arma la charla.
+  // call: la frase ya dice el canto (el cliente no repite el "¡Truco!"). chat: puede contestarle otro bot.
+  botSay(seat, text, { call = false, chat = false, reply = false } = {}) {
+    const r = this.room;
+    const now = Date.now();
+    if (!text || seat == null || !r.seats[seat]?.bot || now - (this.lastBotChat || 0) < TIMING.botChatGap) return false;
+    this.lastBotChat = now;
+    const entry = { name: r.seats[seat].name, seat, text, ts: now, ...(call ? { call: true } : {}) };
+    this.pushChat(entry);
+    this.ctx.storage.put('chat', this.chat);
+    this.broadcastRaw({ t: 'chat', msg: entry });
+    if (chat && !reply && rng() < 0.3) {
+      const others = this.botSeats().filter((s) => s !== seat);
+      const rivals = others.filter((s) => team(s) !== team(seat));
+      const pool = rivals.length ? rivals : others;
+      if (pool.length) this.botLater(pool[Math.floor(rng() * pool.length)], talkReply(rng), 2300 + Math.floor(rng() * 1500), { reply: true });
+    }
+    return true;
+  }
+
+  // Lo dice un rato después: las reacciones salen DESPUÉS del canto o la jugada que las provocó (el estado
+  // con los eventos llega al cliente al final), así la charla sigue el orden de la mesa.
+  botLater(seat, text, ms, opts) {
+    if (!text) return false;
+    if (this.room.game?.status !== 'playing') return this.botSay(seat, text, opts); // terminó: ya no hay alarmas
+    const q = (this.room.talkQueue ||= []);
+    if (q.length >= 2) return false;
+    q.push({ seat, text, opts, at: Date.now() + ms });
+    q.sort((a, b) => a.at - b.at);
+    return true;
+  }
+
+  botSeats() {
+    return this.room.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0);
+  }
+
+  // Los bots reaccionan a lo que pasó desde la última vez (cantos, cartas, rondas, mazo, envido...).
+  botReact() {
+    const r = this.room;
+    const g = r.game;
+    if (!g) return;
+    const fresh = g.ev.filter((e) => e.id > (r.talkEv || 0)).slice(-4);
+    r.talkEv = g.evId;
+    r.lastMove = Date.now();
+    const bots = this.botSeats();
+    if (!bots.length) return;
+    const humans = r.seats.map((s, i) => (s && !s.bot ? i : -1)).filter((i) => i >= 0);
+    for (const e of fresh) {
+      const order = bots.slice().sort(() => rng() - 0.5);
+      for (const s of order) if (this.botLater(s, talkEvent(g, s, e, humans, rng), REACT_MS, { chat: true })) return;
+    }
+  }
+
+  // Charla sin que pase nada: la respuesta pendiente de otro bot, o apurar a la persona que tarda.
+  botChatter(now) {
+    const r = this.room;
+    const g = r.game;
+    const q = r.talkQueue || [];
+    while (q.length && now >= q[0].at) {
+      const t = q.shift();
+      this.botSay(t.seat, t.text, t.opts);
+    }
+    if (g.h.phase !== 'play' || now - (r.lastMove || now) < TIMING.botIdle || r.idleAt === g.evId) return;
+    const w = waitingFor(g);
+    if (!w.seats.length || w.seats.some((s) => r.seats[s]?.bot)) return;
+    r.idleAt = g.evId;
+    const rivals = this.botSeats().filter((s) => team(s) !== team(w.seats[0]));
+    const pool = rivals.length ? rivals : this.botSeats();
+    if (pool.length) this.botSay(pool[Math.floor(rng() * pool.length)], talkIdle(rng), { chat: true });
+  }
+
+  // Al terminar la mano, algún bot comenta (si le salió un farol, a veces se burla).
+  botHandTalk() {
+    const r = this.room;
+    const g = r.game;
+    const res = g.h.result;
+    const bots = r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0);
+    if (!bots.length || !res) return;
+    const b = r.bluff?.hand === g.handNo ? r.bluff : null;
+    const bluffWon = b && res.reason === 'noquiero' && res.winner === team(b.seat);
+    const seat = bluffWon ? b.seat : bots[Math.floor(rng() * bots.length)];
+    this.botLater(seat, talkHandEnd(g, seat, bluffWon, rng), REACT_MS + 400, { chat: true });
   }
 
   // Bot, o humano desconectado hace más de TIMING.afk: juega el servidor por él.
@@ -317,6 +491,13 @@ export class TrucoRoom extends DurableObject {
   onGameChange() {
     const r = this.room;
     const g = r.game;
+    if (g.status === 'ended' || (g.h.phase === 'ended' && !r.handEndedAt)) {
+      this.learnDue = true;
+      this.botHandTalk();
+    }
+    this.botReact();
+    // momento en que se cantó lo que está esperando respuesta (para el compañero bot que contesta)
+    if (['truco', 'envido', 'flor'].includes(waitingFor(g).kind)) r.callAt = Date.now();
     if (g.status === 'ended') {
       r.status = 'ended';
       const t = g.winner;
@@ -330,7 +511,7 @@ export class TrucoRoom extends DurableObject {
       const sh = g.h.show;
       const claimer = r.seats.findIndex((s, i) => s?.bot && team(i) !== team(sh.seat));
       r.botClaimAt = 0;
-      if (!r.seats[sh.seat]?.bot && claimer >= 0 && botClaims(g, claimer, rng)) {
+      if (!r.seats[sh.seat]?.bot && claimer >= 0 && botClaims(g, claimer, rng, this.botCtx(claimer))) {
         r.botClaimer = claimer;
         r.botClaimAt = r.showSince + BOT_CLAIM_DELAY + Math.floor(rng() * 4000);
       }
@@ -339,11 +520,15 @@ export class TrucoRoom extends DurableObject {
 
   // El que ganó el envido se fue al mazo sin mostrar: a los rivales les quedan TIMING.foldWindow ms para
   // reclamar (si hay un bot rival que iba a reclamar, lo hace ahora, un poco después).
-  onFold() {
+  // Si el que no mostró es un bot, se anota qué personas rivales reclaman (los bots aprenden a quién mentirle).
+  onFold(botSeat = null) {
     const r = this.room;
     const now = Date.now();
     r.showSince = now - TIMING.showWindow + TIMING.foldWindow;
     if (r.botClaimAt) r.botClaimAt = now + 1200 + Math.floor(rng() * 2000);
+    if (botSeat != null && r.seats[botSeat]?.bot) {
+      r.claimWatch = r.seats.filter((s, i) => s && !s.bot && team(i) !== team(botSeat)).map((s) => s.pid);
+    }
   }
 
   // Asiento al que le toca y que debe jugar el servidor (bot o humano ausente).
@@ -351,10 +536,29 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     const w = waitingFor(r.game);
     if (!w.seats.length) return null;
-    // Si en el equipo que responde hay un humano conectado, esperamos a que decida él.
     const now = Date.now();
-    if (w.seats.some((s) => !this.isAway(s, now))) return null;
-    return w.seats.find((s) => r.seats[s].bot) ?? w.seats[0];
+    const bot = w.seats.find((s) => r.seats[s].bot);
+    if (!w.seats.some((s) => !this.isAway(s, now))) return bot ?? w.seats[0];
+    // hay un humano conectado que puede contestar: si es un canto y tiene un compañero bot, el bot contesta
+    // por los dos después de un ratito (si el humano no lo hizo antes). Si el canto lo tiene que contestar el
+    // humano (en equipo el envido lo contesta el pie), el compañero bot decide por él.
+    const at = this.partnerAt(w);
+    return at != null && now >= at ? bot ?? w.seats[0] : null;
+  }
+
+  // Un compañero bot de `seat` que siga en la mano (null si no hay).
+  teamBot(seat) {
+    const r = this.room;
+    const i = r.seats.findIndex((s, j) => s?.bot && j !== seat && team(j) === team(seat) && !r.game.h.mazo[j]);
+    return i < 0 ? null : i;
+  }
+
+  // Cuándo contesta el compañero bot el canto pendiente (null si no corresponde).
+  partnerAt(w = waitingFor(this.room.game)) {
+    const r = this.room;
+    if (!['truco', 'envido', 'flor'].includes(w.kind) || !w.seats.length) return null;
+    if (!w.seats.some((s) => r.seats[s]?.bot) && this.teamBot(w.seats[0]) == null) return null;
+    return (r.callAt || 0) + TIMING.partnerAnswer;
   }
 
   // La mayor parte del tiempo los bots miran la mesa; a veces a un compañero o a un rival.
@@ -422,6 +626,10 @@ export class TrucoRoom extends DurableObject {
   }
 
   async commit() {
+    if (this.learnDue) {
+      this.learnDue = false;
+      await this.flushLearning();
+    }
     await this.save();
     this.broadcastState();
     await this.scheduleAlarm();
@@ -446,8 +654,10 @@ export class TrucoRoom extends DurableObject {
       if (r.botClaimAt) at = Math.min(at, r.botClaimAt);
     } else if (now < (r.dealUntil || 0)) at = Math.min(at, r.dealUntil + 50);
     else if (this.autoActor() != null) at = Math.min(at, now + TIMING.botThinkMin + Math.floor(rng() * TIMING.botThinkRand));
+    else if (this.partnerAt() != null) at = Math.min(at, Math.max(now + 100, this.partnerAt()));
     else for (const s of waitingFor(g).seats) if (r.afkSince[s]) at = Math.min(at, Math.max(now + 200, r.afkSince[s] + TIMING.afk));
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
+    if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
     await this.ctx.storage.setAlarm(Math.max(now + 100, at));
   }
 

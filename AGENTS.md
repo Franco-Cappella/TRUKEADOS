@@ -14,13 +14,15 @@ frameworks (Three.js como módulo en `public/vendor/`).
 src/                      SERVIDOR (Cloudflare Worker)
   index.js                rutas /api (crear sala, partida rápida, lobby, WebSocket)
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
-  lobby.js                Durable Object "global": mesas públicas para el menú
+  lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
 public/js/                CLIENTE (los marcados con * también los usa el servidor)
   config.js *             CONSTANTES COMPARTIDAS: modos, tiempos, rutas, señas, bots y opciones de sala (ROOM_OPTIONS)
   cards.js *              VALOR DE LAS CARTAS: jerarquía, envido, flor y muestra (funciones puras)
   engine.js *             REGLAS y estado de la mano (sin DOM): newGame, act, actionsFor, waitingFor, viewFor
-  bot.js *                jugador automático (decide solo con lo que ve un jugador)
+  bot.js *                jugador automático: Monte Carlo + lo aprendido de cada rival, faroles y trampas
+  brain.js *              lo que aprenden los bots de cada persona (regresiones logísticas online)
+  talk.js *               lo que dicen los bots en el chat: frases (BOT_TALK) y cuándo decirlas
   theme.js                COLORES del JS (escena 3D, cartas quemadas, anotador, paletas de personajes)
   dom.js                  $, esc, store (localStorage seguro), KEYS, myPid, api()
   audio.js                sonidos sintetizados y voz de los cantos
@@ -35,6 +37,7 @@ public/css/truco.css      todo el estilo; colores y tamaños en variables de :ro
 public/cards/             cartas WebP (id = número + palo: 1E, 7O, 12C… y back)
 test/truco.test.js        tests del motor y partidas completas entre bots
 test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
+test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendientes
 ```
 
@@ -89,6 +92,27 @@ npm run dev       # http://localhost:8787
   (si falla con "write EOF", es eso).
 - En el navegador: `window.__truco.room` y `window.__truco.scene` sirven para depurar desde la consola.
 - Con la pestaña oculta el navegador pausa la animación; el reparto igual se destraba solo (`startDeal`).
+
+## Bots
+- **Cómo deciden** (`bot.js`): imaginan `BOT.samples` repartos posibles de las cartas que no ven, juegan cada uno
+  hasta el final y comparan cuánto esperan ganar con cada opción (querer, no querer, subir, farolear, qué carta
+  tirar). Los puntos se miden con `utility()`, que pesa cuánto cambia la chance de ganar la partida (una falta
+  envido 0 a 0 no vale lo mismo que 28 a 12). Eligen casi siempre lo mejor, con ruido `BOT.temp`.
+- **Aprenden** (`brain.js`): cuando una persona juega, `observe()` anota qué hizo y con qué cartas de verdad; al
+  terminar la mano la sala manda eso al Lobby (`learn`), que entrena el cerebro de esa persona y uno global.
+  Los bots usan esos modelos para pesar los repartos imaginados (si cantó truco, ¿suele tener o farolea?) y para
+  estimar si el rival va a querer un farol. Cambiar las features o los modelos → subir `BRAIN_VERSION`.
+- **Trampas** (solo con la opción de trampas activa, ver `BOT` en config.js): espían las cartas de los rivales
+  algunas manos (`botPeek`), el bot que reparte se acomoda una carta buena (`stackDeck`), mienten en el envido y
+  se van sin mostrar (menos contra quien suele reclamar), y tiran dos encimadas. Más seguido si van perdiendo.
+- Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).
+- **Compañero bot**: si un canto (truco, envido, flor) lo puede contestar tu equipo y hay un bot en él, el bot
+  contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes; si el canto lo tenés que contestar vos (el envido lo contesta el pie), decide por vos (`partnerAt` en truco-room.js).
+- **Charla** (`talk.js`): los bots tiran frases en el chat al cantar y contestar (`talkFor`), reaccionan a lo que
+  hacen los demás (`talkEvent`: cantos, cartas grandes, rondas, mazo, envido, fin de partida), apuran al que tarda
+  (`TIMING.botIdle`) y a veces se contestan entre ellos. Las frases dependen de
+  la chance de ganar que calcularon, sin delatarse: con mano buena a veces se hacen los humildes y cuando
+  farolean casi siempre se hacen los guapos. Como mucho uno cada `TIMING.botChatGap` ms.
 
 ## Interfaz
 - Pantalla de partida: arriba la barra (salir, código, voz, zoom, ayuda, chat), "Mirar a" al centro y el

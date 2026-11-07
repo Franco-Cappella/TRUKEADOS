@@ -46,6 +46,9 @@ export const TIMING = {
   botThinkMin: 650, // los bots "piensan" entre 0,65 y 1,3 s: ni instantáneo ni lento
   botThinkRand: 650,
   botHeartbeat: 2500, // latido para las miradas de los bots
+  partnerAnswer: 3500, // en equipo, lo que espera el compañero bot antes de contestar un canto por los dos
+  botChatGap: 2200, // como mucho un mensaje de bot cada tanto
+  botIdle: 9000, // si una persona tarda más que esto en jugar, algún bot la apura
 };
 // Duración total de mezclar + cortar + repartir n jugadores (3 cartas cada uno).
 export const dealMs = (n) => TIMING.shuffle + TIMING.cut + n * 3 * TIMING.dealStep + TIMING.dealTail;
@@ -68,6 +71,22 @@ export const SENAS = {
 };
 export const SENA_MS = 2200; // cuánto dura la cara de una seña
 export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
+
+// ------------------------------------------------------------------ bots
+// Cómo piensan (ver bot.js y brain.js). Las trampas solo valen en mesas que las permiten.
+export const BOT = {
+  samples: 40, // manos imaginadas del rival por decisión (Monte Carlo)
+  temp: 0.15, // ruido al elegir entre cantos (en puntos): más alto = más impredecible
+  peek: 0.15, // trampa: espía las cartas de los rivales en esa mano
+  peekBehind: 0.35, // ... si va perdiendo por mucho
+  stack: 0.1, // trampa: el bot que reparte se acomoda una carta buena
+  stackBehind: 0.25,
+  lie: 0.6, // como mucho, cuántas veces miente en el envido cuando lo pierde
+  aggro: 0.3, // ganas de farolear: puntos de más que le suma a cantar y subir (más alto = más faroles)
+  double: 0.04, // tira dos cartas encimadas (con la de arriba quemada)
+  doubleKill: 0.2, // si juega último y mata, a veces deja encimada la de la ronda siguiente (no se quema)
+  behind: 1 / 6, // "va perdiendo por mucho": la diferencia supera esta parte de la partida
+};
 
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 

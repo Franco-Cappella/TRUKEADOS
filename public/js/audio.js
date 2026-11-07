@@ -50,17 +50,68 @@ export const isVoiceOn = () => voiceOn;
 export function toggleVoice() {
   voiceOn = !voiceOn;
   store.set(KEYS.voice, voiceOn ? '1' : '0');
+  if (!voiceOn) {
+    queue.length = 0;
+    current = null;
+    window.speechSynthesis?.cancel();
+  }
   return voiceOn;
 }
 
-export function say(text) {
+// Voz de cada asiento: el tono cambia para que cada uno suene distinto (y, si hay varias voces en
+// español, cada asiento usa otra).
+const PITCHES = [1, 0.8, 1.25, 0.9, 1.15, 0.7];
+const CHAT_STALE_MS = 4000; // una frase de charla que no llegó a decirse en este tiempo ya no se dice
+
+// Cola propia: el navegador solo tiene la frase que está diciendo, así se puede descartar la charla vieja
+// sin cortar los cantos. Los cantos (chat = false) se dicen siempre y antes que la charla.
+const queue = [];
+let current = null;
+
+function pump() {
+  if (current || !queue.length) return;
+  const now = Date.now();
+  while (queue.length && queue[0].chat && now - queue[0].at > CHAT_STALE_MS) queue.shift();
+  const item = queue.shift();
+  if (!item) return;
+  current = item;
+  const done = () => {
+    if (current !== item) return;
+    current = null;
+    pump();
+  };
+  item.u.onend = done;
+  item.u.onerror = done;
+  speechSynthesis.speak(item.u);
+}
+
+// Se calla la charla (lo que está diciendo y lo que esperaba): pasó algo en la mesa y ya no viene al caso.
+export function hush() {
+  for (let i = queue.length - 1; i >= 0; i--) if (queue[i].chat) queue.splice(i, 1);
+  if (current?.chat) {
+    current = null;
+    try {
+      speechSynthesis.cancel();
+    } catch {}
+    pump();
+  }
+}
+
+// chat: es charla (se descarta si pasa algo en la mesa antes de decirla); si no, es un canto.
+export function say(text, seat = null, { chat = false } = {}) {
   if (!voiceOn || !window.speechSynthesis) return;
   try {
     const u = new SpeechSynthesisUtterance(text);
     const voices = speechSynthesis.getVoices();
-    u.voice = voices.find((v) => v.lang === 'es-AR') || voices.find((v) => v.lang?.startsWith('es')) || null;
+    const es = voices.filter((v) => v.lang?.startsWith('es'));
+    const ar = es.filter((v) => v.lang === 'es-AR');
+    const pool = ar.length ? ar : es;
+    u.voice = (seat != null && pool.length ? pool[seat % pool.length] : pool[0]) || null;
     u.lang = u.voice?.lang || 'es-AR';
     u.rate = 1.05;
-    speechSynthesis.speak(u);
+    if (seat != null) u.pitch = PITCHES[seat % PITCHES.length];
+    if (!chat) hush(); // un canto corta la charla
+    queue.push({ u, chat, at: Date.now() });
+    pump();
   } catch {}
 }

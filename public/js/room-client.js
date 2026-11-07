@@ -4,12 +4,13 @@ import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME
 import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, biteAt } from './characters.js';
 import { $, esc, store, KEYS, myPid, savedName, takeSession, initial } from './dom.js';
-import { audio, flick, ding, say } from './audio.js';
+import { audio, flick, ding, say, hush } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
 const PREDICT_MS = 4000;
+const VOICED_MS = 3000; // la frase de un bot que ya dijo su canto tapa el globo del canto que llega enseguida
 const DEAL_MARGIN_MS = 80; // margen sobre el fin del reparto del servidor (por la latencia) // un evento propio dentro de este tiempo ya se mostró por adelantado
 const cardImg = (c, alt = '') => `<img src="${ROUTES.card(c)}" alt="${esc(alt)}">`;
 
@@ -94,6 +95,7 @@ export class RoomClient {
   act(a) {
     if (this.busy) return;
     audio();
+    hush(); // jugaste: lo que los bots iban a decir de antes ya no viene al caso
     if (!this.send({ t: 'act', a })) return;
     this.busy = true;
     clearTimeout(this.busyT);
@@ -122,12 +124,12 @@ export class RoomClient {
     if (said) {
       const [type, bubble, voice] = said;
       this.bubble(me, bubble, type === 'mazo' ? '' : 'call', 2600);
-      if (voice) say(voice);
+      if (voice) say(voice, me);
       this.predicted = { type, until: Date.now() + PREDICT_MS };
     }
     if (a.t === 'play' || a.t === 'play2') {
       const round = g.h.r;
-      // mismas reglas que el motor: tapada o fuera de turno se quema; la de arriba de dos encimadas también
+      // mismas reglas que el motor: tapada o fuera de turno se quema; la de arriba de dos encimadas se decide al cerrar la ronda
       const faceDown = a.mode === 'down';
       const cards = a.t === 'play'
         ? [{ c: a.card, faceDown, round, burned: faceDown || !g.actions.play }]
@@ -329,15 +331,15 @@ export class RoomClient {
     const shown = this.wasPredicted(e); // lo mío ya se mostró al tocar el botón
     switch (e.type) {
       case 'call':
-        if (shown) break;
+        if (shown || this.takeVoiced(e.seat)) break; // un bot ya lo dijo con su frase ("Retruco, y no me hagas perder tiempo")
         this.bubble(e.seat, `¡${e.text}!`, 'call', 2600);
-        say(e.text);
+        say(e.text, e.seat);
         break;
       case 'tanto': {
         if (shown) break;
         const txt = e.value == null ? 'Son buenas' : `${e.value}`;
         this.bubble(e.seat, txt, 'call', 4000);
-        say(txt);
+        say(txt, e.seat);
         break;
       }
       case 'mazo':
@@ -346,6 +348,7 @@ export class RoomClient {
         break;
       case 'play':
         if (!shown) flick();
+        hush(); // se tiró una carta: la charla que venía de antes se calla
         // dos encimadas NO se avisa: se descubre al terminar la ronda (ver noticeBurned)
         if (e.outOfTurn) {
           const who = e.seat === me ? 'Tiraste' : `${name(e.seat)} tiró`;
@@ -360,7 +363,7 @@ export class RoomClient {
         break;
       case 'denuncia':
         this.bubble(e.seat, 'A ver, mostrá las dos', 'call', 2600);
-        say('A ver, mostrá las dos');
+        say('A ver, mostrá las dos', e.seat);
         if (e.ok) this.toast(`${name(e.target)} levantó la carta quemada: abajo había ${e.cards.map((c) => esc(cardName(c))).join(' y ')}.<br>${e.cards.map((c) => cardImg(c)).join('')}`, 'good', 5000);
         else this.toast(`${name(e.target)} no había tirado dos cartas encimadas.`, '', 3500);
         break;
@@ -392,11 +395,10 @@ export class RoomClient {
       case 'nomuestra':
         if (!shown) this.bubble(e.seat, 'Me voy al mazo', '', 2400);
         flick(0.15, 0.2);
-        if (e.seat !== me && me != null && team(e.seat) !== team(me)) this.toast(`${name(e.seat)} se fue al mazo sin mostrar los tantos. ¿Le reclamás? Si no, valen.`, 'bad', 5000);
         break;
       case 'reclamo':
         this.bubble(e.seat, '¡A ver esos tantos!', 'call', 2600);
-        say('¡A ver esos tantos!');
+        say('¡A ver esos tantos!', e.seat);
         this.toast(`${name(e.seat)} reclamó: ${name(e.target)} no mostró. Pierde los puntos del envido.`, 'bad', 5000);
         break;
       case 'show-timeout':
@@ -507,6 +509,14 @@ export class RoomClient {
   }
 
   // ---------------------------------------------------- chat
+  // ¿El próximo canto de este asiento ya lo dijo un bot con su frase? (se usa una sola vez)
+  takeVoiced(seat) {
+    const v = this.voiced;
+    if (!v || v.seat !== seat || Date.now() > v.until) return false;
+    this.voiced = null;
+    return true;
+  }
+
   addChat(msg, live) {
     const log = $('#chat-log');
     const div = document.createElement('div');
@@ -516,7 +526,14 @@ export class RoomClient {
     } else {
       const t = msg.seat == null ? '' : `t${team(msg.seat)}`;
       div.innerHTML = `<b class="${t}">${esc(msg.name)}:</b> ${esc(msg.text)}`;
-      if (live && msg.seat != null) this.bubble(msg.seat, msg.text, 'chat', 4500);
+      // lo que escribe cada uno (bots incluidos) sale en un globo y se lee en voz alta, como si lo dijera.
+      // Si la frase de un bot ya dice su canto (msg.call), reemplaza al globo y la voz del canto.
+      if (live && msg.seat != null) {
+        this.bubble(msg.seat, msg.text, msg.call ? 'call' : 'chat', Math.max(3500, Math.min(8000, 1500 + msg.text.length * 70)));
+        // la frase de un bot que dice su canto es un canto; lo demás es charla (se corta si pasa algo en la mesa)
+        if (msg.seat !== this.you) say(msg.text, msg.seat, { chat: !msg.call });
+        if (msg.call) this.voiced = { seat: msg.seat, until: Date.now() + VOICED_MS };
+      }
     }
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
@@ -593,7 +610,8 @@ export class RoomClient {
       'next-hand': () => 'Fin de la mano',
       show: () => {
         const sh = g.h.show;
-        if (sh.folded) return sh.seat === me ? 'Te fuiste al mazo sin mostrar' : `${who(sh.seat)} se fue al mazo sin mostrar`;
+        // no se dice "sin mostrar": que el rival tenga que darse cuenta solo
+        if (sh.folded) return sh.seat === me ? 'Te fuiste al mazo' : `${who(sh.seat)} se fue al mazo`;
         return mine ? `Ganaste el envido con ${sh.value}: mostrá las cartas` : `${who(sh.seat)} tiene que mostrar sus ${sh.value}`;
       },
     };
@@ -601,7 +619,7 @@ export class RoomClient {
     let hint = '';
     if (this.choosingTop) {
       t = 'Dos encimadas';
-      hint = 'Elegí la de arriba: será tu carta de la ronda siguiente, quemada (vale un 4).';
+      hint = 'Elegí la de arriba: tu carta de la ronda siguiente. Si la de abajo mata vale normal; si no, se quema.';
     } else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
     else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
     else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
@@ -681,8 +699,9 @@ export class RoomClient {
     }
     if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }));
     for (const k of a.flor) add('flor', 'Flor', FLOR_NAMES[k], k === 'achico' || k === 'noquiero' ? 'danger' : 'call', acting({ t: 'flor', kind: k }), g.h.myFlor != null ? `Tu flor: ${g.h.myFlor}` : '');
-    if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', 'good', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');
-    if (a.nomostrar) add('mostrar', 'Envido', 'Irme al mazo sin mostrar', '', acting({ t: 'nomostrar' }), 'Si nadie te reclama en unos segundos, los tantos valen; si te reclaman, los perdés');
+    // mismo color que "Irme al mazo": que no se note cuál conviene
+    if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', '', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');
+    if (a.nomostrar) add('mostrar', 'Envido', 'Irme al mazo', '', acting({ t: 'nomostrar' }), 'Si nadie te reclama en unos segundos, los tantos valen; si te reclaman, los perdés');
     if (a.reclamar) add('mostrar', 'Envido', 'A ver esos tantos', 'call', acting({ t: 'reclamar' }), 'Si no los muestra, pierde los puntos del envido');
     if (a.quiero) add('resp', 'Responder', 'Quiero', 'good', acting({ t: 'quiero' }));
     if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', acting({ t: 'noquiero' }));

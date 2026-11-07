@@ -131,7 +131,7 @@ const teamSeats = (g, t) => Array.from({ length: g.n }, (_, i) => i).filter((i) 
 const myTanto = (g, seat) => tanto(g.h.cards[seat], g.h.muestra);
 
 // Quién de un equipo puede cantar/contestar el envido: el pie (o, si se fue al mazo, el que quede).
-function envidoVoices(g, t) {
+export function envidoVoices(g, t) {
   const seats = teamSeats(g, t).filter((s) => active(g.h, s));
   if (g.n === 2) return seats;
   const pie = seats.filter((s) => isPie(g, s));
@@ -199,12 +199,12 @@ function faltaPoints(g, winnerTeam) {
   return g.target - g.score[leader];
 }
 
-function envidoAcceptedPoints(g, calls, winnerTeam) {
+export function envidoAcceptedPoints(g, calls, winnerTeam) {
   if (calls.includes('falta')) return faltaPoints(g, winnerTeam);
   return calls.reduce((s, c) => s + (c === 'envido' ? 2 : 3), 0);
 }
 
-function envidoDeclinedPoints(g, calls, winnerTeam) {
+export function envidoDeclinedPoints(g, calls, winnerTeam) {
   if (calls.length <= 1) return 1;
   return envidoAcceptedPoints(g, calls.slice(0, -1), winnerTeam);
 }
@@ -331,9 +331,10 @@ export function act(g, seat, a) {
     }
 
     // Dos cartas encimadas (trampa). La de abajo juega esta ronda (los rivales no la ven). La de
-    // arriba ya está en la mesa y no se puede levantar: es tu jugada de la ronda SIGUIENTE, quemada
-    // (vale un 4). Mientras dura esta ronda parece una carta normal; al terminar la ronda se ve
-    // quemada, y ahí los rivales pueden pedir "mostrá las dos". Ver docs/REGLAS.md.
+    // arriba ya está en la mesa y no se puede levantar: es tu jugada de la ronda SIGUIENTE. Si la de
+    // abajo mata (y entonces arrancás vos la ronda siguiente), la de arriba vale normal: era tu turno.
+    // Si no (perdiste, mató tu compañero o fue parda), se quema (vale un 4) y al terminar la ronda se ve quemada; ahí los rivales pueden
+    // pedir "mostrá las dos". Ver docs/REGLAS.md.
     case 'play2': {
       if (!g.trampas) return { error: 'En esta mesa no se permiten trampas' };
       const err = checkPlayTurn(g, w, seat);
@@ -671,7 +672,8 @@ function autoPre(g) {
   const c = h.pre[s];
   if (h.phase !== 'play' || !c || played(h, s)) return;
   h.pre[s] = null;
-  h.rounds[h.r].plays.push({ seat: s, c, burned: true });
+  const burned = h.table[s].find((p) => p.over && p.c === c)?.burned !== false;
+  h.rounds[h.r].plays.push(burned ? { seat: s, c, burned } : { seat: s, c });
   advanceTurn(g);
 }
 
@@ -695,6 +697,13 @@ function resolveRound(g) {
     for (let k = 0; k < g.n && !active(h, starter); k++) starter = (h.mano + k) % g.n;
   }
   // la ronda siguiente la empieza el que ganó la anterior (en parda, la mano) — [R] glosario, "Mano"
+  // la de arriba de dos encimadas solo vale si el que la tiró MATÓ esta ronda con la de abajo (entonces arranca
+  // él la siguiente: es su turno). Si perdió, si mató el compañero o si fue parda, se quema.
+  h.table.forEach((list, s) => {
+    if (!h.pre[s]) return;
+    const top = list.find((p) => p.over && p.c === h.pre[s]);
+    if (top) top.burned = R.winnerSeat !== s;
+  });
   h.rounds.push({ plays: [], result: null, starter });
   h.turn = starter;
   autoPre(g);

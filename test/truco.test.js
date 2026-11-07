@@ -411,6 +411,29 @@ test('ganar primera y perder segunda no termina la mano: se juega tercera', () =
   assert.equal(g.h.turn, 1); // tercera la empieza el que ganó segunda
 });
 
+test('dos encimadas: si la de abajo mata, la de arriba no se quema (arrancás vos la ronda siguiente)', () => {
+  const g = fixed([['3E', '1E', '5C'], ['4O', '6O', '12B']], { dealer: 0 }); // el 1 es mano: el 0 juega último
+  ok(act(g, 1, { t: 'play', card: '4O' }));
+  ok(act(g, 0, { t: 'play2', bottom: '3E', top: '1E' })); // mata con el 3 y deja el ancho arriba
+  assert.equal(g.h.rounds[0].result, 0);
+  // segunda la arranca el 0: su ancho juega solo y vale como ancho, no quemado
+  assert.deepEqual(g.h.rounds[1].plays[0], { seat: 0, c: '1E' });
+  assert.equal(viewFor(g, 1).h.table[0][1].burned, false);
+  assert.equal(g.h.turn, 1);
+  ok(act(g, 1, { t: 'play', card: '12B' }));
+  assert.equal(g.h.phase, 'ended');
+  assert.equal(g.h.result.winner, 0);
+});
+
+test('dos encimadas: en parda la de arriba se quema aunque seas mano', () => {
+  const g = fixed([['3E', '1E', '5C'], ['3O', '6O', '12B']]); // el 0 es mano
+  ok(act(g, 0, { t: 'play2', bottom: '3E', top: '1E' }));
+  ok(act(g, 1, { t: 'play', card: '3O' })); // parda
+  assert.equal(g.h.rounds[0].result, 'parda');
+  assert.deepEqual(g.h.rounds[1].plays[0], { seat: 0, c: '1E', burned: true });
+  assert.equal(viewFor(g, 1).h.table[0][1].burned, true);
+});
+
 test('pedir que muestre las dos: se ve la de abajo y no hay puntos', () => {
   const g = fixed([['1E', '4E', '5C'], ['3O', '6O', '12B']]);
   ok(act(g, 0, { t: 'play2', bottom: '4E', top: '1E' }));

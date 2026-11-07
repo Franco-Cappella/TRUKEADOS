@@ -14,7 +14,8 @@ Truco argentino online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**. Corre entero en
 - **Trampa**: tirar dos cartas encimadas. La de abajo juega; la de arriba queda **quemada**. Los rivales pueden
   pedir "mostrá las dos".
 - **Online** con salas por código de 4 números, enlace `/sala/CÓDIGO`, partida rápida, mesas públicas,
-  modo espectador y práctica con bots. Los bots ocupan lugares y juegan por quien se desconecta.
+  modo espectador y práctica con bots. Los bots ocupan lugares y juegan por quien se desconecta; aprenden cómo
+  juega cada persona, farolean y, si la mesa permite trampas, también hacen trampa.
 - Chat con frases rápidas, globos sobre cada jugador y voz que canta los cantos.
 
 Reglas completas (y las que faltan): [docs/REGLAS.md](docs/REGLAS.md).
