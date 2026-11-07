@@ -1,6 +1,6 @@
 # Cambios
 
-## 1.7.6 — "30 en mesa" y bots que leen las señas
+## 1.8.1 — "30 en mesa" y bots que leen las señas
 - **Mostrar los tantos**: el que muestra dice "30 en mesa" (globo y voz) y tira a la mesa, boca arriba, las cartas
   de sus tantos que le quedaban en la mano (las tapadas se dan vuelta). Ya no aparece el cartelito con las cartas.
   Si no tenía lo que cantó, un rival le dice "¡Cantaste 33!" y el envido va para el otro equipo.
@@ -10,6 +10,16 @@
 - **Los bots leen las señas**: las de su compañero siempre y las de un rival si justo lo estaban mirando. Con eso
   imaginan mejor las manos (si te guiñó, tenés el ancho de basto; "30 o más" pesa los tantos) y deciden qué cantar,
   querer y tirar con lo que tiene el equipo.
+
+## 1.8.0 — cuentas y menú nuevo
+- **Sin cuenta no se juega.** Se entra con Google o con mail y contraseña (Supabase Auth). La primera vez se elige
+  el nombre, que es único y es el que aparece en la mesa y en el ranking. Si te pasan `/sala/CÓDIGO` sin sesión,
+  entrás y volvés a esa sala.
+- El servidor ya no cree en el `pid` ni el nombre que manda el navegador: los saca del token de la sesión
+  (`src/auth.js`) al crear salas, en la partida rápida y al entrar por WebSocket (`join {token}`).
+- **Menú con pestañas**: Jugar, Mesas (todas las públicas), Historial, Tienda y Personalizar (estas tres,
+  próximamente) y Perfil (ELO de cada modo, cerrar sesión). Arriba, tu usuario y tus monedas.
+- Base de datos en Supabase: tabla `profiles` (nombre, monedas, ELO y partidas por modo). Ver `docs/CUENTAS.md`.
 
 ## 1.7.5 — tantos en equipo, tantos a la vista y desconexiones
 - **Arreglado**: en equipo, al que le tocaba cantar los tantos cuando su equipo ya iba ganando se lo salteaba y, si

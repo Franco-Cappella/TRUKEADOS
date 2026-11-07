@@ -1,5 +1,4 @@
 // Ayudas chicas del navegador: selectores, escape de HTML, preferencias guardadas y API.
-import { PID_RE } from './config.js';
 
 export const $ = (s, el = document) => el.querySelector(s);
 export const $$ = (s, el = document) => el.querySelectorAll(s);
@@ -25,24 +24,13 @@ export const store = {
 
 // Claves de lo que se guarda en el navegador (un solo lugar para no pisarse).
 export const KEYS = {
-  pid: 'truco-pid',
-  name: 'truco-name',
+  name: 'truco-name', // el nombre del perfil (lo pone auth.js al iniciar sesión)
   voice: 'truco-voice',
   zoomTip: 'truco-zoom-tip',
   spectate: 'truco-spectate', // sessionStorage
   autostart: 'truco-autostart', // sessionStorage
   lastMode: 'truco-last-mode', // último modo elegido (para armar la mesa)
 };
-
-// Identificador anónimo y estable de este navegador (el servidor lo usa para el asiento).
-export function myPid() {
-  let p = store.get(KEYS.pid);
-  if (!p || !PID_RE.test(p)) {
-    p = (crypto.randomUUID?.() || String(Math.random()).slice(2) + Date.now()).replace(/-/g, '');
-    store.set(KEYS.pid, p);
-  }
-  return p;
-}
 
 export const savedName = () => store.get(KEYS.name) || 'Invitado';
 
@@ -56,10 +44,18 @@ export function takeSession(key, value) {
   return hit;
 }
 
+// Token de la sesión para los pedidos (lo configura auth.js; así dom.js no depende de Supabase).
+let getToken = async () => null;
+export const setTokenGetter = (fn) => (getToken = fn);
+export const sessionToken = () => getToken();
+
+// Pedido a /api con la sesión. Un 401 avisa con un evento para que main.js vuelva a la pantalla de entrada.
 export async function api(path, body) {
-  const opts = body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {};
-  const res = await fetch(path, opts);
+  const token = await getToken();
+  const headers = { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) };
+  const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) dispatchEvent(new Event('trukeados:logout'));
   if (!res.ok) throw new Error(data.error || 'Error de conexión');
   return data;
 }

@@ -14,20 +14,68 @@
   <script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
 </head>
 <body>
-  <!-- ============ MENÚ ============ -->
-  <section id="menu" class="screen">
-    <div class="m-wrap">
+  <!-- ============ ENTRADA (sin sesión no se juega) ============ -->
+  <section id="boot" class="screen a-screen"><p class="muted">Cargando…</p></section>
+
+  <section id="login" class="screen a-screen hidden">
+    <div class="m-wrap a-wrap">
       <header class="m-head">
         <h1>Truke<span>ados</span></h1>
         <p class="tag">Truco argentino en 3D, con señas de verdad.</p>
       </header>
-
       <div class="m-card">
-        <label class="m-name">
-          <span class="w-av" id="name-av">?</span>
-          <input id="name" maxlength="20" placeholder="¿Cómo te llaman en la mesa?" autocomplete="nickname">
-        </label>
+        <h3 id="login-title">Entrá para jugar</h3>
+        <button class="btn big a-google" id="login-google" type="button">Entrar con Google</button>
+        <div class="a-or"><span>o con tu mail</span></div>
+        <form id="login-form" class="a-form">
+          <input id="login-email" type="email" placeholder="Tu mail" autocomplete="email" required aria-label="Mail">
+          <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required aria-label="Contraseña">
+          <button class="btn primary" id="login-submit">Entrar</button>
+        </form>
+        <p class="a-msg" id="login-msg" role="status"></p>
+        <p class="a-switch"><span id="login-switch-text">¿Primera vez?</span> <button type="button" class="a-link" id="login-switch">Creá tu cuenta</button></p>
+      </div>
+    </div>
+  </section>
 
+  <section id="onboard" class="screen a-screen hidden">
+    <div class="m-wrap a-wrap">
+      <header class="m-head"><h1>Truke<span>ados</span></h1></header>
+      <form class="m-card" id="onboard-form">
+        <h3>¿Cómo te llaman en la mesa?</h3>
+        <label class="m-name">
+          <span class="w-av" id="onboard-av">?</span>
+          <input id="onboard-name" maxlength="20" placeholder="Tu nombre" autocomplete="nickname" required spellcheck="false">
+        </label>
+        <p class="a-hint" id="onboard-hint"></p>
+        <button class="btn primary big">Listo, a jugar</button>
+        <p class="a-msg" id="onboard-msg" role="status"></p>
+        <p class="a-switch">Es tu nombre en la mesa y en el ranking: nadie más lo puede usar. <button type="button" class="a-link" id="onboard-out">Salir</button></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ MENÚ ============ -->
+  <section id="menu" class="screen hidden">
+    <div class="h-wrap">
+      <header class="h-top">
+        <h1 class="h-logo">Truke<span>ados</span></h1>
+        <button class="h-user" type="button" data-tab="perfil" title="Tu perfil">
+          <span class="w-av" id="me-av">?</span>
+          <span class="h-uname"><b id="me-name"></b><small id="me-sub"></small></span>
+        </button>
+      </header>
+
+      <nav class="h-tabs" id="tabs" aria-label="Menú">
+        <button type="button" data-tab="jugar" class="on">Jugar</button>
+        <button type="button" data-tab="mesas">Mesas</button>
+        <button type="button" data-tab="historial">Historial</button>
+        <button type="button" data-tab="tienda">Tienda</button>
+        <button type="button" data-tab="personalizar">Personalizar</button>
+        <button type="button" data-tab="perfil">Perfil</button>
+      </nav>
+
+      <div class="m-card h-panel" data-panel="jugar">
         <div class="m-main">
           <button class="btn primary big m-create" id="create" type="button">Armar una mesa<small>Elegís las reglas adentro e invitás a quien quieras</small></button>
           <form id="join-form" class="m-join">
@@ -57,9 +105,41 @@
         </div>
 
         <div class="m-public hidden" id="public-wrap">
-          <h3>Mesas públicas <small id="public-count"></small></h3>
+          <h3>Mesas públicas <small id="public-count"></small> <button type="button" class="a-link" data-tab="mesas">Ver todas</button></h3>
           <div id="public-list" class="m-tables"></div>
         </div>
+      </div>
+
+      <div class="m-card h-panel hidden" data-panel="mesas">
+        <h3>Mesas públicas</h3>
+        <div id="public-all" class="m-tables"></div>
+        <p class="muted hidden" id="public-empty">No hay mesas públicas ahora. Armá una o entrá a una partida rápida.</p>
+      </div>
+
+      <div class="m-card h-panel hidden" data-panel="historial">
+        <h3>Historial <small>próximamente</small></h3>
+        <p class="h-soon">Todas tus partidas van a quedar acá. Vas a poder rebobinarlas mano por mano y ver el análisis: dónde la jugaste bien, qué canto te costó la partida y qué hubiera convenido.</p>
+      </div>
+
+      <div class="m-card h-panel hidden" data-panel="tienda">
+        <h3>Tienda <small>próximamente</small></h3>
+        <p class="h-soon">Con las monedas que ganás jugando vas a poder comprar mazos, mesas, objetos para el bar y ropa para tu personaje. Nada se compra con plata.</p>
+        <p class="h-coins">Tenés <b id="shop-coins">0</b> monedas.</p>
+      </div>
+
+      <div class="m-card h-panel hidden" data-panel="personalizar">
+        <h3>Personalizar <small>próximamente</small></h3>
+        <p class="h-soon">Tu personaje, tu mazo y tu mesa: lo que compres en la tienda lo elegís acá, y los demás lo ven en la partida.</p>
+      </div>
+
+      <div class="m-card h-panel hidden" data-panel="perfil">
+        <div class="p-head">
+          <span class="w-av" id="profile-av">?</span>
+          <span class="h-uname"><b id="profile-name"></b><small id="profile-email"></small></span>
+        </div>
+        <h3>ELO <small>solo partidas entre personas, sin bots</small></h3>
+        <div class="p-elo" id="profile-elo"></div>
+        <button class="btn ghost" type="button" id="logout">Cerrar sesión</button>
       </div>
 
       <footer class="credits">

@@ -18,5 +18,11 @@
     ]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TrucoRoom", "Lobby"] }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Supabase (cuentas y base de datos). Estos dos son públicos: el navegador los usa para iniciar sesión.
+  // La clave secreta va aparte, como secreto: npx wrangler secret put SUPABASE_SECRET_KEY (ver docs/CUENTAS.md).
+  "vars": {
+    "SUPABASE_URL": "https://kvcmmwtptgpwnxjqlpxh.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_FSuHcj4rHi1f4AjywOh1zw_rpwzoGsm"
+  }
 }

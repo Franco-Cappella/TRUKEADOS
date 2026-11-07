@@ -28,6 +28,8 @@ export const ROUTES = {
     ws: (code) => `/api/rooms/${code}/ws`,
     quick: '/api/quick',
     lobby: '/api/lobby',
+    config: '/api/config',
+    me: '/api/me',
   },
   card: (id) => `/cards/${id}.webp`,
 };
@@ -94,8 +96,18 @@ export const BOT = {
 
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 
+// ------------------------------------------------------------------ cuentas (Supabase Auth)
+// Sin cuenta no se juega: el servidor pide el token de Supabase para crear salas, entrar y mirar.
+export const AUTH = {
+  usernameRe: /^[\p{L}\p{N}_.]{3,20}$/u, // el nombre en la mesa y en el ranking: único, sin espacios
+  usernameHint: 'Entre 3 y 20 letras o números (también _ y .), sin espacios',
+  minPassword: 6,
+  jwksTtl: 10 * 60_000, // cada cuánto el servidor vuelve a bajar las claves públicas de Supabase
+  profileTtl: 60_000, // cuánto se guarda un perfil leído en memoria del Worker
+};
+export const ELO_START = 1200;
+
 // ------------------------------------------------------------------ validación
-export const PID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 export const CODE_RE = /^\d{4}$/;
 
 // ------------------------------------------------------------------ opciones de la sala

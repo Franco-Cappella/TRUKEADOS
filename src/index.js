@@ -1,8 +1,11 @@
 // Worker: rutas /api. Los archivos estáticos (public/) los sirve Cloudflare directamente;
 // /sala/CÓDIGO cae en index.html por "single-page-application" (ver wrangler.jsonc).
+// Todo lo que sea jugar pide sesión de Supabase (ver auth.js): el jugador es el id de su cuenta y su nombre,
+// el del perfil. El navegador ya no elige ni su identificador ni su nombre.
 import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
-import { cleanName, cleanPid, newRoomCode, json } from './util.js';
+import { newRoomCode, json } from './util.js';
+import { requireUser, createProfile } from './auth.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -19,9 +22,12 @@ async function createRoom(env, opts) {
   throw new Error('No se pudo crear la sala');
 }
 
-async function readPlayer(request) {
+// Jugador logueado y con perfil, más el cuerpo del pedido. Si falta la sesión, { error: Response }.
+async function readPlayer(env, request) {
+  const auth = await requireUser(env, request);
+  if (auth.error) return auth;
   const body = await request.json().catch(() => ({}));
-  return { body, pid: cleanPid(body.pid), name: cleanName(body.name) };
+  return { body, pid: auth.user.id, name: auth.profile.username };
 }
 
 export default {
@@ -29,9 +35,29 @@ export default {
     const path = new URL(request.url).pathname;
     const method = request.method;
 
+    // lo público del proyecto de Supabase, para que el navegador pueda iniciar sesión
+    if (path === '/api/config' && method === 'GET') {
+      return json({ supabaseUrl: env.SUPABASE_URL || '', supabaseKey: env.SUPABASE_PUBLISHABLE_KEY || '' });
+    }
+
+    if (path === '/api/me' && method === 'GET') {
+      const auth = await requireUser(env, request, { allowNoProfile: true });
+      return auth.error || json({ user: auth.user, profile: auth.profile });
+    }
+
+    // primera vez: elegir el nombre con el que aparece en la mesa y en el ranking
+    if (path === '/api/me' && method === 'POST') {
+      const auth = await requireUser(env, request, { allowNoProfile: true });
+      if (auth.error) return auth.error;
+      if (auth.profile) return json({ error: 'Ya tenés un perfil' }, 409);
+      const body = await request.json().catch(() => ({}));
+      const r = await createProfile(env, auth.user.id, body.username);
+      return r.error ? json({ error: r.error }, 400) : json({ user: auth.user, profile: r.profile });
+    }
+
     if (path === '/api/rooms' && method === 'POST') {
-      const { body, pid, name } = await readPlayer(request);
-      if (!pid) return json({ error: 'pid inválido' }, 400);
+      const { error, body, pid, name } = await readPlayer(env, request);
+      if (error) return error;
       const code = await createRoom(env, {
         mode: pickMode(body.mode),
         target: TARGETS.includes(Number(body.target)) ? Number(body.target) : DEFAULT_TARGET,
@@ -44,8 +70,8 @@ export default {
     }
 
     if (path === '/api/quick' && method === 'POST') {
-      const { body, pid, name } = await readPlayer(request);
-      if (!pid) return json({ error: 'pid inválido' }, 400);
+      const { error, body, pid, name } = await readPlayer(env, request);
+      if (error) return error;
       const mode = pickMode(body.mode);
       const found = await lobbyStub(env).findOpen(mode);
       if (found) return json({ code: found, joined: true });

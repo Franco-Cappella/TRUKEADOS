@@ -4,7 +4,8 @@ import { botAction, botSena, botClaims, botShow, stackDeck } from '../public/js/
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
-import { cleanName, cleanPid, rng } from './util.js';
+import { cleanName, rng } from './util.js';
+import { verifyToken, getProfile } from './auth.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
 const REACT_MS = 1100; // las reacciones de los bots salen un poco después de lo que las provocó
@@ -79,16 +80,24 @@ export class TrucoRoom extends DurableObject {
     if (msg.t === 'ping') return this.send(ws, { t: 'pong', now: Date.now() });
     if (!this.room) return this.send(ws, { t: 'notfound' });
 
+    // entrar pide sesión: el jugador es el id de la cuenta y el nombre, el de su perfil (ver src/auth.js)
+    let account = null;
+    if (msg.t === 'join') {
+      const user = await verifyToken(this.env, msg.token);
+      const profile = user && (await getProfile(this.env, user.id).catch(() => null));
+      if (!profile) return this.send(ws, { t: 'auth' });
+      account = { pid: user.id, name: profile.username };
+    }
+
     const r = this.room;
-    const pid = msg.t === 'join' ? cleanPid(msg.pid) : ws.deserializeAttachment()?.pid;
+    const pid = account ? account.pid : ws.deserializeAttachment()?.pid;
     const seat = pid ? this.seatOf(pid) : null;
     const isHost = pid && pid === r.host;
     const lobbyHost = isHost && r.status === 'lobby';
 
     switch (msg.t) {
       case 'join': {
-        if (!pid) return this.send(ws, { t: 'error', msg: 'Identificador inválido' });
-        const name = cleanName(msg.name);
+        const name = cleanName(account.name);
         ws.serializeAttachment({ pid, name });
         if (seat != null) {
           r.seats[seat].name = name;
