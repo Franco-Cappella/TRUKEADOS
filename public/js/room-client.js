@@ -95,7 +95,7 @@ export class RoomClient {
   act(a) {
     if (this.busy) return;
     audio();
-    hush(); // jugaste: lo que los bots iban a decir de antes ya no viene al caso
+    hush(true); // jugaste: se corta lo que se estaba diciendo y lo tuyo se dice ya
     if (!this.send({ t: 'act', a })) return;
     this.busy = true;
     clearTimeout(this.busyT);

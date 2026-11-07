@@ -86,9 +86,10 @@ function pump() {
 }
 
 // Se calla la charla (lo que está diciendo y lo que esperaba): pasó algo en la mesa y ya no viene al caso.
-export function hush() {
-  for (let i = queue.length - 1; i >= 0; i--) if (queue[i].chat) queue.splice(i, 1);
-  if (current?.chat) {
+// all: también los cantos (jugaste vos: lo tuyo se dice ya, sin esperar a que terminen los demás).
+export function hush(all = false) {
+  for (let i = queue.length - 1; i >= 0; i--) if (all || queue[i].chat) queue.splice(i, 1);
+  if (current && (all || current.chat)) {
     current = null;
     try {
       speechSynthesis.cancel();

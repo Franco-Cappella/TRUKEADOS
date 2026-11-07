@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow }
 import { botAction, botSena, botClaims, botShow, stackDeck } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, cleanPid, rng } from './util.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
@@ -293,7 +293,7 @@ export class TrucoRoom extends DurableObject {
         changed = closeShow(g);
       }
       if (changed) this.onGameChange();
-    } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0)) {
+    } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0) && now >= (r.botReadyAt || 0)) {
       const actor = this.autoActor();
       const ctx = actor != null && this.botCtx(actor);
       const before = waitingFor(g);
@@ -329,6 +329,8 @@ export class TrucoRoom extends DurableObject {
     r.dealUntil = Date.now() + dealMs(r.game.n);
     r.botSenaDue = {};
     r.claimWatch = null;
+    r.paceEv = r.game.evId;
+    r.botReadyAt = 0;
     this.botCheats();
     this.botReact();
     if (r.game.n > 2) {
@@ -402,6 +404,7 @@ export class TrucoRoom extends DurableObject {
     const now = Date.now();
     if (!text || seat == null || !r.seats[seat]?.bot || now - (this.lastBotChat || 0) < TIMING.botChatGap) return false;
     this.lastBotChat = now;
+    this.waitTalk(now, text);
     const entry = { name: r.seats[seat].name, seat, text, ts: now, ...(call ? { call: true } : {}) };
     this.pushChat(entry);
     this.ctx.storage.put('chat', this.chat);
@@ -422,7 +425,10 @@ export class TrucoRoom extends DurableObject {
     if (this.room.game?.status !== 'playing') return this.botSay(seat, text, opts); // terminó: ya no hay alarmas
     const q = (this.room.talkQueue ||= []);
     if (q.length >= 2) return false;
-    q.push({ seat, text, opts, at: Date.now() + ms });
+    const at = Date.now() + ms;
+    q.push({ seat, text, opts, at });
+    // nadie juega mientras se dice (las respuestas entre bots no frenan: si alguien juega, se callan)
+    if (!opts?.reply) this.waitTalk(at, text);
     q.sort((a, b) => a.at - b.at);
     return true;
   }
@@ -488,9 +494,33 @@ export class TrucoRoom extends DurableObject {
     return now - (r.afkSince[seat] || now) >= TIMING.afk;
   }
 
+  // Los bots no juegan hasta que se terminó de decir lo que empieza en `at` (más un respiro).
+  waitTalk(at, text) {
+    const r = this.room;
+    r.botReadyAt = Math.max(r.botReadyAt || 0, at + speechMs(text) + TIMING.botAfterTalk);
+  }
+
+  // Ritmo de la mesa: después de cada cosa que pasa, el próximo bot espera a que se vea y se escuche.
+  // Piensa un rato; si hubo un canto, espera a que se diga; si se cerró una ronda o el envido, una pausa más.
+  pace() {
+    const r = this.room;
+    const g = r.game;
+    const now = Date.now();
+    let wait = TIMING.botThinkMin + Math.floor(rng() * TIMING.botThinkRand);
+    for (const e of g.ev) {
+      if (e.id <= (r.paceEv || 0)) continue;
+      if (e.type === 'call') wait = Math.max(wait, speechMs(e.text) + TIMING.botAfterTalk + 400);
+      if (e.type === 'tanto') wait = Math.max(wait, speechMs(e.value ?? 'Son buenas') + TIMING.botAfterTalk + 400);
+      if (e.type === 'round' || e.type === 'envido-done' || e.type === 'flor-done') wait += TIMING.roundPause;
+    }
+    r.paceEv = g.evId;
+    r.botReadyAt = Math.max(r.botReadyAt || 0, now + wait);
+  }
+
   onGameChange() {
     const r = this.room;
     const g = r.game;
+    this.pace();
     if (g.status === 'ended' || (g.h.phase === 'ended' && !r.handEndedAt)) {
       this.learnDue = true;
       this.botHandTalk();
@@ -653,7 +683,7 @@ export class TrucoRoom extends DurableObject {
       at = Math.min(at, since + TIMING.showWindow, since + BOT_SHOW_DELAY + 100);
       if (r.botClaimAt) at = Math.min(at, r.botClaimAt);
     } else if (now < (r.dealUntil || 0)) at = Math.min(at, r.dealUntil + 50);
-    else if (this.autoActor() != null) at = Math.min(at, now + TIMING.botThinkMin + Math.floor(rng() * TIMING.botThinkRand));
+    else if (this.autoActor() != null) at = Math.min(at, Math.max(now + 100, r.botReadyAt || now + TIMING.botThinkMin));
     else if (this.partnerAt() != null) at = Math.min(at, Math.max(now + 100, this.partnerAt()));
     else for (const s of waitingFor(g).seats) if (r.afkSince[s]) at = Math.min(at, Math.max(now + 200, r.afkSince[s] + TIMING.afk));
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));

@@ -39,18 +39,22 @@ export const TIMING = {
   cut: 800, // corta el de la izquierda
   dealStep: 170, // entre carta y carta
   dealTail: 260, // margen al final del reparto
-  handPause: 4200, // pausa para ver cómo terminó la mano
+  handPause: 5200, // pausa para ver cómo terminó la mano (y escuchar lo que dicen)
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
   foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
   afk: 40_000, // humano desconectado: después de esto juega el bot por él
-  botThinkMin: 650, // los bots "piensan" entre 0,65 y 1,3 s: ni instantáneo ni lento
-  botThinkRand: 650,
+  botThinkMin: 1300, // los bots "piensan" entre 1,3 y 2,3 s después de lo último que pasó
+  botThinkRand: 1000,
+  botAfterTalk: 500, // después de que termina de decirse un canto o una frase, antes de que un bot juegue
+  roundPause: 1400, // al cerrarse una ronda (o el envido), para ver quién ganó
   botHeartbeat: 2500, // latido para las miradas de los bots
   partnerAnswer: 3500, // en equipo, lo que espera el compañero bot antes de contestar un canto por los dos
   botChatGap: 2200, // como mucho un mensaje de bot cada tanto
   botIdle: 9000, // si una persona tarda más que esto en jugar, algún bot la apura
 };
 // Duración total de mezclar + cortar + repartir n jugadores (3 cartas cada uno).
+// Cuánto tarda la voz en decir un texto (aprox.): los bots esperan a que termine antes de jugar.
+export const speechMs = (text) => 500 + String(text ?? '').length * 70;
 export const dealMs = (n) => TIMING.shuffle + TIMING.cut + n * 3 * TIMING.dealStep + TIMING.dealTail;
 
 // ------------------------------------------------------------------ señas

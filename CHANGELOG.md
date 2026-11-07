@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.7.1 — ritmo de los bots
+- Los bots **esperan a que se termine de decir** el último canto o frase antes de jugar, piensan más (1,3 a 2,3 s)
+  y hacen una pausa al cerrarse cada ronda o el envido (`TIMING.roundPause`). La pausa entre manos es más larga.
+- Cuando jugás vos, se corta lo que se estaba diciendo y lo tuyo se dice al instante (antes esperaba en la cola).
+
 ## 1.7.0 — bots que aprenden, farolean y hacen trampa
 - **Bots mucho más difíciles**: cada decisión sale de imaginar muchos repartos posibles de las cartas que no ven
   (Monte Carlo) y jugarlos hasta el final. Eligen qué carta tirar, cuándo cantar y cuándo querer según los puntos
