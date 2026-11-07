@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, biteAt } from './characters.js';
-import { $, esc, store, KEYS, myPid, savedName, takeSession, initial } from './dom.js';
+import { $, esc, store, KEYS, savedName, sessionToken, takeSession, initial } from './dom.js';
 import { audio, flick, ding, say, hush } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
@@ -51,8 +51,8 @@ export class RoomClient {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${proto}//${location.host}${ROUTES.api.ws(this.code)}`);
     this.ws = ws;
-    ws.onopen = () => {
-      this.send({ t: 'join', pid: myPid(), name: savedName(), spectate: this.spectate });
+    ws.onopen = async () => {
+      this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate });
       this.retry = 0;
     };
     ws.onmessage = (e) => {
@@ -183,6 +183,9 @@ export class RoomClient {
       case 'notfound':
         alert('Esa sala no existe o ya cerró.');
         return this.onNotFound();
+      case 'auth': // la sesión venció o no hay perfil: main.js vuelve a la pantalla de entrada
+        this.close();
+        return dispatchEvent(new Event('trukeados:logout'));
       case 'error':
         this.unlock();
         return this.toast(esc(m.msg), 'bad');

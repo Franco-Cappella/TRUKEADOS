@@ -1,14 +1,9 @@
 // Utilidades del servidor (validación de entradas y respuestas JSON).
-import { MAX_NAME, PID_RE, ROOM_CODE_LEN } from '../public/js/config.js';
+import { MAX_NAME, ROOM_CODE_LEN } from '../public/js/config.js';
 
 export function cleanName(name) {
   const s = String(name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, MAX_NAME);
   return s || 'Invitado';
-}
-
-export function cleanPid(pid) {
-  const s = String(pid ?? '');
-  return PID_RE.test(s) ? s : null;
 }
 
 export function json(data, status = 200) {

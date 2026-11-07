@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.8.0 — cuentas y menú nuevo
+- **Sin cuenta no se juega.** Se entra con Google o con mail y contraseña (Supabase Auth). La primera vez se elige
+  el nombre, que es único y es el que aparece en la mesa y en el ranking. Si te pasan `/sala/CÓDIGO` sin sesión,
+  entrás y volvés a esa sala.
+- El servidor ya no cree en el `pid` ni el nombre que manda el navegador: los saca del token de la sesión
+  (`src/auth.js`) al crear salas, en la partida rápida y al entrar por WebSocket (`join {token}`).
+- **Menú con pestañas**: Jugar, Mesas (todas las públicas), Historial, Tienda y Personalizar (estas tres,
+  próximamente) y Perfil (ELO de cada modo, cerrar sesión). Arriba, tu usuario y tus monedas.
+- Base de datos en Supabase: tabla `profiles` (nombre, monedas, ELO y partidas por modo). Ver `docs/CUENTAS.md`.
+
 ## 1.7.3 — tantos más claros y ayuda que se cierra abajo
 - **Tus tantos**: tres botones claros: **Cantar mis N**, **Son buenas** y **Cantar otro número**. Recién al tocar
   el último te pregunta cuánto, con − / + (salta los números que no existen en el envido y arranca en el mínimo

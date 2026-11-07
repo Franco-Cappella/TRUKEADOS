@@ -1,4 +1,5 @@
-// Arranque del cliente: rutas (/ = menú, /sala/CÓDIGO = partida) y eventos fijos de la interfaz.
+// Arranque del cliente: sesión (sin cuenta no se juega), rutas (/ = menú, /sala/CÓDIGO = partida) y eventos
+// fijos de la interfaz.
 // La lógica de la sala está en room-client.js; la escena 3D en scene.js.
 import { TableScene, preloadCards } from './scene.js';
 import { lookFor } from './characters.js';
@@ -8,6 +9,8 @@ import { $, $$, esc, savedName } from './dom.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
 import { QUICK_PHRASES, helpHtml, drawFace, readOptionChecks } from './hud.js';
 import { initMenu, showMenu, hideMenu } from './menu.js';
+import { initAuth, loadMe, currentMe, onAuthChange, signOut } from './auth.js';
+import { initAccount, showEntry } from './account.js';
 import { RoomClient } from './room-client.js';
 
 let scene = null;
@@ -30,6 +33,14 @@ function goHome() {
 }
 
 function route() {
+  // sin sesión: a entrar; con sesión pero sin nombre: a elegirlo. La ruta (/sala/CÓDIGO) se mantiene.
+  const me = currentMe();
+  if (!me?.profile) {
+    room?.close();
+    room = null;
+    return showEntry(me ? '#onboard' : '#login');
+  }
+  showEntry(null);
   const m = location.pathname.match(ROUTES.roomRe);
   if (m) return openRoom(m[1].toUpperCase());
   room?.close();
@@ -253,6 +264,30 @@ function buildSenasMenu() {
 // La escena dibuja textos en canvas: esperamos la tipografía (si no carga, sigue con la de respaldo).
 await Promise.race([document.fonts?.load(`700 28px ${FONT}`), new Promise((r) => setTimeout(r, 1500))]).catch(() => {});
 
-initMenu(go);
+async function refresh() {
+  await loadMe();
+  route();
+}
+
+async function logout() {
+  await signOut();
+  route();
+}
+
+initMenu(go, logout);
+initAccount(refresh, route);
 window.addEventListener('popstate', route);
+// la sesión venció o la cerraron en otra pestaña (si ya se sabe que no hay sesión, no se vuelve a preguntar)
+addEventListener('trukeados:logout', () => currentMe() && refresh());
+try {
+  if (await initAuth()) await loadMe();
+  // fuera del callback: Supabase no deja llamar a la sesión desde adentro de onAuthStateChange
+  onAuthChange((event) => {
+    if (event === 'SIGNED_OUT' || (event === 'SIGNED_IN' && !currentMe())) setTimeout(refresh);
+  });
+} catch (err) {
+  console.error(err);
+  $('#boot').innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+  throw err;
+}
 route();

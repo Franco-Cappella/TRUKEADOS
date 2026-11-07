@@ -1,0 +1,3 @@
+# Copiar a .dev.vars para `npm run dev`. La clave secreta del proyecto de Supabase
+# (Project Settings → API Keys → Secret keys). No se sube al repositorio.
+SUPABASE_SECRET_KEY=sb_secret_...
