@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.7.5 — tantos en equipo, tantos a la vista y desconexiones
+- **Arreglado**: en equipo, al que le tocaba cantar los tantos cuando su equipo ya iba ganando se lo salteaba y, si
+  después el rival cantaba más, no le volvía a tocar (un bot con 33 perdió contra 32). Ahora le vuelve a tocar.
+- **Tantos a la vista**: si el que ganó el envido jugó sus 3 cartas a la vista, ya mostró. Si no tenía lo que
+  cantó, los puntos del envido van para el otro equipo (antes podía irse sin mostrar aunque se vieran).
+- **Desconexiones**: el cartel del que se cortó dice "desconectado · bot en 32 s" y después "juega el bot". En
+  el chat se avisa cuando se desconecta, cuando empieza a jugar el bot en su lugar y cuando vuelve.
+
 ## 1.7.4 — dos encimadas: aviso de qué jugaste
 - Al cerrarse la ronda en que tiraste dos encimadas, te avisa (solo a vos) con qué carta jugaste de verdad: en la
   mesa la de arriba tapa a la de abajo y parecía que habías jugado esa. Si mataste: "Mataste primera con el 3

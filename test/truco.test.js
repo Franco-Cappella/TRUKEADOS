@@ -514,3 +514,37 @@ for (const mode of ['1v1', '2v2', '3v3']) {
     }
   });
 }
+
+test('tantos en equipo: al que se salteó porque su compañero ganaba le vuelve a tocar si el rival canta más', () => {
+  const g = fixed([['7C', '5C', '4O'], ['7E', '1E', '4B'], ['5O', '12C', '4C'], ['7O', '6O', '12E']], { mode: '2v2', dealer: 0 });
+  g.trampas = false;
+  ok(act(g, 1, { t: 'play', card: '4B' }));
+  ok(act(g, 2, { t: 'play', card: '4C' }));
+  ok(act(g, 3, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 1, { t: 'cantar' })); // 28
+  ok(act(g, 2, { t: 'buenas' }));
+  assert.equal(g.h.envido.declare.seat, 0); // el 3 (33) se saltea: su compañero gana con 28
+  ok(act(g, 0, { t: 'cantar' })); // 32
+  assert.equal(g.h.envido.declare.seat, 3); // ahora le toca al 3
+  ok(act(g, 3, { t: 'cantar' })); // 33
+  assert.equal(g.h.envido.state, 'done');
+  assert.equal(g.h.envido.winner, 1);
+});
+
+test('si jugó las 3 cartas a la vista y no tenía los tantos que cantó, el envido es del otro equipo', () => {
+  const g = fixed([['7E', '4C', '12O'], ['5O', '4O', '12B']]);
+  passToOne(g); // el 0 tira el 12 de oro
+  ok(act(g, 1, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 0, { t: 'cantar', value: 33 })); // miente: tiene 7
+  ok(act(g, 1, { t: 'buenas' }));
+  ok(act(g, 1, { t: 'play', card: '4O' })); // primera para el 0
+  ok(act(g, 0, { t: 'play', card: '4C' }));
+  ok(act(g, 1, { t: 'play', card: '5O' })); // segunda para el 1
+  ok(act(g, 1, { t: 'play', card: '12B' }));
+  ok(act(g, 0, { t: 'play', card: '7E' })); // tercera para el 0: jugó las 3 a la vista
+  assert.equal(g.h.phase, 'ended'); // no hace falta mostrar: ya se vieron
+  assert.equal(g.h.result.penalty, 'mal-cantado');
+  assert.deepEqual(g.score, [1, 2]); // truco 1 para el 0, envido 2 para el 1
+});

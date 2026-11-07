@@ -92,7 +92,12 @@ export class TrucoRoom extends DurableObject {
         ws.serializeAttachment({ pid, name });
         if (seat != null) {
           r.seats[seat].name = name;
+          // volvió después de cortarse: se avisa (y si ya jugaba el bot por él, que deja de jugar)
+          if (r.status === 'playing' && r.afkSince[seat] && !this.online(ws).has(pid)) {
+            this.addSystemChat(r.afkBot?.[seat] ? `${name} volvió: deja de jugar el bot en su lugar` : `${name} volvió`);
+          }
           delete r.afkSince[seat];
+          if (r.afkBot) delete r.afkBot[seat];
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.freeSeat();
           if (free != null) {
@@ -255,7 +260,14 @@ export class TrucoRoom extends DurableObject {
       if (r.host === pid) r.host = r.seats.find((s) => s && !s.bot)?.pid || null;
       await this.save();
     }
-    if (seat != null && r?.status === 'playing') r.afkSince[seat] = Date.now();
+    if (seat != null && r?.status === 'playing' && !r.seats[seat]?.bot && !this.online(ws).has(pid)) {
+      // se cortó: corre la cuenta (la ven todos en su cartel) hasta que juegue un bot por él
+      if (!r.afkSince[seat]) {
+        r.afkSince[seat] = Date.now();
+        this.addSystemChat(`${r.seats[seat].name} se desconectó. Si no vuelve en ${Math.round(TIMING.afk / 1000)} s, juega un bot en su lugar.`);
+      }
+      await this.save();
+    }
     this.broadcastState(ws);
     await this.scheduleAlarm();
     await this.updateLobby(ws);
@@ -312,6 +324,10 @@ export class TrucoRoom extends DurableObject {
         this.onGameChange();
         changed = true;
       }
+    }
+    if (this.noteAfk(now) && !changed) {
+      await this.save();
+      this.broadcastState();
     }
     this.botGlances();
     this.botSenas(now);
@@ -483,6 +499,21 @@ export class TrucoRoom extends DurableObject {
     const bluffWon = b && res.reason === 'noquiero' && res.winner === team(b.seat);
     const seat = bluffWon ? b.seat : bots[Math.floor(rng() * bots.length)];
     this.botLater(seat, talkHandEnd(g, seat, bluffWon, rng), REACT_MS + 400, { chat: true });
+  }
+
+  // Avisa en el chat cuando a un desconectado se le terminó la cuenta y empieza a jugar el bot por él.
+  noteAfk(now) {
+    const r = this.room;
+    let any = false;
+    for (const [k, since] of Object.entries(r.afkSince || {})) {
+      const seat = Number(k);
+      const p = r.seats[seat];
+      if (!p || p.bot || r.afkBot?.[seat] || now - since < TIMING.afk || this.online().has(p.pid)) continue;
+      (r.afkBot ||= {})[seat] = true;
+      this.addSystemChat(`${p.name} no volvió: ahora juega un bot en su lugar`);
+      any = true;
+    }
+    return any;
   }
 
   // Bot, o humano desconectado hace más de TIMING.afk: juega el servidor por él.
@@ -687,6 +718,7 @@ export class TrucoRoom extends DurableObject {
     else if (this.partnerAt() != null) at = Math.min(at, Math.max(now + 100, this.partnerAt()));
     else for (const s of waitingFor(g).seats) if (r.afkSince[s]) at = Math.min(at, Math.max(now + 200, r.afkSince[s] + TIMING.afk));
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
+    for (const [s, since] of Object.entries(r.afkSince || {})) if (!r.afkBot?.[s]) at = Math.min(at, Math.max(now + 100, since + TIMING.afk));
     if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
     await this.ctx.storage.setAlarm(Math.max(now + 100, at));
   }
@@ -724,7 +756,14 @@ export class TrucoRoom extends DurableObject {
       code: r.code,
       cfg: r.cfg,
       status: r.status,
-      seats: r.seats.map((s) => (s ? { name: s.name, bot: !!s.bot, online: s.bot || online.has(s.pid), host: !s.bot && s.pid === r.host } : null)),
+      seats: r.seats.map((s, i) => {
+        if (!s) return null;
+        const on = s.bot || online.has(s.pid);
+        // desconectado en partida: cuánto falta (ms) para que juegue un bot por él (0 = ya juega el bot)
+        const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
+        const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
+        return { name: s.name, bot: !!s.bot, online: on, host: !s.bot && s.pid === r.host, botIn };
+      }),
       spectators,
     };
   }

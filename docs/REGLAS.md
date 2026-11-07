@@ -41,10 +41,11 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | En equipos, canta y contesta el **pie** (el que reparte y el que corta) | `pies`, `envidoVoices` | [R] §17 (pie) |
 | Envido 2, Real envido 3, Falta envido (lo que le falta al que va ganando); no querido 1 o lo querido antes | `envidoAcceptedPoints`, `envidoDeclinedPoints` | |
 | Secuencias: envido, envido-envido, real, falta | `envidoNextOptions` | |
-| Se cantan los tantos desde la mano; cada uno canta más o dice "son buenas" | `startDeclare`, `advanceDeclare` | |
+| Se cantan los tantos desde la mano; cada uno canta más o dice "son buenas". Al que va ganando con su equipo se lo saltea, pero si después el otro equipo canta más, le vuelve a tocar | `startDeclare`, `advanceDeclare` | |
 | Se puede mentir el número; si al mostrar no coincide, pierde los puntos del envido | `actShow` | |
 | El ganador tiene que mostrar: si no muestra y le reclaman, pierde los puntos del envido. Puede mostrar aunque se haya ido al mazo en el truco | `actShow`, `closeShow` | |
 | "Irse al mazo sin mostrar": no muestra (por ejemplo, porque mintió). Los rivales tienen unos segundos (`TIMING.foldWindow`) para reclamar; si nadie reclama, los tantos valen | `actShow` (`nomostrar`), `TrucoRoom.onFold` | regla de la mesa |
+| Si el que ganó el envido jugó sus 3 cartas a la vista, ya mostró: si no tenía lo que cantó, el envido es del otro equipo (no hay fase de mostrar) | `endHand`, `allShown` | |
 | Los puntos se anotan al terminar la mano (envido primero, después truco) | `finishHand` | |
 
 ### Cartas quemadas (regla de la mesa)

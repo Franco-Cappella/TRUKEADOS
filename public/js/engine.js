@@ -433,7 +433,6 @@ export function act(g, seat, a) {
         d.said.push({ seat, value: null });
         event(g, { type: 'tanto', seat, value: null });
       }
-      d.idx++;
       advanceDeclare(g);
       return { ok: true };
     }
@@ -625,7 +624,7 @@ function startDeclare(g) {
     if (active(h, s)) order.push(s);
   }
   h.envido.state = 'declaring';
-  h.envido.declare = { order, idx: 0, seat: null, best: null, said: [] };
+  h.envido.declare = { order, seat: null, best: null, said: [] };
   advanceDeclare(g);
 }
 
@@ -633,13 +632,13 @@ function advanceDeclare(g) {
   const h = g.h;
   const e = h.envido;
   const d = e.declare;
-  while (d.idx < d.order.length) {
-    const s = d.order[d.idx];
-    if (d.best && team(s) === d.best.team) {
-      d.idx++;
-      continue;
-    }
-    d.seat = s;
+  // Canta el primero (desde la mano) que todavía no habló y cuyo equipo va perdiendo. El que se salteó porque
+  // su equipo ganaba vuelve a tener turno si después el otro equipo canta más (ej.: el compañero tenía 28,
+  // se saltea al de 33, el rival canta 32: ahora le toca al de 33).
+  const spoke = new Set(d.said.map((x) => x.seat));
+  const next = d.order.find((s) => !spoke.has(s) && (!d.best || team(s) !== d.best.team));
+  if (next != null) {
+    d.seat = next;
     return;
   }
   d.seat = null;
@@ -732,12 +731,26 @@ function endHand(g, winnerTeam, pts, reason) {
   h.trucoResult = { team: winnerTeam, pts, reason };
   event(g, { type: 'hand-end', team: winnerTeam, pts, reason });
   const e = h.envido;
+  if (e.needsShow && !e.shown && allShown(h, e.winnerSeat)) {
+    // jugó sus 3 cartas a la vista: ya están mostradas. Si no tenía lo que cantó, el envido es del otro equipo.
+    const real = myTanto(g, e.winnerSeat);
+    const ok = real.value === e.saidValue;
+    e.shown = true;
+    event(g, { type: 'show', seat: e.winnerSeat, value: real.value, said: e.saidValue, cards: real.cards, ok, auto: true });
+    return finishHand(g, ok ? null : 'mal-cantado');
+  }
   if (e.needsShow && !e.shown) {
     h.phase = 'show';
     h.show = { seat: e.winnerSeat, value: e.saidValue };
     return;
   }
   finishHand(g, null);
+}
+
+// Las 3 cartas de `seat` están en la mesa a la vista (ninguna tapada ni escondida abajo de dos encimadas).
+function allShown(h, seat) {
+  const list = h.table[seat] || [];
+  return list.length >= 3 && list.every((p) => !p.faceDown && (!p.under || p.revealed));
 }
 
 // Anota todo lo de la mano. penalty: el que ganó el envido no mostró o cantó mal (pierde el envido).

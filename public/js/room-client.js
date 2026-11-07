@@ -27,6 +27,7 @@ export class RoomClient {
     this.choosingTop = null;
     this.busy = false; // hay una acción en viaje: los botones quedan deshabilitados
     this.gaze = {};
+    this.afkAt = {}; // asiento desconectado -> momento (reloj local) en que empieza a jugar el bot por él
     this.labels = new Map();
     this.retry = 0;
     this.spectate = takeSession(KEYS.spectate, code);
@@ -70,11 +71,17 @@ export class RoomClient {
     };
     clearInterval(this.pinger);
     this.pinger = setInterval(() => this.send({ t: 'ping' }), 25000);
+    // cuenta regresiva en el cartel de los desconectados
+    clearInterval(this.afkTick);
+    this.afkTick = setInterval(() => {
+      if (this.st?.room.status === 'playing' && Object.values(this.afkAt).some((t) => t > Date.now() - 1500)) this.renderPlates();
+    }, 1000);
   }
 
   close() {
     this.closed = true;
     clearInterval(this.pinger);
+    clearInterval(this.afkTick);
     try {
       this.ws?.close();
     } catch {}
@@ -226,6 +233,10 @@ export class RoomClient {
     const prev = this.st;
     this.st = st;
     this.you = st.you;
+    this.afkAt = {};
+    st.room.seats.forEach((p, i) => {
+      if (p?.botIn != null) this.afkAt[i] = Date.now() + p.botIn;
+    });
     const seats = st.room.seats;
     const g = st.game;
     scene.setLayout({ n: seats.length, me: st.you ?? 0, spectator: st.you == null });
@@ -394,7 +405,7 @@ export class RoomClient {
         const imgs = e.cards.map((c) => cardImg(c, cardName(c))).join('');
         this.bubble(e.seat, e.ok ? `Mirá: ${e.value}` : `Tenía ${e.value}...`, 'call', 3000);
         if (e.ok) this.toast(`${name(e.seat)} muestra sus ${e.value}<br>${imgs}`, 'good', 5000);
-        else this.toast(`${name(e.seat)} cantó ${e.said} pero tenía ${e.value}<br>${imgs}<br>Pierde los puntos del envido.`, 'bad', 6000);
+        else this.toast(`${name(e.seat)} cantó ${e.said} pero tenía ${e.value}${e.auto ? ' (jugó las 3 cartas a la vista)' : ''}<br>${imgs}<br>Los puntos del envido van para el otro equipo.`, 'bad', 6000);
         break;
       }
       case 'flor-done': {
@@ -840,8 +851,16 @@ export class RoomClient {
       const looking = this.you != null && this.gaze[seat] === this.you ? '<span class="chip eye">te mira</span>' : '';
       const turn = g && st.room.status === 'playing' && g.waiting.seats.includes(seat);
       l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''}`;
-      l.plate.innerHTML = `${esc(p.name)} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : '<span class="off">desconectado</span>'}`;
+      l.plate.innerHTML = `${esc(p.name)} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
     });
+  }
+
+  // "desconectado · bot en 32 s" mientras corre la cuenta; después, que ya juega el bot por él
+  offText(seat) {
+    const at = this.afkAt[seat];
+    if (at == null) return 'desconectado';
+    const left = Math.ceil((at - Date.now()) / 1000);
+    return left > 0 ? `desconectado · bot en ${left} s` : 'desconectado · juega el bot';
   }
 
   renderWaiting() {
