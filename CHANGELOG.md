@@ -5,6 +5,8 @@
   trampas** (reemplaza "mostrar quién ganó cada ronda"). Reglas en `docs/REGLAS.md`.
 - `cards.js`: valor de las cartas (jerarquía, envido, flor, muestra) separado del motor.
 - Bots que cantan y contestan flor y entienden la muestra. Tests nuevos en `test/opciones.test.js`.
+- Probado en el navegador: cantar y contestar flor (también en celular), muestra en mesa y anotador, mesa sin
+  trampas. Arreglado: el estado decía "Tocá una carta" cuando había que cantar la flor.
 
 
 ## 1.4.1 — reparto sincronizado y quemada a destiempo

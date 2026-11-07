@@ -598,9 +598,9 @@ export class RoomClient {
     if (this.choosingTop) {
       t = 'Dos encimadas';
       hint = 'Elegí la de arriba: será tu carta de la ronda siguiente, quemada (vale un 4).';
-    } else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
+    } else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
+    else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
     else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
-    else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
     else if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none') hint = 'Sos pie: el envido lo cantás vos, en tu turno.';
     el.innerHTML = esc(t) + (hint ? `<small>${esc(hint)}</small>` : '');
     el.classList.toggle('mine', mine);

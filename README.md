@@ -10,6 +10,7 @@ Truco argentino online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**, sin flor. Corre e
   cerrados siempre son la seña de "ciego".
 - Truco / retruco / vale cuatro, envido / real envido / falta envido, "el envido está primero", son buenas,
   mostrar los tantos, irse al mazo, pardas, anotador de palitos. Los cantos se hacen **en tu turno**.
+- **Opciones de sala**: jugar con **flor**, con **muestra** (piezas) y **no permitir trampas**.
 - **Trampa**: tirar dos cartas encimadas. La de abajo juega; la de arriba queda **quemada**. Los rivales pueden
   pedir "mostrá las dos".
 - **Online** con salas por código de 5 letras, enlace `/sala/CÓDIGO`, WhatsApp, partida rápida, mesas públicas,

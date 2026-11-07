@@ -16,8 +16,9 @@ src/                      SERVIDOR (Cloudflare Worker)
   lobby.js                Durable Object "global": mesas públicas para el menú
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
 public/js/                CLIENTE (los marcados con * también los usa el servidor)
-  config.js *             CONSTANTES COMPARTIDAS: modos, tiempos, rutas, señas, nombres de bots
-  engine.js *             REGLAS puras (sin DOM): newGame, act, actionsFor, waitingFor, viewFor
+  config.js *             CONSTANTES COMPARTIDAS: modos, tiempos, rutas, señas, bots y opciones de sala (ROOM_OPTIONS)
+  cards.js *              VALOR DE LAS CARTAS: jerarquía, envido, flor y muestra (funciones puras)
+  engine.js *             REGLAS y estado de la mano (sin DOM): newGame, act, actionsFor, waitingFor, viewFor
   bot.js *                jugador automático (decide solo con lo que ve un jugador)
   theme.js                COLORES del JS (escena 3D, cartas quemadas, anotador, paletas de personajes)
   dom.js                  $, esc, store (localStorage seguro), KEYS, myPid, api()
@@ -32,6 +33,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
 public/css/truco.css      todo el estilo; colores y tamaños en variables de :root
 public/cards/             cartas WebP (id = número + palo: 1E, 7O, 12C… y back)
 test/truco.test.js        tests del motor y partidas completas entre bots
+test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
 docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendientes
 ```
 
@@ -44,7 +46,8 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 3. `engine.js`, `bot.js` y `config.js` no pueden usar `window`, `document` ni nada del navegador
    (los importa el Worker).
 4. Todo lo que venga de otros jugadores (nombres, chat) se escapa con `esc()` antes de ir a `innerHTML`.
-5. Cada cambio de reglas lleva test en `test/truco.test.js` y una línea en `docs/REGLAS.md`.
+5. Cada cambio de reglas lleva test en `test/` y una línea en `docs/REGLAS.md`. Una opción de sala nueva se
+   agrega en `ROOM_OPTIONS` (config.js): el menú, la sala de espera y el servidor la toman de ahí.
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
 7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
    palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
@@ -72,7 +75,7 @@ Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLef
 
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
-`truco`, `envido {kind}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
+`truco`, `envido {kind}`, `flor {kind: flor|quiero|achico|contraflor|resto|noquiero}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
 `mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`.
 
 ## Probar
