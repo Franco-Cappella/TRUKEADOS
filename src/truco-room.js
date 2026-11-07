@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
+import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices } from '../public/js/engine.js';
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
@@ -362,14 +362,21 @@ export class TrucoRoom extends DurableObject {
       const before = waitingFor(g);
       const ev0 = g.evId;
       let a = null;
+      // si a este bot le acaban de consultar y todavía no contestó, primero contesta (y juega después)
+      const pending = actor != null && r.seats[actor]?.bot ? this.openAsk(team(actor), now) : null;
+      const mustAnswer = !!pending && pending.seat !== actor && pending.answers[actor] == null;
+      if (mustAnswer) {
+        this.answerAsk(actor, botAnswer(g, actor, pending.kind, rng));
+        changed = true;
+      }
       // un bot que tiene que decidir a veces primero le consulta al compañero ("¿tienen tantos?")
-      const askKind = actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
+      const askKind = !mustAnswer && actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
         botAsks(g, actor, rng, this.partnersOf(actor).some((s) => !r.seats[s]?.bot && !this.isAway(s, now)));
       const asked = !!askKind && this.canAsk(actor, askKind);
       if (asked) {
         this.startAsk(actor, askKind);
         changed = true;
-      } else if (actor != null) {
+      } else if (actor != null && !mustAnswer) {
         try {
           a = botAction(g, actor, rng, ctx);
         } catch (e) {
@@ -378,7 +385,7 @@ export class TrucoRoom extends DurableObject {
       }
       let ok = !!a && this.botAct(actor, a);
       // si el bot falló o eligió algo que no vale, juega lo primero que entre (nunca se traba la mesa)
-      if (!ok && !asked && actor != null && waitingFor(g).seats.includes(actor)) {
+      if (!ok && !asked && !mustAnswer && actor != null && waitingFor(g).seats.includes(actor)) {
         for (const f of fallbackActions(g, actor)) {
           if (this.botAct(actor, f)) {
             console.warn('bot fallback', JSON.stringify(a), '->', JSON.stringify(f));
@@ -564,7 +571,11 @@ export class TrucoRoom extends DurableObject {
     if (seat == null || r.status !== 'playing' || !g?.h || g.h.phase !== 'play' || g.n <= 2 || g.h.mazo[seat]) return false;
     const T = team(seat);
     if (this.openAsk(T) || (r.asked?.[T] || []).includes(g.handNo + ':' + kind) || !this.partnersOf(seat).length) return false;
-    if (kind === 'tantos') return g.h.r === 0 && g.h.envido.state === 'none';
+    // los tantos los pregunta el que canta el envido del equipo (el pie), mientras todavía lo puede cantar
+    if (kind === 'tantos') {
+      const h = g.h;
+      return h.r === 0 && h.envido.state === 'none' && envidoVoices(g, T).includes(seat) && !h.rounds[0].plays.some((p) => p.seat === seat);
+    }
     if (kind === 'truco') return g.h.truco.level < 4 && !g.h.truco.pending;
     return false;
   }

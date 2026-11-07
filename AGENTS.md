@@ -51,6 +51,8 @@ test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ part
 test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 test/auth.test.js         verificación del token de Supabase y validación del nombre
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
+test/sala.test.js         la sala (TrucoRoom) de punta a punta: bots, consultas, señas, desconexiones
+test/helpers/             banco de pruebas de la sala en Node (storage, sockets, Lobby, cuentas y reloj de mentira)
 supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)
 docs/CUENTAS.md           cuentas: cómo está armado y cómo se configura Supabase
 docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendientes

@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.8.6 — consulta sin trabas, tu mano no tapa tus cartas y tests de la sala
+- **Arreglado**: si le consultabas al compañero bot justo cuando le tocaba, jugaba primero y te contestaba después.
+  Ahora contesta y recién después juega.
+- "¿Tienen tantos?" solo lo puede preguntar el que canta el envido del equipo (el pie), mientras todavía puede.
+- **Tus cartas tiradas** quedan más hacia el centro y a la izquierda: la mano (que se dibuja encima de todo) ya no
+  las tapa.
+- **Tests de la sala**: `test/sala.test.js` corre la sala de punta a punta en Node con Cloudflare, Supabase y el reloj
+  de mentira (`test/helpers/`): partidas 2v2 con bots hasta el final, consultas en los dos sentidos, señas,
+  desconexión y vuelta, y que la partida no se trabe aunque los bots fallen.
+
 ## 1.9.0 — historial, rebobinado, ELO y análisis
 - **Todas las partidas quedan en el historial** (pestaña Historial): resultado, rivales, ELO y monedas. La sala
   graba el estado al repartir cada mano y cada jugada (`src/recorder.js`); al terminar va a Supabase en una sola

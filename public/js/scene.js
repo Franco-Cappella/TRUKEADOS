@@ -162,6 +162,11 @@ const HAND_DEPTH = 0.62; // distancia de la mano a los ojos (antes de compensar 
 const tanHalf = (deg) => Math.tan(THREE.MathUtils.degToRad(deg / 2));
 const FLY_MS = 260; // carta del mazo a cada jugador
 
+// dónde quedan tus cartas en la mesa (fracción del radio desde el centro) y la mano en pantalla
+const MY_TABLE_START = 0.42;
+const MY_TABLE_SIDE = -0.12; // y corridas a la izquierda (la mano está abajo al centro)
+const HAND_X = 0.05;
+
 export class TableScene {
   constructor(container) {
     this.container = container;
@@ -922,7 +927,8 @@ export class TableScene {
     const depth = HAND_DEPTH * this.handGroup.scale.z; // profundidad real después de compensar el FOV
     const lift = ((this.bottomInset || 0) / h) * 2 * tanHalf(this.camera.fov) * depth;
     this.handLift = damp(this.handLift || 0, lift, 10, dt);
-    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1 + this.handLift, -HAND_DEPTH);
+    // la mano va un poco a la derecha: así no tapa las cartas que tiraste (quedan adelante tuyo, al centro)
+    const pivot = new THREE.Vector3(HAND_X, -0.32 - lowered * 0.1 + this.handLift, -HAND_DEPTH);
     const mid = (n - 1) / 2;
     this.handCards.forEach((c, i) => {
       const a = (mid - i) * 0.3;
@@ -1041,7 +1047,9 @@ export class TableScene {
     const d = this.seatDir(seat);
     const a = this.seatAngle(seat);
     const tangent = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
-    const start = this.R * (this.n === 2 ? 0.55 : 0.62);
+    // las tuyas, más hacia el centro: si no, la mano (que se dibuja encima de todo) las tapa
+    const mine = !this.spectator && seat === this.me;
+    const start = this.R * (mine ? MY_TABLE_START : this.n === 2 ? 0.55 : 0.62);
     const step = CARD_H * TABLE_CARD_SCALE * 0.36;
     const jitter = [0, 0.006, -0.005];
     const tilt = [0.02, -0.05, 0.04];
@@ -1070,7 +1078,7 @@ export class TableScene {
       } else {
         rot = a + tilt[0];
       }
-      const pos = d.clone().multiplyScalar(radial).addScaledVector(tangent, side);
+      const pos = d.clone().multiplyScalar(radial).addScaledVector(tangent, side + (mine ? MY_TABLE_SIDE : 0));
       pos.y = TABLE_Y + 0.002 + idx * 0.0018;
       out.push({ pos, rot });
     });

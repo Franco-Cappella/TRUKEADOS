@@ -367,7 +367,7 @@ test('consulta: si el compañero dice "no tengo nada" y el bot tiene, igual cant
 
 test('consulta: "callado" no es "no tengo" (es que lo canten los otros)', () => {
   for (const k of ['tantos', 'truco']) for (const t of ASK_TALK[k].callado) assert.ok(/callado/i.test(t) && !/no tengo|nada/i.test(t), t);
-  assert.ok(/cant/i.test(talkAnswer('tantos', 'si')));
+  assert.ok(ASK_TALK.tantos.si.includes(talkAnswer('tantos', 'si')) && ASK_TALK.tantos.si.every((t) => !/callado|nada/i.test(t)));
   assert.ok(ASK_TALK.tantos.nada.every((t) => !/callado/i.test(t)));
 });
 
