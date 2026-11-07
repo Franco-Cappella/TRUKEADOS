@@ -341,19 +341,34 @@ const hand2v2 = (cards, dealer = 3) => {
   return g;
 };
 
-test('consulta: el bot contesta "Cantá" con tantos y "Callado" sin; con muchísimo a veces va a la pesca', () => {
+test('consulta: el bot contesta Cantá, Callado o No tengo nada según lo que tiene', () => {
   const rng = seeded(4);
   const g = hand2v2([['7E', '6E', '4C'], ['4O', '5C', '12B'], ['10O', '11C', '12E'], ['1C', '2O', '3B']]);
-  assert.equal(botAnswer(g, 2, 'tantos', rng), false); // 0 de envido: callado
-  const big = Array.from({ length: 200 }, () => botAnswer(g, 0, 'tantos', rng)); // 33
-  assert.ok(big.some((x) => x) && big.some((x) => !x)); // casi siempre "cantá", a veces callado (a la pesca)
-  assert.equal(botAnswer(g, 2, 'truco', rng), false); // nada para el truco
-  assert.equal(botAnswer(g, 3, 'truco', rng), true); // tiene un 3 y un 2
+  const many = (s, k) => new Set(Array.from({ length: 200 }, () => botAnswer(g, s, k, rng)));
+  const zero = many(2, 'tantos'); // 0 de envido: casi siempre "no tengo nada", a veces callado
+  assert.ok(zero.has('nada') && !zero.has('si'));
+  const big = many(0, 'tantos'); // 33: casi siempre "cantá", a veces callado (a la pesca)
+  assert.ok(big.has('si') && big.has('callado') && !big.has('nada'));
+  assert.ok(!many(2, 'truco').has('si')); // nada para el truco
+  assert.ok(many(3, 'truco').has('si')); // tiene un 3 y un 2
+});
+
+test('consulta: si el compañero dice "no tengo nada" y el bot tiene, igual canta', () => {
+  const rng = seeded(8);
+  const mk = () => {
+    const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+    for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+    return g;
+  };
+  let sings = 0;
+  for (let i = 0; i < 30; i++) if (botAction(mk(), 3, rng, { senas: [{ seat: 1, sena: 'nada_envido' }] })?.t === 'envido') sings++;
+  assert.ok(sings > 10, 'cantó ' + sings);
 });
 
 test('consulta: "callado" no es "no tengo" (es que lo canten los otros)', () => {
-  for (const k of ['tantos', 'truco']) for (const t of ASK_TALK[k].no) assert.ok(/callado/i.test(t) && !/no tengo|nada/i.test(t), t);
-  assert.ok(/cant/i.test(talkAnswer('tantos', true)));
+  for (const k of ['tantos', 'truco']) for (const t of ASK_TALK[k].callado) assert.ok(/callado/i.test(t) && !/no tengo|nada/i.test(t), t);
+  assert.ok(/cant/i.test(talkAnswer('tantos', 'si')));
+  assert.ok(ASK_TALK.tantos.nada.every((t) => !/callado/i.test(t)));
 });
 
 test('consulta: si el compañero dijo callado, el bot no canta eso (pero sigue jugando)', () => {

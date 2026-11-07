@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.8.5 — "No tengo nada"
+- A la consulta del compañero también se puede contestar **No tengo nada**, que no es lo mismo que "Callado". Si un
+  bot pregunta y le dicen "no tengo nada", lo toma en cuenta pero decide él: si tiene, canta igual. Los bots con
+  poco contestan casi siempre "no tengo nada" (a veces solo "callado").
+
 ## 1.8.4 — consultarle al compañero
 - En equipo, botones **¿Tienen tantos?** y **¿Le canto truco?**: tu compañero te contesta **Cantá** o **Callado**
   (seguir jugando sin cantarlo, que lo canten los otros: a veces va a la pesca). Si te consultan a vos, aparecen los

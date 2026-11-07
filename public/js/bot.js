@@ -46,25 +46,31 @@ const SENA_FITS = {
   envido_alto: (full, m) => tanto(full, m).value >= 27,
   treinta: (full, m) => tanto(full, m).value >= 30,
   nada_envido: (full, m) => tanto(full, m).value <= 25,
-  // lo que contestó el compañero a "¿le canto truco?": "cantá" = tiene un tres o algo mejor
+  // lo que contestó el compañero a "¿le canto truco?": "cantá" = tiene un tres o algo mejor; "nada" = no
   truco_si: (full, m) => full.some((c) => rank(c, m) >= rank('3E', m)),
+  truco_no: (full, m) => !full.some((c) => rank(c, m) >= rank('3E', m)),
 };
 
-// Respuesta de un bot cuando el compañero le consulta: true = "Cantá", false = "Callado".
+// Respuesta de un bot cuando el compañero le consulta: 'si' ("Cantá"), 'callado' o 'nada' ("No tengo nada").
 // Con lo que tiene él. Si tiene muchísimo, a veces dice "callado" igual: va a la pesca (que canten los
-// rivales y después se sube).
+// rivales y después se sube). Con poco, casi siempre avisa que no tiene nada (a veces solo "callado").
 export function botAnswer(g, seat, kind, rng = Math.random) {
   const h = g.h;
   if (kind === 'tantos') {
     const v = tanto(h.cards[seat], h.muestra).value;
-    if (v >= 31 && pick(rng, 0.35)) return false;
-    return v >= 27;
+    if (v >= 31 && pick(rng, 0.35)) return 'callado';
+    if (v >= 27) return 'si';
+    if (v <= 23) return pick(rng, 0.8) ? 'nada' : 'callado';
+    return 'callado';
   }
   const R = (c) => rank(c, h.muestra);
   const hand = h.inHand[seat].map(R);
+  const best = Math.max(...hand, -1);
   const bravas = hand.filter((r) => r >= R('7O')).length;
-  if ((hand.some((r) => r >= R('1B')) || bravas >= 2) && pick(rng, 0.35)) return false;
-  return Math.max(...hand, -1) >= R('3E') || strength(g, seat) >= 0.5;
+  if ((hand.some((r) => r >= R('1B')) || bravas >= 2) && pick(rng, 0.35)) return 'callado';
+  if (best >= R('3E') || strength(g, seat) >= 0.5) return 'si';
+  if (best < R('2E')) return pick(rng, 0.8) ? 'nada' : 'callado';
+  return 'callado';
 }
 
 // Qué le pregunta un bot a su compañero antes de decidir (o null): los tantos, si es el que canta el envido;

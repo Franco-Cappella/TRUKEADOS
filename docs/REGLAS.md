@@ -46,7 +46,7 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | El ganador tiene que mostrar: si no muestra y le reclaman, pierde los puntos del envido. Puede mostrar aunque se haya ido al mazo en el truco | `actShow`, `closeShow` | |
 | "Irse al mazo sin mostrar": no muestra (por ejemplo, porque mintió). Los rivales tienen unos segundos (`TIMING.foldWindow`) para reclamar; si nadie reclama, los tantos valen | `actShow` (`nomostrar`), `TrucoRoom.onFold` | regla de la mesa |
 | "En mesa": si el que ganó el envido ya tiró a la vista las cartas que forman lo que cantó, ya mostró (lo dice: "22 en mesa"). Al mostrar al final, las cartas de los tantos quedan boca arriba en la mesa | `enMesa`, `revealTanto` | |
-| Consulta al compañero (en equipo): "¿tienen tantos?" / "¿le canto truco?", y la respuesta "Cantá" o "Callado" (seguir sin cantarlo, que lo canten los otros; puede ser ir a la pesca). Una vez por mano cada cosa; se dice en voz alta | `TrucoRoom.startAsk`, `answerAsk`, `botAnswer`, `botAsks` | costumbre de mesa |
+| Consulta al compañero (en equipo): "¿tienen tantos?" / "¿le canto truco?", y la respuesta "Cantá", "Callado" (seguir sin cantarlo, que lo canten los otros; puede ser ir a la pesca) o "No tengo nada" (el que preguntó igual puede cantar si tiene). Una vez por mano cada cosa; se dice en voz alta | `TrucoRoom.startAsk`, `answerAsk`, `botAnswer`, `botAsks` | costumbre de mesa |
 | Si el que ganó el envido jugó sus 3 cartas a la vista, ya mostró: si no tenía lo que cantó, el envido es del otro equipo (no hay fase de mostrar) | `endHand`, `allShown` | |
 | Los puntos se anotan al terminar la mano (envido primero, después truco) | `finishHand` | |
 

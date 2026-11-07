@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer } from '../public/js/talk.js';
+import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
@@ -252,7 +252,7 @@ export class TrucoRoom extends DurableObject {
       }
 
       case 'answer': {
-        if (!this.answerAsk(seat, !!msg.yes)) return;
+        if (!ASK_ANSWERS.includes(msg.ans) || !this.answerAsk(seat, msg.ans)) return;
         return this.commit();
       }
 
@@ -547,14 +547,14 @@ export class TrucoRoom extends DurableObject {
     if (r.seats[seat]?.bot) r.botReadyAt = Math.max(r.botReadyAt || 0, now + TIMING.askWait);
   }
 
-  answerAsk(seat, yes) {
+  answerAsk(seat, ans) {
     const r = this.room;
     if (seat == null || !r.game?.h) return false;
     const T = team(seat);
     const q = this.openAsk(T);
     if (!q || q.seat === seat || q.answers[seat] != null || r.game.h.mazo[seat]) return false;
-    q.answers[seat] = yes;
-    const text = talkAnswer(q.kind, yes, rng);
+    q.answers[seat] = ans;
+    const text = talkAnswer(q.kind, ans, rng);
     this.teamSay(seat, text);
     if (this.partnersOf(q.seat).every((s) => q.answers[s] != null)) {
       q.done = true;
@@ -579,19 +579,20 @@ export class TrucoRoom extends DurableObject {
     return any;
   }
 
-  // Lo que le contestaron a un bot en esta mano. "Cantá" es como una seña (tiene tantos / tiene con qué);
-  // "callado" no dice qué tiene (puede ir a la pesca): solo que no lo cante él.
+  // Lo que le contestaron a un bot en esta mano. "Cantá" y "No tengo nada" son como señas (tiene / no tiene):
+  // con eso decide él (si le dicen que no tienen nada y él tiene, igual puede cantar). "Callado" no dice qué
+  // tiene (puede ir a la pesca): solo que no lo cante él.
   askSenas(seat) {
     const q = this.myAsk(seat);
     if (!q) return [];
-    const sena = { tantos: 'envido_alto', truco: 'truco_si' }[q.kind];
-    return Object.entries(q.answers).filter(([, yes]) => yes).map(([s]) => ({ seat: Number(s), sena }));
+    const map = { tantos: { si: 'envido_alto', nada: 'nada_envido' }, truco: { si: 'truco_si', nada: 'truco_no' } }[q.kind];
+    return Object.entries(q.answers).filter(([, ans]) => map[ans]).map(([s, ans]) => ({ seat: Number(s), sena: map[ans] }));
   }
 
   askHush(seat) {
     const q = this.myAsk(seat);
     const answers = q ? Object.values(q.answers) : [];
-    return answers.length && !answers.some(Boolean) ? { [q.kind]: true } : null;
+    return answers.includes('callado') && !answers.includes('si') ? { [q.kind]: true } : null;
   }
 
   myAsk(seat) {

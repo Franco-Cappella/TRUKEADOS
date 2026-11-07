@@ -785,8 +785,10 @@ export class RoomClient {
     const q = ask?.open;
     if (q && !q.mine && !q.answered) {
       const what = q.kind === 'tantos' ? 'los tantos' : 'el truco';
-      add('equipo', `${esc(this.nameOf(q.seat))} pregunta por ${what}`, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', yes: true }));
-      add('equipo', `${esc(this.nameOf(q.seat))} pregunta por ${what}`, 'Callado', '', () => this.send({ t: 'answer', yes: false }));
+      const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
+      add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
+      add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
+      add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
     } else if (!q) {
       if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
       if (ask?.can.truco) add('equipo', 'Compañero', '¿Le canto truco?', '', () => this.send({ t: 'ask', kind: 'truco' }), 'Le preguntás a tu compañero si cantar truco');
