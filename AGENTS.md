@@ -120,6 +120,10 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   `BOT.memoSamples` ya no simula. Una memoria por isolate (`MEMO` en truco-room.js); lo que madura se guarda en
   el Lobby (`memoPut`) y al arrancar se trae (`memoGet`). Si cambia lo que calcula la simulación o la clave,
   cambiar el `kind` en `simStats` para no mezclar con lo viejo.
+- **Consulta al compañero** (en equipo): `ask {kind}` / `answer {yes}` por WebSocket; la sala guarda la consulta
+  abierta en `room.asks[equipo]` (una por mano y tipo) y los bots compañeros contestan con `botAnswer` (a veces
+  "callado" para ir a la pesca). Un bot puede consultar antes de decidir (`botAsks`) y espera hasta `TIMING.askWait`;
+  lo que le contestan entra como seña (`askSenas`) y si le dicen "callado" no canta eso (`ctx.hush`).
 - **Nunca se traba la mesa**: si `botAction` falla o elige algo inválido, la sala prueba `fallbackActions`; si
   falla la alarma entera, se registra y se reprograma.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).

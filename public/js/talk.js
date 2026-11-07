@@ -160,6 +160,24 @@ export function talkHandEnd(g, seat, bluffWon, rng = Math.random) {
 }
 
 export const talkCaught = (rng = Math.random) => say('caught', rng);
+// Consulta al compañero (en equipo): el que pregunta y lo que le contestan: "Cantá" o "Callado".
+// "Callado" no es "no tengo": es seguir jugando sin cantarlo, que lo canten los otros (sea porque va a la
+// pesca con buenas cartas o porque no quiere cantarlo).
+export const ASK_TALK = {
+  tantos: {
+    ask: ['¿Tienen tantos?', '¿Cómo andan de tantos?', '¿Canto envido?', '¿Hay tantos, compañeros?'],
+    yes: ['Tengo, cantá.', 'Cantá nomás.', 'Dale, que tengo.', 'Cantá, que hay.'],
+    no: ['Callado.', 'Callado, que canten ellos.', 'Mejor callado.', 'Callado, compañero.'],
+  },
+  truco: {
+    ask: ['¿Le canto truco?', '¿Cómo vienen? ¿Canto?', '¿Truco o no?', '¿Canto, compañeros?'],
+    yes: ['Dale, cantá.', 'Cantá, que vengo bien.', 'Cantale nomás.', 'Dale, que tengo con qué.'],
+    no: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
+  },
+};
+export const talkAsk = (kind, rng = Math.random) => sayFrom(ASK_TALK[kind].ask, rng);
+export const talkAnswer = (kind, yes, rng = Math.random) => sayFrom(ASK_TALK[kind][yes ? 'yes' : 'no'], rng);
+
 export const talkIdle = (rng = Math.random) => say('idle', rng);
 export const talkReply = (rng = Math.random) => say('reply', rng);
 

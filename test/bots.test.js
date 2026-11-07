@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkEvent, BOT_TALK } from '../public/js/talk.js';
+import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
 
@@ -332,4 +332,55 @@ test('respaldo: si el bot elige algo que no vale, alguna jugada de respaldo entr
       if (!a || !act(g, s, a).ok) break;
     }
   }
+});
+
+const hand2v2 = (cards, dealer = 3) => {
+  const g = newGame({ mode: '2v2', dealer });
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  return g;
+};
+
+test('consulta: el bot contesta "Cantá" con tantos y "Callado" sin; con muchísimo a veces va a la pesca', () => {
+  const rng = seeded(4);
+  const g = hand2v2([['7E', '6E', '4C'], ['4O', '5C', '12B'], ['10O', '11C', '12E'], ['1C', '2O', '3B']]);
+  assert.equal(botAnswer(g, 2, 'tantos', rng), false); // 0 de envido: callado
+  const big = Array.from({ length: 200 }, () => botAnswer(g, 0, 'tantos', rng)); // 33
+  assert.ok(big.some((x) => x) && big.some((x) => !x)); // casi siempre "cantá", a veces callado (a la pesca)
+  assert.equal(botAnswer(g, 2, 'truco', rng), false); // nada para el truco
+  assert.equal(botAnswer(g, 3, 'truco', rng), true); // tiene un 3 y un 2
+});
+
+test('consulta: "callado" no es "no tengo" (es que lo canten los otros)', () => {
+  for (const k of ['tantos', 'truco']) for (const t of ASK_TALK[k].no) assert.ok(/callado/i.test(t) && !/no tengo|nada/i.test(t), t);
+  assert.ok(/cant/i.test(talkAnswer('tantos', true)));
+});
+
+test('consulta: si el compañero dijo callado, el bot no canta eso (pero sigue jugando)', () => {
+  const rng = seeded(8);
+  // el 3 (pie) con 33: casi siempre cantaría envido
+  const mk = () => {
+    const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+    for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+    return g;
+  };
+  let sings = 0;
+  for (let i = 0; i < 30; i++) {
+    const a = botAction(mk(), 3, rng, {});
+    if (a?.t === 'envido') sings++;
+  }
+  assert.ok(sings > 10);
+  for (let i = 0; i < 30; i++) {
+    const a = botAction(mk(), 3, rng, { hush: { tantos: true, truco: true } });
+    assert.ok(a && a.t !== 'envido' && a.t !== 'truco', JSON.stringify(a));
+  }
+});
+
+test('consulta: el bot pie a veces pregunta por los tantos antes de cantar (más a una persona)', () => {
+  const rng = seeded(12);
+  const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+  for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+  const human = Array.from({ length: 200 }, () => botAsks(g, 3, rng, true)).filter((k) => k === 'tantos').length;
+  const bot = Array.from({ length: 200 }, () => botAsks(g, 3, rng, false)).filter((k) => k === 'tantos').length;
+  assert.ok(human > bot && bot > 0);
 });

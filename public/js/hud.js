@@ -65,7 +65,7 @@ export function helpHtml() {
       <li>“te mira” al lado de un nombre quiere decir que esa persona te está mirando. Las señas no avisan nada: hay que verlas en la cara. Los personajes no parpadean solos: si alguien cierra los ojos, es la seña de “ciego”.</li>
       <li>Mantené apretada la <kbd>Z</kbd> (o el botón Zoom) para hacer zoom y ver mejor la mesa o una cara.</li>
     </ul>
-    <h3>Señas (las ven solo los que te miran en ese momento)</h3><ul>${senas}<li>De palabra (por el chat, y las escuchan todos): “las viejas” = 27, “las perdedoras” = 29.</li></ul>
+    <h3>Señas (las ven solo los que te miran en ese momento)</h3><ul>${senas}<li>De palabra (por el chat, y las escuchan todos): “las viejas” = 27, “las perdedoras” = 29.</li><li>En equipo podés <b>consultarle a tu compañero</b>: “¿Tienen tantos?” o “¿Le canto truco?”. Te contesta <b>Cantá</b> o <b>Callado</b> (seguir jugando sin cantarlo, que lo canten los otros: a veces es porque va a la pesca). Los bots también te consultan y se consultan entre ellos. Se dice en voz alta: los rivales lo escuchan.</li></ul>
     <h3>Cantos</h3>
     <ul>
       <li>Se canta <b>en tu turno</b>, antes de tirar la carta. Para contestar (quiero, no quiero, subir) no hace falta que sea tu turno.</li>

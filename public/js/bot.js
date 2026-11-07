@@ -46,7 +46,36 @@ const SENA_FITS = {
   envido_alto: (full, m) => tanto(full, m).value >= 27,
   treinta: (full, m) => tanto(full, m).value >= 30,
   nada_envido: (full, m) => tanto(full, m).value <= 25,
+  // lo que contestó el compañero a "¿le canto truco?": "cantá" = tiene un tres o algo mejor
+  truco_si: (full, m) => full.some((c) => rank(c, m) >= rank('3E', m)),
 };
+
+// Respuesta de un bot cuando el compañero le consulta: true = "Cantá", false = "Callado".
+// Con lo que tiene él. Si tiene muchísimo, a veces dice "callado" igual: va a la pesca (que canten los
+// rivales y después se sube).
+export function botAnswer(g, seat, kind, rng = Math.random) {
+  const h = g.h;
+  if (kind === 'tantos') {
+    const v = tanto(h.cards[seat], h.muestra).value;
+    if (v >= 31 && pick(rng, 0.35)) return false;
+    return v >= 27;
+  }
+  const R = (c) => rank(c, h.muestra);
+  const hand = h.inHand[seat].map(R);
+  const bravas = hand.filter((r) => r >= R('7O')).length;
+  if ((hand.some((r) => r >= R('1B')) || bravas >= 2) && pick(rng, 0.35)) return false;
+  return Math.max(...hand, -1) >= R('3E') || strength(g, seat) >= 0.5;
+}
+
+// Qué le pregunta un bot a su compañero antes de decidir (o null): los tantos, si es el que canta el envido;
+// el truco, si lo puede cantar. Le pregunta más seguido a una persona que a otro bot (que ya sabe sus cartas).
+export function botAsks(g, seat, rng, humanPartner) {
+  const h = g.h;
+  const a = actionsFor(g, seat);
+  if (envidoOpenFor(g, seat) && a.envido.length) return pick(rng, humanPartner ? 0.6 : 0.15) ? 'tantos' : null;
+  if (a.truco && h.r <= 1 && !h.truco.pending) return pick(rng, humanPartner ? 0.3 : 0.08) ? 'truco' : null;
+  return null;
+}
 // cuánto le cree a una seña: la del compañero casi siempre es verdad; la de un rival puede ser para despistar
 const senaTrust = (seat, s) => (team(s) === team(seat) ? 0.95 : 0.8);
 
@@ -560,11 +589,12 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
   }
 
   if (w.kind === 'play') {
-    if (envidoOpenFor(g, seat) && a.envido.length) {
+    // si el compañero le dijo "callado", no lo canta él: sigue jugando y que lo canten los rivales
+    if (envidoOpenFor(g, seat) && a.envido.length && !ctx.hush?.tantos) {
       const e = envidoOpen(g, seat, ctx, rng, a);
       if (e) return e;
     }
-    if (a.truco) {
+    if (a.truco && !ctx.hush?.truco) {
       const t = trucoTurn(g, seat, ctx, rng, a);
       if (t) return t;
     }
