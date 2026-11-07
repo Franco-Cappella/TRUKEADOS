@@ -2,7 +2,7 @@
 import { ROUTES, CODE_RE } from './config.js';
 import { $, $$, esc, store, KEYS, myPid, api } from './dom.js';
 import { optionChecks, readOptionChecks } from './hud.js';
-import { roomOptions } from './config.js';
+import { roomOptions, APP_NAME } from './config.js';
 
 const LOBBY_REFRESH_MS = 7000;
 let lobbyTimer = null;
@@ -98,7 +98,7 @@ async function loadPublic() {
 export function showMenu() {
   $('#game').classList.add('hidden');
   $('#menu').classList.remove('hidden');
-  document.title = 'Truco 3D';
+  document.title = APP_NAME;
   loadPublic();
   clearInterval(lobbyTimer);
   lobbyTimer = setInterval(loadPublic, LOBBY_REFRESH_MS);

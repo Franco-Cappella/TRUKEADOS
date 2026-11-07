@@ -1,6 +1,6 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, APP_NAME } from './config.js';
 import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor } from './characters.js';
 import { $, esc, store, KEYS, myPid, savedName, takeSession } from './dom.js';
@@ -33,7 +33,7 @@ export class RoomClient {
     $('#room-code').textContent = code;
     $('#chat-log').innerHTML = '';
     $('#labels').innerHTML = '';
-    document.title = `Truco 3D · Sala ${code}`;
+    document.title = `${APP_NAME} · Sala ${code}`;
     scene.onLook = (t) => this.sendLook(t);
     scene.onCardClick = (id) => this.clickCard(id);
     scene.onCardDouble = (id) => this.playCard(id, 'normal');

@@ -2,6 +2,9 @@
 // Todo número mágico de reglas, tiempos o rutas va acá: si lo cambiás, cambia en los dos lados.
 // No importa nada ni toca el DOM.
 
+// ------------------------------------------------------------------ marca
+export const APP_NAME = 'Trukeados';
+
 // ------------------------------------------------------------------ partida
 export const MODES = { '1v1': 2, '2v2': 4, '3v3': 6 };
 export const DEFAULT_MODE = '1v1';

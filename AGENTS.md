@@ -1,9 +1,10 @@
-# Guía para agentes (y personas) que trabajen en Truco 3D
+# Guía para agentes (y personas) que trabajen en Trukeados
 
 Leé esto antes de tocar código. Las reglas del juego están en [docs/REGLAS.md](docs/REGLAS.md).
 
 ## Qué es
-Truco argentino online en 3D (1v1, 2v2, 3v3). Un Cloudflare Worker sirve los archivos de `public/` y
+Trukeados: truco argentino online en 3D (1v1, 2v2, 3v3). El nombre está en `APP_NAME` (config.js) y,
+en lo estático, en `index.html`, `package.json` y `wrangler.jsonc`. Un Cloudflare Worker sirve los archivos de `public/` y
 un Durable Object por sala (`TrucoRoom`) es la **única fuente de verdad**: valida cada jugada con el
 motor de reglas y manda a cada jugador solo lo que puede ver. El cliente es HTML/CSS/JS sin build ni
 frameworks (Three.js como módulo en `public/vendor/`).

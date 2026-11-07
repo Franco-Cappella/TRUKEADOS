@@ -1,3 +1,5 @@
+import { APP_NAME } from './config.js';
+
 // Colores que usa el JavaScript del cliente (escena 3D, personajes, manos, anotador).
 // Los colores de la interfaz HTML están en public/css/truco.css (variables en :root).
 // Si cambiás la paleta, tocá los dos lados para que todo combine.
@@ -35,7 +37,7 @@ export const SCENE = {
   ],
   felt: ['#2e7344', '#225a35', '#1a4529'], // centro -> borde del paño
   feltInk: 'rgba(255,255,255,0.12)',
-  feltName: 'Truco 3D',
+  feltName: APP_NAME, // lo que está escrito en el paño
   wood: '#5b3418',
   woodDark: '#8a6a55',
   chair: '#4a2a14',

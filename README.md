@@ -1,6 +1,6 @@
-# Truco 3D 🃏
+# Trukeados 🃏
 
-Truco argentino online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**, sin flor. Corre entero en
+Truco argentino online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**. Corre entero en
 **Cloudflare Workers** (`*.workers.dev`), gratis.
 
 - **Escena 3D en primera persona**: estás sentado a la mesa de un bar. Arrastrá (o usá A/D y W/S) para mirar

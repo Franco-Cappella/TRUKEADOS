@@ -2,7 +2,7 @@
 // La lógica de la sala está en room-client.js; la escena 3D en scene.js.
 import { TableScene, preloadCards } from './scene.js';
 import { lookFor } from './characters.js';
-import { SENAS, ROUTES } from './config.js';
+import { SENAS, ROUTES, APP_NAME } from './config.js';
 import { FONT } from './theme.js';
 import { $, $$, esc, savedName } from './dom.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
@@ -134,7 +134,7 @@ function bindGameUI() {
     else if (d.copy) {
       navigator.clipboard?.writeText(d.copy);
       room.toast('Copiado', 'good', 1200);
-    } else if (d.share) navigator.share?.({ title: 'Truco 3D', text: '¿Un truquito?', url: room.link }).catch(() => {});
+    } else if (d.share) navigator.share?.({ title: APP_NAME, text: '¿Un truquito?', url: room.link }).catch(() => {});
     else if (d.v !== undefined) {
       const name = b.closest('[data-cfg]')?.dataset.cfg;
       if (!name) return;

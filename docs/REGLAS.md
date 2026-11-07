@@ -1,6 +1,6 @@
-# Reglas del truco en Truco 3D
+# Reglas del truco en Trukeados
 
-Truco argentino **sin flor**, para 1 vs 1, 2 vs 2 y 3 vs 3. Este documento dice qué reglas aplica el
+Truco argentino para 1 vs 1, 2 vs 2 y 3 vs 3; la flor y la muestra son opcionales de la sala. Este documento dice qué reglas aplica el
 motor (`public/js/engine.js`), cuáles son decisiones de la mesa y cuáles **no** están implementadas.
 Si cambiás una regla: cambiá el motor, agregá un test en `test/truco.test.js` y actualizá este archivo.
 

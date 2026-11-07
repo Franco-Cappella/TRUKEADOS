@@ -1,9 +1,9 @@
 {
-  "name": "truco3d",
+  "name": "trukeados",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Truco argentino online en 3D (1v1, 2v2, 3v3) sobre Cloudflare Workers",
+  "description": "Trukeados: truco argentino online en 3D (1v1, 2v2, 3v3) sobre Cloudflare Workers",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

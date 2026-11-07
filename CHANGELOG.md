@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.5.1 — ahora se llama Trukeados
+- Nueva marca **Trukeados**: título, encabezado, descripción, paño de la mesa, compartir, `package.json` y
+  `wrangler.jsonc`. El nombre del JS está en un solo lugar: `APP_NAME` en `config.js`.
+- Se sacó "Sin flor." de la descripción (la flor ahora es una opción de la sala).
+
+
 ## 1.5.0 — flor, muestra y mesa sin trampas
 - Opciones de sala nuevas (lista única en `config.js` `ROOM_OPTIONS`): **flor**, **muestra** y **no permitir
   trampas** (reemplaza "mostrar quién ganó cada ronda"). Reglas en `docs/REGLAS.md`.
