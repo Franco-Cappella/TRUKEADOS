@@ -1,0 +1,118 @@
+/* Trukeados — tokens de marca (fuente de verdad)
+   Salen del juego: :root de public/css/truco.css y public/js/theme.js. Ver brand/BRAND.md.
+   Las páginas derivadas (landing, reglas, prensa) importan este archivo tal cual.
+   Los nombres del juego (--bg, --surface, --text, --accent…) se mantienen iguales. */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap');
+
+:root {
+  /* ---------------------------------------------------------------- neutros: "la mesa de noche" */
+  --bg: #121212;          /* fondo principal */
+  --surface: #1c1c1c;     /* un escalón arriba */
+  --surface-2: #262626;   /* dos escalones */
+  --surface-3: #303030;   /* hover / tercer nivel */
+  --text: #f5f5f5;        /* tinta principal (también el "papel" en fondo claro) */
+  --text-hi: #ffffff;
+  --text-dim: #b3b3b3;    /* texto secundario (8.9:1 sobre --bg) */
+  --muted: #808080;       /* notas, créditos (4.7:1 sobre --bg; no en --surface-2) */
+  --text-on-light: #121212;
+  --line: rgba(255, 255, 255, 0.12);   /* solo interfaz del juego y campos de formulario */
+  --line-2: rgba(255, 255, 255, 0.24);
+
+  /* ---------------------------------------------------------------- los cuatro palos (relleno) */
+  --espada: #2f6fd6;
+  --basto: #2e9e57;
+  --oro: #f2c12e;         /* ÚNICO acento: la acción principal y casi nada más */
+  --copa: #d93b30;
+  /* alias con los nombres del juego */
+  --blue: var(--espada);
+  --green: var(--basto);
+  --yellow: var(--oro);
+  --red: var(--copa);
+
+  /* ---------------------------------------------------------------- palos como texto sobre oscuro (AA) */
+  --espada-tinta: #5b93e8; /* 6.0:1 — el --team0 del juego */
+  --basto-tinta: #4fbf7a;  /* 8.1:1 */
+  --oro-tinta: #f2c12e;    /* 11.1:1 — el oro ya sirve como texto */
+  --copa-tinta: #ef6a5c;   /* 6.1:1 — el --team1 del juego */
+
+  /* ---------------------------------------------------------------- ambiente del bar (imágenes, 3D y campos de color en páginas; nunca controles) */
+  --pano: #2e7344;        /* paño, centro */
+  --pano-2: #225a35;
+  --pano-3: #1a4529;      /* paño, borde: campo de color para secciones (texto blanco 10:1, oro 6.5:1) */
+  --lampara: #ffd9a0;     /* luz de la lámpara (solo luz/imagen) */
+  --bar: #1a120c;         /* fondo de la escena */
+  --madera: #5b3418;
+  --pared: #6b3b2a;
+
+  /* ---------------------------------------------------------------- usos */
+  --accent: var(--oro);
+  --accent-ink: #121212;  /* texto sobre oro */
+  --team0: var(--espada-tinta);
+  --team1: var(--copa-tinta);
+  --good-line: var(--basto);
+  --good-ink: #8fe0aa;
+  --good-bg: rgba(46, 158, 87, 0.25);
+  --bad-line: var(--copa);
+  --bad-ink: #ffb3ad;
+  --bad-bg: rgba(217, 59, 48, 0.25);
+  --focus: var(--oro);
+
+  /* ---------------------------------------------------------------- tipografía: una sola familia */
+  --font: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --wide: 125%;           /* Expanded: logo, display, cantos */
+  --semi-wide: 112%;      /* títulos de sección */
+  --normal: 100%;         /* texto y botones de página */
+  --narrow: 78%;          /* rótulos, botones del juego, datos */
+  --condensed: 62%;       /* solo cifras grandes en espacios angostos */
+
+  /* escala (fluida, 5 tamaños por página como máximo) */
+  --fs-display: clamp(3.25rem, 1.6rem + 7.4vw, 9.5rem);  /* 52 → 152 px */
+  --fs-title: clamp(2.25rem, 1.5rem + 3.4vw, 4.5rem);    /* 36 → 72 px */
+  --fs-canto: clamp(1.75rem, 1.3rem + 2vw, 3rem);        /* 28 → 48 px */
+  --fs-lead: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);   /* 20 → 26 px */
+  --fs-body: 1.125rem;    /* 18 px */
+  --fs-small: 0.9375rem;  /* 15 px */
+  --fs-micro: 0.8125rem;  /* 13 px: créditos legales y nada más */
+
+  --lh-display: 0.9;
+  --lh-title: 1;
+  --lh-body: 1.55;
+  --track-display: -0.035em;
+  --track-title: -0.02em;
+  --track-label: 0.02em;
+
+  /* ---------------------------------------------------------------- forma */
+  --radius: 3px;          /* botones, campos, paneles: casi recto, como en el juego */
+  --radius-naipe: 6.5%;   /* esquina de las cartas (proporción del naipe) */
+  --naipe-ratio: 512 / 788;
+
+  /* ---------------------------------------------------------------- espacio (base 8) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 9rem;
+  --gutter: clamp(1rem, 0.5rem + 2vw, 2rem);         /* margen exterior de página */
+  --section-gap: clamp(6rem, 4rem + 8vw, 13rem);      /* entre secciones de página */
+  --measure: 62ch;
+
+  /* ---------------------------------------------------------------- movimiento: "arranca rápido y se asienta" */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-press: 120ms;     /* botones */
+  --dur-quick: 180ms;     /* globos, hover */
+  --dur-move: 420ms;      /* carta que vuela, entradas */
+  --dur-sena: 2200ms;     /* cuánto dura una seña (SENA_MS) */
+
+  /* botones (los del juego, grandes para tocar fácil) */
+  --btn-font: 17px;
+  --btn-pad: 12px 20px;
+  --btn-min-h: 46px;
+  --btn-call-font: 22px;
+}

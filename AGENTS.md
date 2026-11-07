@@ -52,6 +52,8 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
 7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
    palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
+8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
+   o texto nuevo sigue esas reglas.
 
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`
