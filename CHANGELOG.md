@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.5.2 — señas del dos y del ancho falso
+- **Dos**: ahora es un beso evidente (labios grandes, rojos y hacia adelante, con arrugas alrededor), dibujado
+  por encima del bigote para que se vea siempre.
+- **Ancho falso**: boca abierta (antes, la punta de la lengua), como dice el reglamento ("abrir un poco la
+  boca").
+- Colores de la boca en `theme.js` (`FACE`).
+
+
 ## 1.5.1 — ahora se llama Trukeados
 - Nueva marca **Trukeados**: título, encabezado, descripción, paño de la mesa, compartir, `package.json` y
   `wrangler.jsonc`. El nombre del JS está en un solo lugar: `APP_NAME` en `config.js`.

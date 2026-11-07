@@ -75,6 +75,15 @@ export const SCORE = {
   rule: 'rgba(255,255,255,0.4)',
 };
 
+// Colores de la boca de los personajes (señas y hablar).
+export const FACE = {
+  mouthInside: '#4a1f1b',
+  teeth: '#efe9de',
+  tongue: '#d46a72',
+  kissLip: '#c24f58', // labios del beso: más rojos para que la seña se note
+  wrinkle: 'rgba(70,35,25,0.5)',
+};
+
 // Paletas de los personajes (tonos de piel, pelo y ropa reales). Cada piel: [luz, sombra].
 export const PALETTE = {
   skins: [

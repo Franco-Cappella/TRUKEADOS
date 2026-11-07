@@ -2,7 +2,7 @@
 // Se dibujan en un canvas según hacia dónde está girado el cuerpo y la cabeza respecto de quien mira
 // (de frente, de tres cuartos o casi de perfil), hacia dónde mira y qué cara pone (señas y hablar).
 // No parpadean solos: los ojos cerrados son SOLO la seña "ciego", para que no se confunda.
-import { INK, PALETTE, mix } from './theme.js';
+import { INK, PALETTE, FACE, mix } from './theme.js';
 
 export const W = 512;
 export const H = 1200;
@@ -376,8 +376,11 @@ function drawHead(ctx, look, cx, cy, yaw, down, expr, talking) {
   drawEyes(ctx, look, px, vis, eyeY, expr, down, yaw);
   drawBrows(ctx, look, px, vis, eyeY, expr, down);
   drawNose(ctx, look, px, cy, fh, yaw, expr);
-  drawMouth(ctx, look, px, vis, cy + fh * 0.6 + down * 4, yaw, expr, talking);
+  // el beso va por encima del bigote: si no, la seña del dos no se ve
+  const mouth = () => drawMouth(ctx, look, px, vis, cy + fh * 0.6 + down * 4, yaw, expr, talking);
+  if (expr !== 'kiss') mouth();
   if (look.mustache || look.beard) drawMustache(ctx, look, px, cy + fh * 0.48 + down * 4, yaw, expr);
+  if (expr === 'kiss') mouth();
   if (look.glasses) drawGlasses(ctx, px, vis, eyeY);
   drawHair(ctx, look, cx, cy, fw, fh, yaw, px, vis);
 }
@@ -554,7 +557,6 @@ function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
   const x = px(0, 0.95) + s * 5;
   const w = 22 * (0.5 + 0.5 * Math.cos(yaw));
   const lip = mix(look.skin[1], 0.82);
-  const lipD = '#7a3a33';
   ctx.strokeStyle = INK;
   ctx.lineWidth = 3;
   switch (expr) {
@@ -581,7 +583,7 @@ function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
       ctx.lineTo(x + w * 0.8, y + 4);
       ctx.lineTo(x - w * 0.8, y + 4);
       ctx.closePath();
-      fillStroke(ctx, '#f3efe6', INK, 2.5);
+      fillStroke(ctx, FACE.teeth, INK, 2.5);
       ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 1.2;
       for (const dx of [-0.4, 0, 0.4]) {
@@ -598,36 +600,53 @@ function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
       return;
     }
     case 'kiss': {
-      ellipse(ctx, x + s * 6, y + 2, 9, 9);
-      fillStroke(ctx, lip, INK, 3);
-      ellipse(ctx, x + s * 6, y + 2, 3.5, 3);
-      ctx.fillStyle = lipD;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(70,35,25,0.45)';
-      ctx.lineWidth = 1.5;
-      for (const dy of [-6, 0, 6]) {
+      // beso evidente: labios grandes, rojos y para adelante (corridos hacia donde mira), con arrugas
+      ctx.save();
+      const kx = x + s * 10;
+      const ky = y + 4;
+      ctx.translate(kx, ky);
+      ctx.scale(1.35, 1.35); // grande: la seña tiene que verse desde la otra punta de la mesa
+      ctx.translate(-kx, -ky);
+      ctx.strokeStyle = FACE.wrinkle;
+      ctx.lineWidth = 1.8;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
         ctx.beginPath();
-        ctx.moveTo(x + s * 6 - 5, y + 2 + dy * 0.8);
-        ctx.lineTo(x + s * 6 - 1, y + 2 + dy * 0.6);
+        ctx.moveTo(kx + Math.cos(a) * 16, ky + Math.sin(a) * 14);
+        ctx.lineTo(kx + Math.cos(a) * 21, ky + Math.sin(a) * 18);
         ctx.stroke();
       }
+      // labio de arriba (con la forma de corazón) y de abajo
+      ctx.beginPath();
+      ctx.moveTo(kx - 13, ky);
+      ctx.bezierCurveTo(kx - 12, ky - 13, kx - 3, ky - 13, kx, ky - 7);
+      ctx.bezierCurveTo(kx + 3, ky - 13, kx + 12, ky - 13, kx + 13, ky);
+      ctx.bezierCurveTo(kx + 12, ky + 14, kx - 12, ky + 14, kx - 13, ky);
+      ctx.closePath();
+      fillStroke(ctx, FACE.kissLip, INK, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; // brillo del labio
+      ellipse(ctx, kx - 4, ky + 6, 4, 2);
+      ctx.fill();
+      ellipse(ctx, kx, ky + 1, 3.5, 3);
+      ctx.fillStyle = FACE.mouthInside;
+      ctx.fill();
+      ctx.restore();
       return;
     }
-    case 'tongue': {
+    case 'open': {
+      // boca abierta: óvalo oscuro con los dientes de arriba y la lengua abajo
       ctx.beginPath();
-      ctx.moveTo(x - w, y);
-      ctx.quadraticCurveTo(x, y + 6, x + w, y);
-      ctx.stroke();
+      ctx.ellipse(x, y + 9, w * 0.72, 16, 0, 0, Math.PI * 2);
+      fillStroke(ctx, FACE.mouthInside, INK, 3);
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = FACE.teeth;
+      ctx.fillRect(x - w, y - 8, w * 2, 8);
+      ctx.fillStyle = FACE.tongue;
       ctx.beginPath();
-      ctx.moveTo(x - 8, y + 3);
-      ctx.quadraticCurveTo(x + 2, y + 18, x + 10, y + 3);
-      fillStroke(ctx, '#d46a72', INK, 2.5);
-      ctx.strokeStyle = 'rgba(120,30,40,0.6)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x + 1, y + 5);
-      ctx.lineTo(x + 1, y + 11);
-      ctx.stroke();
+      ctx.ellipse(x, y + 23, w * 0.5, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
       return;
     }
     case 'puff': {
@@ -659,8 +678,8 @@ function drawMouth(ctx, look, px, vis, y, yaw, expr, talking) {
     ctx.moveTo(x - w * 0.8, y - 1);
     ctx.quadraticCurveTo(x, y - 5, x + w * 0.8, y - 1);
     ctx.quadraticCurveTo(x, y + 18, x - w * 0.8, y - 1);
-    fillStroke(ctx, '#4a1f1b', INK, 2.5);
-    ctx.fillStyle = '#efe9de';
+    fillStroke(ctx, FACE.mouthInside, INK, 2.5);
+    ctx.fillStyle = FACE.teeth;
     ctx.fillRect(x - w * 0.5, y - 3, w, 4);
     return;
   }
