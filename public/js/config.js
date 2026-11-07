@@ -66,7 +66,7 @@ export const SENAS = {
 };
 export const SENA_MS = 2200; // cuánto dura la cara de una seña
 
-export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo'];
+export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 
 // ------------------------------------------------------------------ validación
 export const PID_RE = /^[A-Za-z0-9_-]{8,64}$/;
