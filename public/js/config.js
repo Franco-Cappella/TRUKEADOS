@@ -33,6 +33,9 @@ export const ROUTES = {
     config: '/api/config',
     me: '/api/me',
     matches: '/api/matches',
+    shop: '/api/shop',
+    buy: '/api/shop/buy',
+    equip: '/api/shop/equip',
     match: (id) => `/api/matches/${id}`,
   },
   card: (id) => `/cards/${id}.webp`,
@@ -139,6 +142,48 @@ export const ANALYSIS = {
   honestAccept: 0.85,
 };
 export const HISTORY_PAGE = 20; // partidas por página en el historial
+
+// ------------------------------------------------------------------ tienda y personalización
+// Se compra con las monedas que se ganan jugando (COINS). Lo que tenés puesto lo ven todos en la mesa: la ropa,
+// el gorro, los anteojos y lo que tenés delante, siempre; el paño y el mazo, en las mesas donde sos anfitrión.
+// Los colores y las formas de cada cosa están en theme.js (COSMETIC_LOOK), con la misma clave.
+export const COSMETIC_SLOTS = [
+  { key: 'ropa', label: 'Ropa', where: 'Tu personaje' },
+  { key: 'gorro', label: 'Gorro', where: 'Tu personaje' },
+  { key: 'anteojos', label: 'Anteojos', where: 'Tu personaje' },
+  { key: 'objeto', label: 'En la mesa', where: 'Delante tuyo' },
+  { key: 'pano', label: 'Paño', where: 'La mesa, cuando sos anfitrión' },
+  { key: 'dorso', label: 'Mazo', where: 'El dorso de las cartas, cuando sos anfitrión' },
+];
+export const COSMETICS = [
+  { id: 'remera-celeste', slot: 'ropa', name: 'Remera celeste', price: 40 },
+  { id: 'chomba-verde', slot: 'ropa', name: 'Chomba verde', price: 60 },
+  { id: 'pulover-bordo', slot: 'ropa', name: 'Pulóver bordó', price: 60 },
+  { id: 'saco-negro', slot: 'ropa', name: 'Saco negro', price: 90 },
+  { id: 'boina', slot: 'gorro', name: 'Boina', price: 70 },
+  { id: 'gorra', slot: 'gorro', name: 'Gorra', price: 50 },
+  { id: 'lentes', slot: 'anteojos', name: 'Lentes', price: 40 },
+  { id: 'mate', slot: 'objeto', name: 'Mate', price: 30 },
+  { id: 'cafe', slot: 'objeto', name: 'Cafecito', price: 30 },
+  { id: 'porron', slot: 'objeto', name: 'Porrón', price: 50 },
+  { id: 'fernet', slot: 'objeto', name: 'Fernet con coca', price: 80 },
+  { id: 'pano-azul', slot: 'pano', name: 'Paño azul', price: 120 },
+  { id: 'pano-bordo', slot: 'pano', name: 'Paño bordó', price: 120 },
+  { id: 'pano-negro', slot: 'pano', name: 'Paño negro', price: 150 },
+  { id: 'dorso-azul', slot: 'dorso', name: 'Dorso azul', price: 100 },
+  { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
+  { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },
+];
+export const cosmeticById = (id) => COSMETICS.find((c) => c.id === id) || null;
+/** Lo que tiene puesto, limpio: solo ids que existen, cada uno en su ranura (y, si se pasa, solo lo comprado). */
+export function cleanEquipped(eq, owned = null) {
+  const out = {};
+  for (const s of COSMETIC_SLOTS) {
+    const it = cosmeticById(eq?.[s.key]);
+    if (it && it.slot === s.key && (!owned || owned.includes(it.id))) out[s.key] = it.id;
+  }
+  return out;
+}
 
 // ------------------------------------------------------------------ validación
 export const CODE_RE = /^\d{4}$/;

@@ -4,6 +4,7 @@ import { ROUTES, CODE_RE, APP_NAME, MODES, ELO_START, modeLabel } from './config
 import { $, $$, esc, store, KEYS, api, initial } from './dom.js';
 import { currentMe, loadMe } from './auth.js';
 import { loadHistory } from './history.js';
+import { initShop, loadShop } from './shop.js';
 
 const LOBBY_REFRESH_MS = 7000;
 const PUBLIC_MAX = 3; // en la pestaña Jugar, como mucho; en pantallas bajas, las que entren sin scroll
@@ -66,6 +67,7 @@ export function initMenu(go, logout) {
     if (b) showTab(b.dataset.tab);
   });
   $('#logout').addEventListener('click', logout);
+  initShop(paintMe);
 }
 
 function showTab(tab) {
@@ -80,6 +82,7 @@ function showTab(tab) {
   } catch {}
   if (tab === 'jugar' || tab === 'mesas') loadPublic();
   if (tab === 'historial') loadHistory();
+  if (tab === 'tienda' || tab === 'personalizar') loadShop(tab);
 }
 
 // Tu usuario arriba, las monedas y el ELO de cada modo.

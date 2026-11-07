@@ -17,6 +17,7 @@ src/                      SERVIDOR (Cloudflare Worker)
   auth.js                 sesión de Supabase (verifica el token) y perfiles (lectura/alta en la base)
   recorder.js             graba la partida en curso (estado al repartir cada mano + jugadas) para el historial
   matches.js              partida terminada → Supabase (ELO, monedas, historial) y lectura del historial
+  shop.js                 tienda: comprar (buy_item) y elegir lo que tenés puesto (profiles.equipped)
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
   lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
@@ -39,6 +40,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   hud.js                  anotador de palitos, ayuda, caras de las señas, frases rápidas
   menu.js                 menú con pestañas: jugar, mesas, historial, tienda, personalizar y perfil
   history.js              lista del historial y visor de una partida grabada (/partida/ID) con el análisis
+  shop.js                 pestañas Tienda y Personalizar
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
   characters.js           personajes 2D dibujados en canvas (caras y señas)
@@ -158,6 +160,9 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   cámara cambiá `tYaw`/`tPitch` (objetivo), nunca `yaw`/`pitch` directo.
 
 ## Cómo agregar cosas
+- **Algo para la tienda**: una entrada en `COSMETICS` (config.js: id, ranura, nombre, precio) y cómo se ve en
+  `COSMETIC_LOOK` (theme.js, misma clave). Ropa/gorro/anteojos se aplican con `dressed()` (characters.js); un objeto
+  nuevo de la mesa necesita su forma en `tableObject()` (scene.js). Una ranura nueva, en `COSMETIC_SLOTS`.
 - **Una seña**: agregala en `SENAS` de `config.js` con una `expr`; si la cara es nueva, dibujala en
   `characters.js` (`drawEyes`/`drawMouth`…). El servidor valida contra las mismas claves.
 - **Una regla**: `engine.js` (+ `actionsFor` si cambia qué botones hay) → test → `docs/REGLAS.md`.

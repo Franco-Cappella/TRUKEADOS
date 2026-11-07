@@ -2,7 +2,7 @@
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
-import { lookFor, biteAt } from './characters.js';
+import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, store, KEYS, savedName, sessionToken, takeSession, initial } from './dom.js';
 import { audio, flick, ding, say, hush } from './audio.js';
 import { palitos, drawFace } from './hud.js';
@@ -42,6 +42,12 @@ export class RoomClient {
     scene.onFrame = () => this.updateLabels();
     this.zoomTip = store.get(KEYS.zoomTip) !== '1'; // se muestra al empezar la partida, no en la sala de espera
     this.connect();
+  }
+
+  // Tu personaje (con lo que tenés puesto de la tienda): tus manos, el espejo de las señas.
+  myLook() {
+    const me = this.st?.room.seats[this.you];
+    return dressed(lookFor(me?.name || savedName(), this.you ?? 0), me?.cos);
   }
 
   get link() {
@@ -253,7 +259,8 @@ export class RoomClient {
       $('#labels').innerHTML = '';
       for (const [s, t] of Object.entries(this.gaze)) scene.setGaze(Number(s), t);
     }
-    if (st.you != null && seats[st.you]) scene.setMyLook(lookFor(seats[st.you].name, st.you));
+    if (st.you != null && seats[st.you]) scene.setMyLook(this.myLook());
+    scene.setTable(st.room.table || {});
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
@@ -1025,7 +1032,7 @@ export class RoomClient {
   // Manda una seña y muestra el "espejo": así te ven los que te miran.
   doSena(id) {
     this.send({ t: 'sena', sena: id });
-    const look = lookFor(savedName(), this.you);
+    const look = this.myLook();
     const expr = SENAS[id].expr;
     const mirror = drawFace($('#mirror'), look, expr);
     mirror.classList.remove('hidden');

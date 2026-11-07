@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow }
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -93,9 +93,10 @@ export class TrucoRoom extends DurableObject {
     let account = null;
     if (msg.t === 'join') {
       const user = await verifyToken(this.env, msg.token);
-      const profile = user && (await getProfile(this.env, user.id).catch(() => null));
+      // sin caché: lo que tiene puesto de la tienda puede haber cambiado recién
+      const profile = user && (await getProfile(this.env, user.id, { fresh: true }).catch(() => null));
       if (!profile) return this.send(ws, { t: 'auth' });
-      account = { pid: user.id, name: profile.username };
+      account = { pid: user.id, name: profile.username, cos: cleanEquipped(profile.equipped) };
     }
 
     const r = this.room;
@@ -107,9 +108,11 @@ export class TrucoRoom extends DurableObject {
     switch (msg.t) {
       case 'join': {
         const name = cleanName(account.name);
-        ws.serializeAttachment({ pid, name });
+        const cos = account.cos;
+        ws.serializeAttachment({ pid, name, cos });
         if (seat != null) {
           r.seats[seat].name = name;
+          r.seats[seat].cos = cos;
           // volvió después de cortarse: se avisa (y si ya jugaba el bot por él, que deja de jugar)
           if (r.status === 'playing' && r.afkSince[seat] && !this.online(ws).has(pid)) {
             this.addSystemChat(r.afkBot?.[seat] ? `${name} volvió: deja de jugar el bot en su lugar` : `${name} volvió`);
@@ -119,7 +122,7 @@ export class TrucoRoom extends DurableObject {
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.freeSeat();
           if (free != null) {
-            r.seats[free] = { pid, name };
+            r.seats[free] = { pid, name, cos };
             this.addSystemChat(`${name} se sentó a la mesa`);
           }
         }
@@ -134,7 +137,8 @@ export class TrucoRoom extends DurableObject {
         if (r.status !== 'lobby' || !pid) return;
         const to = msg.seat;
         if (!Number.isInteger(to) || to < 0 || to >= r.seats.length || r.seats[to]) return;
-        const me = seat != null ? r.seats[seat] : { pid, name: ws.deserializeAttachment()?.name || 'Invitado' };
+        const att = ws.deserializeAttachment() || {};
+        const me = seat != null ? r.seats[seat] : { pid, name: att.name || 'Invitado', cos: att.cos || {} };
         if (seat != null) r.seats[seat] = null;
         r.seats[to] = me;
         return this.commit();
@@ -1018,8 +1022,14 @@ export class TrucoRoom extends DurableObject {
         // desconectado en partida: cuánto falta (ms) para que juegue un bot por él (0 = ya juega el bot)
         const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
         const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
-        return { name: s.name, bot: !!s.bot, online: on, host: !s.bot && s.pid === r.host, botIn };
+        // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
+        return { name: s.name, bot: !!s.bot, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {} };
       }),
+      // el paño y el mazo son los del anfitrión
+      table: (() => {
+        const h = r.seats.find((s) => s && !s.bot && s.pid === r.host)?.cos || {};
+        return { pano: h.pano || null, dorso: h.dorso || null };
+      })(),
       spectators,
     };
   }

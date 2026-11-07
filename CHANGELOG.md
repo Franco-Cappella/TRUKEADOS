@@ -1,5 +1,12 @@
 # Cambios
 
+## 1.10.0 — tienda y personalización
+- **Tienda** (pestaña del menú): con las monedas que ganás jugando comprás ropa, gorro, anteojos, algo para tener
+  delante en la mesa (mate, cafecito, porrón, fernet), paños y dorsos de mazo. Nada se compra con plata. El precio
+  lo pone el servidor y la compra es una transacción (`buy_item`).
+- **Personalizar**: elegís lo que tenés puesto, con una vista previa. Los demás lo ven en la partida: tu personaje
+  vestido y lo tuyo sobre el paño; el paño y el mazo, en las mesas donde sos anfitrión.
+
 ## 1.9.0 — historial, rebobinado, ELO y análisis
 - **Todas las partidas quedan en el historial** (pestaña Historial): resultado, rivales, ELO y monedas. La sala
   graba el estado al repartir cada mano y cada jugada (`src/recorder.js`); al terminar va a Supabase en una sola

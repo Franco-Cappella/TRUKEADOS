@@ -124,14 +124,21 @@
       </div>
 
       <div class="m-card h-panel hidden" data-panel="tienda">
-        <h3>Tienda <small>próximamente</small></h3>
-        <p class="h-soon">Con las monedas que ganás jugando vas a poder comprar mazos, mesas, objetos para el bar y ropa para tu personaje. Nada se compra con plata.</p>
-        <p class="h-coins">Tenés <b id="shop-coins">0</b> monedas.</p>
+        <h3>Tienda <small>tenés <b id="shop-coins">0</b> monedas · ganás jugando, nada se compra con plata</small></h3>
+        <div id="shop-list" class="sh-list"></div>
+        <p class="a-msg" id="shop-msg" role="status"></p>
       </div>
 
       <div class="m-card h-panel hidden" data-panel="personalizar">
-        <h3>Personalizar <small>próximamente</small></h3>
-        <p class="h-soon">Tu personaje, tu mazo y tu mesa: lo que compres en la tienda lo elegís acá, y los demás lo ven en la partida.</p>
+        <h3>Personalizar <small>lo que te ponés lo ven todos en la mesa</small></h3>
+        <div class="cu-wrap">
+          <div class="cu-preview">
+            <canvas id="cu-bust" width="256" height="280" aria-label="Así te ven"></canvas>
+            <div class="cu-table"><canvas id="cu-felt" width="120" height="70" aria-label="Paño"></canvas><canvas id="cu-back" width="46" height="70" aria-label="Mazo"></canvas></div>
+          </div>
+          <div id="cu-slots" class="cu-slots"></div>
+        </div>
+        <p class="a-msg" id="cu-msg" role="status"></p>
       </div>
 
       <div class="m-card h-panel hidden" data-panel="perfil">

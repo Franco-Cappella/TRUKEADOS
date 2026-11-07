@@ -71,3 +71,8 @@ direcciones del equipo del proyecto y muy pocos por hora. Para gente de verdad h
 - Al terminar, la sala llama a `record_match(m)` con la clave secreta: inserta la partida, suma el ELO (como
   diferencia, para no pisar otra partida simultánea) y las monedas. Solo `service_role` puede ejecutarla.
 - `/api/matches` (tu historial, de a 20) y `/api/matches/ID` (una partida, solo si la jugaste).
+
+## Tienda
+- `inventory` (lo que compró cada uno) y `profiles.equipped` (lo que tiene puesto, `{ ranura: id }`).
+- El catálogo y los precios están en el código (`COSMETICS`); `buy_item(uid, item, cost)` descuenta y anota en una
+  transacción. `/api/shop`, `/api/shop/buy` y `/api/shop/equip`. La sala lee lo puesto al entrar cada jugador.
