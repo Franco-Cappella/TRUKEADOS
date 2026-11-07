@@ -731,10 +731,14 @@ export class RoomClient {
     if (!this.st || this.you == null || this.st.room.status === 'lobby') return (bar.innerHTML = '');
     const cur = this.scene.lookTarget;
     let html = '<span class="lbl">Mirar a</span>';
+    const g = this.st.game;
+    // en equipos se marca quién es pie (el que canta y contesta el envido)
+    const pies = g?.n > 2 ? g.h?.pies || [] : [];
     this.st.room.seats.forEach((p, s) => {
       if (s === this.you || !p) return;
       const rel = team(s) === team(this.you) ? 'Compañero' : 'Rival';
-      html += `<button class="btn ghost ${cur === s ? 'on' : ''}" data-look="${s}"><small>${rel}</small> ${esc(p.name)}</button>`;
+      const pie = pies.includes(s) ? ' · <b class="pie">pie</b>' : '';
+      html += `<button class="btn ghost ${cur === s ? 'on' : ''}" data-look="${s}"><small>${rel}${pie}</small> ${esc(p.name)}</button>`;
     });
     html += `<button class="btn ghost ${cur === 'table' ? 'on' : ''}" data-look="table">La mesa</button>`;
     if (bar.dataset.html !== html) {

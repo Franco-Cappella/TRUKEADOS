@@ -143,7 +143,8 @@ export class TrucoRoom extends DurableObject {
 
       case 'start': {
         if (!lobbyHost) return;
-        if (msg.fillBots) r.seats = r.seats.map((s) => s || { bot: true, name: this.botName() });
+        // de a uno: así botName() ve los nombres que ya se pusieron y no repite
+        if (msg.fillBots) r.seats.forEach((s, i) => s || (r.seats[i] = { bot: true, name: this.botName() }));
         if (r.seats.some((s) => !s)) return this.send(ws, { t: 'error', msg: 'Faltan jugadores (o llená con bots)' });
         r.status = 'playing';
         const { mode, target, trucoDesdeSegunda } = r.cfg;

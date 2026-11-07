@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.5.3 — el pie en "Mirar a"
+- En 2 vs 2 y 3 vs 3, la lista "Mirar a" marca quién es **pie** en cada mano (se actualiza sola).
+- Arreglado: al empezar llenando con bots podían salir dos bots con el mismo nombre.
+
+
 ## 1.5.2 — señas del dos y del ancho falso
 - **Dos**: ahora es un beso evidente (labios grandes, rojos y hacia adelante, con arrugas alrededor), dibujado
   por encima del bigote para que se vea siempre.

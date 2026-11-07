@@ -196,6 +196,7 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 #look-bar .btn:hover { background: var(--hover-tint); }
 #look-bar .btn.on { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 #look-bar small { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; display: block; line-height: 1.2; }
+#look-bar small .pie { color: var(--accent); font-weight: 700; }
 
 /* Abajo a la izquierda: señas y trampa. Abajo a la derecha: el panel con el estado y las acciones.
    El centro de abajo queda libre: ahí está tu mano. */
