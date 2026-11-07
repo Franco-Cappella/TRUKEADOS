@@ -177,9 +177,18 @@ export const ASK_TALK = {
     callado: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'Vengo seco.', 'Con esto no gano ni una.'],
   },
+  // en primera, el compañero le pregunta al pie si "pone" (tira alta para ganar la ronda) o "va" (tira baja y
+  // deja que mate el pie)
+  primera: {
+    ask: ['¿Pongo o voy?', '¿Pongo o vengo?', '¿Mato o voy a vos?', '¿Qué hago, pongo?'],
+    poner: ['Poné.', 'Poné nomás.', 'Poné, que estoy flojo.', 'Matá vos.'],
+    ir: ['Vení.', 'Vení, que mato yo.', 'Vení a mí.', 'Andá nomás, que la mato yo.'],
+  },
 };
+// Respuestas válidas para cada consulta
+export const ASK_ANSWERS = { tantos: ['si', 'callado', 'nada'], truco: ['si', 'callado', 'nada'], primera: ['poner', 'ir'] };
 export const talkAsk = (kind, rng = Math.random) => sayFrom(ASK_TALK[kind].ask, rng);
-export const ASK_ANSWERS = ['si', 'callado', 'nada'];
+
 export const talkAnswer = (kind, ans, rng = Math.random) => sayFrom(ASK_TALK[kind][ans], rng);
 
 export const talkIdle = (rng = Math.random) => say('idle', rng);

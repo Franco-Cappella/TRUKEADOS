@@ -136,7 +136,8 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   abierta en `room.asks[equipo]` (una por mano y tipo) y los bots compañeros contestan con `botAnswer` (a veces
   "callado" para ir a la pesca). Un bot puede consultar antes de decidir (`botAsks`) y espera hasta `TIMING.askWait`;
   "Cantá" y "No tengo nada" entran como señas (`askSenas`: decide él, y si tiene canta igual); "callado"
-  hace que no cante eso (`ctx.hush`).
+  hace que no cante eso (`ctx.hush`). "¿Pongo o voy?" (`primera`) la contesta solo el pie (`answerers`); el bot
+  que preguntó tira la más baja si le dicen "vení" o la que gana si le dicen "poné" (`ctx.primera`).
 - **Nunca se traba la mesa**: si `botAction` falla o elige algo inválido, la sala prueba `fallbackActions`; si
   falla la alarma entera, se registra y se reprograma.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).

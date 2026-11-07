@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.10.3 — "¿Pongo o voy?"
+- En equipo (2v2 y 3v3), en primera, el que no es pie le puede preguntar al pie **¿Pongo o voy?** (poner: tirar alta y
+  ganar la primera; ir: tirar baja y que mate el pie). El pie contesta con un clic: **Poné** o **Vení**. Contesta solo
+  el pie, y una vez por mano.
+- Los bots también: un bot que no es pie te pregunta si sos pie (y le hace caso: con "vení" tira la más baja, con
+  "poné" la que gana o la más alta), y el bot pie te contesta según lo que tiene ("vení" si puede matar).
+- Tests de la sala para las dos direcciones, en 2v2 y 3v3.
+
 ## 1.10.2 — consultas que tienen sentido y chat más corto
 - "¿Le canto truco?" solo aparece si tu equipo puede cantar o subir el truco en esa mano (no si lo tienen los
   rivales, ni si ya está en vale cuatro, ni en primera cuando se canta desde segunda) y todavía no tiraste en esa

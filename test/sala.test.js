@@ -11,14 +11,14 @@ import { TIMING } from '../public/js/config.js';
 const answers = (kind) => [...ASK_TALK[kind].si, ...ASK_TALK[kind].callado, ...ASK_TALK[kind].nada];
 
 // Sala 2v2: la persona u0 en el asiento 0 y tres bots. `dealer` fija quién reparte (y entonces quién es mano y pie).
-async function table({ dealer = null, humans = ['u0'] } = {}) {
+async function table({ dealer = null, humans = ['u0'], trucoDesdeSegunda = false } = {}) {
   const h = await makeRoom({ mode: '2v2' });
   const ws = [];
   for (const pid of humans) ws.push(await h.join(pid));
   await h.send(ws[0], { t: 'start', fillBots: true });
   const r = h.room.room;
   if (dealer != null) {
-    r.game = newGame({ mode: '2v2', target: 15, dealer }, Math.random);
+    r.game = newGame({ mode: '2v2', target: 15, dealer, trucoDesdeSegunda }, Math.random);
     r.dealUntil = h.now;
     r.botReadyAt = 0;
     h.room.broadcastState();
@@ -170,4 +170,92 @@ test('sala: "¿Le canto truco?" solo cuando tu equipo lo puede cantar y todavía
   // ya tiraste en esta ronda: no tiene sentido preguntar
   await h.send(ws[0], { t: 'act', a: { t: 'play', card: r.game.h.inHand[0][0] } });
   assert.equal(h.state(ws[0]).ask.can.truco, false);
+});
+
+// Fija las cartas de la mano (asientos 0..3).
+const deal = (r, cards) => {
+  r.game.h.cards = cards.map((c) => c.slice());
+  r.game.h.inHand = cards.map((c) => c.slice());
+};
+
+for (const [ans, expected] of [['ir', '4C'], ['poner', '1E']]) {
+  test(`sala: el compañero bot te pregunta "¿pongo o voy?" (sos pie); le decís ${ans === 'ir' ? '"Vení"' : '"Poné"'} y tira ${expected}`, async () => {
+    let asked = 0;
+    for (let hand = 0; hand < 20 && !asked; hand++) {
+      // reparte el 1: es mano el 2 (compañero bot, no pie) y el pie del equipo sos vos (0). Como en las salas de
+      // equipo, el truco se canta desde segunda (si no, con el ancho el bot canta truco antes de tirar)
+      const { h, ws, r } = await table({ dealer: 1, trucoDesdeSegunda: true });
+      deal(r, [['4B', '5O', '6C'], ['4O', '5C', '6B'], ['1E', '4C', '5E'], ['4E', '5B', '6O']]);
+      for (let t = 0; t < 20_000; t += 100) {
+        await h.tick(100);
+        const q = h.state(ws[0])?.ask?.open;
+        if (q?.kind === 'primera' && q.mineToAnswer && !q.answered) {
+          asked++;
+          assert.ok(ASK_TALK.primera.ask.includes(h.room.chat.find((c) => c.seat === 2 && ASK_TALK.primera.ask.includes(c.text))?.text));
+          await h.send(ws[0], { t: 'answer', ans });
+          assert.ok(ASK_TALK.primera[ans].includes(h.room.chat.at(-1).text));
+          break;
+        }
+        if (r.game.h.rounds[0].plays.some((p) => p.seat === 2) || r.game.h.phase !== 'play') break; // no preguntó: otra mano
+      }
+      if (!asked) continue;
+      for (let t = 0; t < 20_000 && !r.game.h.rounds[0].plays.some((p) => p.seat === 2) && r.game.h.phase === 'play'; t += 100) {
+        await h.tick(100);
+        // si le cantan algo a la persona, contesta "no quiero" (para que siga la mano)
+        const w = waitingFor(r.game);
+        if (w.seats.includes(0) && w.kind !== 'play') await h.send(ws[0], { t: 'act', a: { t: 'noquiero' } });
+      }
+      const play = r.game.h.rounds[0].plays.find((p) => p.seat === 2);
+      if (!play) {
+        asked = 0; // se terminó la mano por un truco no querido: otra
+        continue;
+      }
+      assert.equal(play.c, expected);
+    }
+    assert.ok(asked > 0, 'el bot nunca preguntó');
+  });
+}
+
+test('sala: le preguntás al pie bot "¿pongo o voy?" y te contesta con un clic (vení si tiene con qué)', async () => {
+  // reparte el 2: es mano el 3, después vos (0); el pie de tu equipo es el bot 2, que tiene el ancho de espada
+  const { h, ws, r } = await table({ dealer: 2 });
+  deal(r, [['4B', '5O', '6C'], ['4O', '5C', '6B'], ['1E', '4C', '5E'], ['4E', '5B', '6O']]);
+  h.room.broadcastState();
+  const st = h.state(ws[0]).ask;
+  assert.equal(st.can.primera, true);
+  assert.equal(st.can.tantos, false); // no sos pie
+  await h.send(ws[0], { t: 'ask', kind: 'primera' });
+  assert.ok(ASK_TALK.primera.ask.includes(h.room.chat.at(-1).text));
+  await h.tick(TIMING.askBotAnswer + 1500);
+  assert.ok(h.room.chat.some((c) => c.seat === 2 && ASK_TALK.primera.ir.includes(c.text)), h.chat().slice(-3).join(' | '));
+  assert.equal(h.state(ws[0]).ask.can.primera, false); // una vez por mano
+});
+
+test('sala: "¿pongo o voy?" no lo tiene el pie ni se puede en 1v1', async () => {
+  const { h, ws } = await table({ dealer: 1 }); // sos pie
+  assert.equal(h.state(ws[0]).ask.can.primera, false);
+  const one = await makeRoom({ mode: '1v1' });
+  const w1 = await one.join('u0');
+  await one.send(w1, { t: 'start', fillBots: true });
+  one.room.broadcastState();
+  assert.equal(one.state(w1).ask.can.primera, false);
+});
+
+test('sala: en 3v3 "¿pongo o voy?" lo contesta solo el pie (no el otro compañero)', async () => {
+  const h = await makeRoom({ mode: '3v3' });
+  const ws = await h.join('u0');
+  await h.send(ws, { t: 'start', fillBots: true });
+  const r = h.room.room;
+  // reparte el 3: el pie de tu equipo (0, 2, 4) es el bot 2
+  r.game = newGame({ mode: '3v3', target: 15, dealer: 3 }, Math.random);
+  r.dealUntil = h.now;
+  r.botReadyAt = h.now + 60_000; // que los bots no jueguen mientras tanto
+  h.room.broadcastState();
+  assert.equal(h.state(ws).ask.can.primera, true);
+  await h.send(ws, { t: 'ask', kind: 'primera' });
+  r.asks[0].botDue = h.now; // que contesten ya
+  h.room.botAnswers(h.now);
+  const said = h.room.chat.filter((c) => [...ASK_TALK.primera.poner, ...ASK_TALK.primera.ir].includes(c.text));
+  assert.deepEqual(said.map((c) => c.seat), [2]);
+  assert.equal(r.asks[0].done, true);
 });

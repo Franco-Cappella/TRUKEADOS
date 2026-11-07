@@ -17,7 +17,7 @@
 // supone de cualquiera.
 import {
   rank, tanto, team, cardNum, playValue, actionsFor, waitingFor, envidoOpenFor, florFor, act, newDeck, shuffle,
-  validTanto, envidoAcceptedPoints, envidoDeclinedPoints,
+  validTanto, envidoAcceptedPoints, envidoDeclinedPoints, isPie,
 } from './engine.js';
 import { predict, rate, strength, X } from './brain.js';
 import { BOT, ANALYSIS } from './config.js';
@@ -56,6 +56,12 @@ const SENA_FITS = {
 // rivales y después se sube). Con poco, casi siempre avisa que no tiene nada (a veces solo "callado").
 export function botAnswer(g, seat, kind, rng = Math.random) {
   const h = g.h;
+  // "¿pongo o voy?": si el pie tiene con qué matar la primera, "vení"; si no, "poné"
+  if (kind === 'primera') {
+    const R = (c) => rank(c, h.muestra);
+    const best = Math.max(...h.inHand[seat].map(R), -1);
+    return best >= R('3E') ? 'ir' : 'poner';
+  }
   if (kind === 'tantos') {
     const v = tanto(h.cards[seat], h.muestra).value;
     if (v >= 31 && pick(rng, 0.35)) return 'callado';
@@ -75,10 +81,12 @@ export function botAnswer(g, seat, kind, rng = Math.random) {
 
 // Qué le pregunta un bot a su compañero antes de decidir (o null): los tantos, si es el que canta el envido;
 // el truco, si lo puede cantar. Le pregunta más seguido a una persona que a otro bot (que ya sabe sus cartas).
-export function botAsks(g, seat, rng, humanPartner) {
+export function botAsks(g, seat, rng, humanPartner, humanPie = false) {
   const h = g.h;
   const a = actionsFor(g, seat);
   if (envidoOpenFor(g, seat) && a.envido.length) return pick(rng, humanPartner ? 0.6 : 0.15) ? 'tantos' : null;
+  // en primera, el que no es pie le pregunta al pie si pone o va
+  if (g.n > 2 && h.r === 0 && a.play && !isPie(g, seat)) return pick(rng, humanPie ? 0.5 : 0.1) ? 'primera' : null;
   if (a.truco && h.r <= 1 && !h.truco.pending) return pick(rng, humanPartner ? 0.3 : 0.08) ? 'truco' : null;
   return null;
 }
@@ -528,6 +536,13 @@ function chooseCard(g, seat, ctx, rng, a) {
   const hand = h.inHand[seat].slice().sort((x, y) => R(x) - R(y));
   const tb = tableBest(g, seat);
   let card = hand[0];
+  // el pie le dijo "vení" (va él): tira la más baja; "poné": la que gane la ronda (o la más alta)
+  if (h.r === 0 && ctx.primera === 'ir') return { t: 'play', card: hand[0], mode: 'normal' };
+  if (h.r === 0 && ctx.primera === 'poner') {
+    // si ya tiró algún rival, la más baja que lo mate; si no, la más alta
+    const kill = tb.theirs >= 0 && hand.find((c) => R(c) > tb.theirs && R(c) > tb.mine);
+    return { t: 'play', card: kill || hand[hand.length - 1], mode: 'normal' };
+  }
   if (hand.length > 1) {
     // dos cartas del mismo valor juegan igual: se simula una por valor
     const byRank = new Map(hand.map((c) => [R(c), c]));

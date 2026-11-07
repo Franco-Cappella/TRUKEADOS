@@ -793,7 +793,12 @@ export class RoomClient {
     // Consulta al compañero: preguntarle si cantar, o contestarle ("Cantá" / "Callado")
     const ask = this.st.ask;
     const q = ask?.open;
-    if (q && !q.mine && !q.answered) {
+    if (q && q.kind === 'primera' && q.mineToAnswer && !q.answered) {
+      // "¿pongo o voy?": vos sos el pie; un clic y listo
+      const lbl = `${esc(this.nameOf(q.seat))}: ¿pone o va?`;
+      add('equipo', lbl, 'Poné', 'good', () => this.send({ t: 'answer', ans: 'poner' }), 'Que tire alta y gane la primera');
+      add('equipo', lbl, 'Vení', '', () => this.send({ t: 'answer', ans: 'ir' }), 'Que tire baja: matás vos');
+    } else if (q && q.kind !== 'primera' && q.mineToAnswer && !q.answered) {
       const what = q.kind === 'tantos' ? 'los tantos' : 'el truco';
       const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
       add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
@@ -802,6 +807,7 @@ export class RoomClient {
     } else if (!q) {
       if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
       if (ask?.can.truco) add('equipo', 'Compañero', '¿Le canto truco?', '', () => this.send({ t: 'ask', kind: 'truco' }), 'Le preguntás a tu compañero si cantar truco');
+      if (ask?.can.primera) add('equipo', 'Compañero', '¿Pongo o voy?', '', () => this.send({ t: 'ask', kind: 'primera' }), 'Le preguntás al pie si tirás alta para ganar la primera (poner) o baja y mata él (ir)');
     }
     if (a.mazo) {
       // dos toques: el primero pide confirmación (sin ventanas del navegador)
