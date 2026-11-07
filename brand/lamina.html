@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trukeados · Marca</title>
+<link rel="icon" href="logo/icono-app.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* Lámina de marca: documentación interna. Usa solo tokens.css.
+     Para ver las caras de los personajes, servir la carpeta del repo por HTTP (npx serve .) y abrir /brand/lamina.html */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--fs-body); line-height: var(--lh-body); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 0 var(--gutter); }
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: var(--space-5) 0; }
+  header.top img { height: 28px; }
+  header.top span { font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); color: var(--text-dim); }
+  section { padding: var(--space-9) 0; }
+  h1 { font-stretch: var(--wide); font-weight: 850; font-size: var(--fs-display); line-height: var(--lh-display); letter-spacing: var(--track-display); margin: var(--space-8) 0 var(--space-5); max-width: 12ch; }
+  h2 { font-stretch: var(--semi-wide); font-weight: 800; font-size: var(--fs-title); line-height: var(--lh-title); letter-spacing: var(--track-title); margin: 0 0 var(--space-6); }
+  h3 { font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); letter-spacing: var(--track-label); color: var(--text-dim); margin: 0 0 var(--space-3); }
+  .lead { font-size: var(--fs-lead); line-height: 1.4; max-width: 46ch; color: var(--text); margin: 0; }
+  p { max-width: var(--measure); }
+  .note { color: var(--text-dim); font-size: var(--fs-small); }
+  .grid { display: grid; gap: var(--space-4); }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .g3, .g4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+
+  /* logos */
+  .tile { border-radius: var(--radius); display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-5); padding: var(--space-6); min-height: 220px; }
+  .tile .art { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .tile img { max-width: 100%; max-height: 120px; }
+  .tile.big img { max-height: 150px; }
+  .tile small { font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); }
+  .dark { background: var(--surface); color: var(--text-dim); }
+  .light { background: var(--text); color: #4d4d4d; }
+  .felt { background: var(--pano-3); color: var(--text); }
+  .gold { background: var(--oro); color: var(--accent-ink); }
+  .span2 { grid-column: span 2; }
+  @media (max-width: 560px) { .span2 { grid-column: auto; } }
+
+  /* color */
+  .sw { border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .sw .chip { height: 120px; display: flex; align-items: flex-end; padding: var(--space-3); font-weight: 700; font-stretch: var(--narrow); }
+  .sw .meta { padding: var(--space-3) var(--space-4) var(--space-4); }
+  .sw b { display: block; font-weight: 650; }
+  .sw code, .mono { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: var(--fs-small); color: var(--text-dim); }
+  .ratio { display: flex; height: 56px; border-radius: var(--radius); overflow: hidden; margin-top: var(--space-5); }
+  .ratio div { display: flex; align-items: center; padding: 0 var(--space-3); font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); }
+
+  /* tipografía */
+  .spec { display: grid; grid-template-columns: 220px 1fr; gap: var(--space-5); padding: var(--space-6) 0; align-items: baseline; }
+  .spec + .spec { border-top: 0; }
+  .spec:nth-child(even) { background: transparent; }
+  .spec .lbl b { display: block; font-weight: 700; }
+  .spec .lbl span { color: var(--text-dim); font-size: var(--fs-small); font-stretch: var(--narrow); }
+  @media (max-width: 760px) { .spec { grid-template-columns: 1fr; gap: var(--space-2); } }
+  .t-display { font-stretch: var(--wide); font-weight: 850; font-size: var(--fs-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
+  .t-title { font-stretch: var(--semi-wide); font-weight: 800; font-size: var(--fs-title); line-height: var(--lh-title); letter-spacing: var(--track-title); }
+  .t-canto { font-stretch: var(--wide); font-weight: 900; font-size: var(--fs-canto); line-height: 1; text-transform: uppercase; }
+  .t-lead { font-size: var(--fs-lead); line-height: 1.4; }
+  .t-body { font-size: var(--fs-body); line-height: var(--lh-body); max-width: var(--measure); }
+  .t-label { font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); letter-spacing: var(--track-label); }
+  .t-num { font-weight: 800; font-size: var(--fs-title); font-variant-numeric: tabular-nums; font-stretch: var(--condensed); }
+  .t-legal { font-size: var(--fs-micro); color: var(--muted); }
+  .widths { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: baseline; font-weight: 800; font-size: clamp(2rem, 4vw, 3.5rem); }
+
+  /* componentes */
+  .stage { background: var(--surface); border-radius: var(--radius); padding: var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+  .btn { font-family: var(--font); font-stretch: var(--narrow); font-weight: 650; font-size: var(--btn-font); letter-spacing: 0.04em; padding: var(--btn-pad); min-height: var(--btn-min-h); border: 0; border-radius: var(--radius); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background var(--dur-quick) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn.primary { background: var(--oro); color: var(--accent-ink); }
+  .btn.primary:hover { background: #f5cc4f; }
+  .btn.secondary { background: var(--surface-2); color: var(--text); }
+  .btn.secondary:hover { background: var(--surface-3); }
+  .btn.big { padding: 15px 26px; font-size: 19px; min-height: 54px; }
+  .btn.call { background: var(--surface-2); color: var(--text); font-stretch: 100%; font-weight: 700; font-size: var(--btn-call-font); letter-spacing: 0; padding: 9px 24px 10px; box-shadow: inset 0 -2px 0 var(--accent); }
+  .btn.call:hover { box-shadow: inset 0 -3px 0 var(--accent); color: var(--text-hi); }
+  .btn.danger { background: transparent; color: var(--bad-ink); box-shadow: inset 0 0 0 1px var(--copa); }
+  .btn.game { background: rgba(18,18,18,.9); color: var(--text); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .bubble { background: var(--text); color: var(--text-on-light); font-weight: 700; padding: 5px 14px 6px; border-radius: 2px; font-size: 23px; position: relative; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+  .bubble::after { content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); border: 7px solid transparent; border-top-color: var(--text); border-bottom: 0; }
+  .nameplate { font-stretch: var(--narrow); font-weight: 600; font-size: 16px; letter-spacing: .04em; background: rgba(18,18,18,.9); border-left: 3px solid var(--team0); padding: 3px 10px 3px 8px; display: inline-flex; gap: 8px; align-items: center; }
+  .nameplate.t1 { border-left-color: var(--team1); }
+  .nameplate.turn { background: var(--text); color: var(--bg); }
+  .nameplate .eye { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 260px; }
+  .field span { font-stretch: var(--narrow); font-weight: 650; font-size: var(--fs-small); color: var(--text-dim); }
+  .field input { font: inherit; font-size: 18px; color: var(--text); background: var(--surface-2); border: 0; border-radius: var(--radius); padding: 14px 16px; }
+  .field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .code { font-family: ui-monospace, monospace; letter-spacing: .3em; font-weight: 700; font-size: 26px; }
+  .toast { background: rgba(38,38,38,.96); border-left: 3px solid var(--basto); padding: 8px 14px; border-radius: 2px; font-size: 14px; line-height: 1.4; max-width: 420px; }
+  .toast.bad { border-left-color: var(--copa); }
+  .anot { background: rgba(18,18,18,.9); border-radius: var(--radius); padding: 8px 10px 6px; min-width: 110px; box-shadow: inset 0 0 0 1px var(--line); }
+  .anot .h, .anot .f { display: grid; grid-template-columns: 1fr 1fr; text-align: center; gap: 6px; }
+  .anot .h span { font-stretch: var(--narrow); font-weight: 600; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+  .anot .b { display: flex; justify-content: center; gap: 6px; padding-top: 6px; }
+  .anot .f { font-weight: 700; font-size: 19px; font-variant-numeric: tabular-nums; }
+
+  /* recursos */
+  .cards { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+  .cards img { width: clamp(96px, 12vw, 160px); aspect-ratio: var(--naipe-ratio); border-radius: 6.5% / 4.2%; display: block; }
+  .card-burn { position: relative; }
+  .card-burn img { filter: brightness(.55) sepia(.35); }
+  .card-burn::after { content: ''; position: absolute; inset: 0; border-radius: 6.5% / 4.2%; background: radial-gradient(ellipse at 50% 50%, transparent 38%, rgba(28,14,6,.92) 92%); }
+  .faces { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4); }
+  .face { background: var(--surface); border-radius: var(--radius); padding: var(--space-3); }
+  .face canvas { width: 100%; aspect-ratio: 1; display: block; background: var(--surface-2); border-radius: var(--radius); }
+  .face b { display: block; margin-top: var(--space-2); font-weight: 650; font-size: var(--fs-small); }
+  .face span { display: block; font-size: var(--fs-micro); color: var(--text-dim); }
+
+  /* voz */
+  .voice { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  .voice div { border-radius: var(--radius); padding: var(--space-6); }
+  .voice .yes { background: var(--surface); }
+  .voice .no { background: var(--surface); color: var(--text-dim); }
+  .voice ul { margin: 0; padding-left: 1.1em; }
+  .voice li { margin: var(--space-2) 0; }
+  .voice h3 { color: var(--basto-tinta); }
+  .voice .no h3 { color: var(--copa-tinta); }
+  @media (max-width: 760px) { .voice { grid-template-columns: 1fr; } }
+  footer { padding: var(--space-8) 0 var(--space-6); }
+  footer img { width: 100%; max-width: 1100px; display: block; margin-bottom: var(--space-5); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><img src="logo/logo-horizontal.svg" alt="Trukeados"><span>Marca · v1 · noviembre 2026</span></header>
+
+  <section style="padding-top:0">
+    <h1>Truco de verdad, en la mesa de un bar.</h1>
+    <p class="lead">Trukeados: truco argentino online, en 3D. Las señas se hacen con la cara y solo las ve quien te está mirando. Todo lo que sigue sale del juego.</p>
+  </section>
+
+  <section id="logo">
+    <h2>Logo</h2>
+    <div class="grid g3">
+      <div class="tile dark span2 big"><div class="art"><img src="logo/logo-horizontal.svg" alt="Logo horizontal"></div><small>Principal · fondo oscuro</small></div>
+      <div class="tile dark"><div class="art"><img src="logo/logo-apilado.svg" alt="Logo apilado"></div><small>Apilado</small></div>
+      <div class="tile light span2"><div class="art"><img src="logo/logo-horizontal-claro.svg" alt="Logo para fondo claro"></div><small>Fondo claro</small></div>
+      <div class="tile light"><div class="art"><img src="logo/marca-claro.svg" alt="Marca para fondo claro"></div><small>Marca · fondo claro</small></div>
+      <div class="tile felt"><div class="art"><img src="logo/logo-horizontal-mono-blanco.svg" alt="Logo en una tinta blanca"></div><small>Una tinta · sobre paño o foto</small></div>
+      <div class="tile gold"><div class="art"><img src="logo/logo-horizontal-mono-negro.svg" alt="Logo en una tinta negra"></div><small>Una tinta · sobre oro</small></div>
+      <div class="tile dark"><div class="art"><img src="logo/icono-app.svg" alt="Ícono de app" style="max-height:110px"></div><small>Ícono de app y favicon</small></div>
+    </div>
+    <p class="note" style="margin-top:var(--space-5)">Dos naipes cruzados: la mano, y también la trampa de las dos encimadas. El de adelante es el ancho de espada, la mejor carta. Aire mínimo: la altura de la T. Mínimo 120 px de ancho; por debajo de 32 px, el ícono.</p>
+  </section>
+
+  <section id="color">
+    <h2>Color</h2>
+    <h3>Neutros: la mesa de noche</h3>
+    <div class="grid g4">
+      <div class="sw"><div class="chip" style="background:#121212;box-shadow:inset 0 0 0 1px var(--line)">Aa</div><div class="meta"><b>--bg</b><code>#121212 · fondo</code></div></div>
+      <div class="sw"><div class="chip" style="background:#1c1c1c">Aa</div><div class="meta"><b>--surface</b><code>#1c1c1c · un escalón</code></div></div>
+      <div class="sw"><div class="chip" style="background:#262626">Aa</div><div class="meta"><b>--surface-2</b><code>#262626 · dos escalones</code></div></div>
+      <div class="sw"><div class="chip" style="background:#f5f5f5;color:#121212">Aa</div><div class="meta"><b>--text</b><code>#f5f5f5 · tinta 17:1</code></div></div>
+    </div>
+    <h3 style="margin-top:var(--space-6)">Los cuatro palos</h3>
+    <div class="grid g4">
+      <div class="sw"><div class="chip" style="background:var(--espada)">Espada</div><div class="meta"><b>--espada</b><code>#2f6fd6 · texto: #5b93e8</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--basto)">Basto</div><div class="meta"><b>--basto</b><code>#2e9e57 · texto: #4fbf7a</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--oro);color:#121212">Oro · acento</div><div class="meta"><b>--oro</b><code>#f2c12e · 11:1 · la acción</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--copa)">Copa</div><div class="meta"><b>--copa</b><code>#d93b30 · texto: #ef6a5c</code></div></div>
+    </div>
+    <h3 style="margin-top:var(--space-6)">Ambiente del bar</h3>
+    <div class="grid g4">
+      <div class="sw"><div class="chip" style="background:var(--pano-3)">Paño</div><div class="meta"><b>--pano-3</b><code>#1a4529 · campo de sección</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--pano)">Paño luz</div><div class="meta"><b>--pano</b><code>#2e7344 · solo escena</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--lampara);color:#121212">Lámpara</div><div class="meta"><b>--lampara</b><code>#ffd9a0 · solo luz</code></div></div>
+      <div class="sw"><div class="chip" style="background:var(--pared)">Pared</div><div class="meta"><b>--pared</b><code>#6b3b2a · nunca en interfaz</code></div></div>
+    </div>
+    <div class="ratio" aria-label="Proporciones de color">
+      <div style="flex:70;background:#1c1c1c">Negro 70 %</div>
+      <div style="flex:20;background:#f5f5f5;color:#121212">Tinta 20 %</div>
+      <div style="flex:7;background:var(--pano-3)">Paño</div>
+      <div style="flex:3;background:var(--oro);color:#121212;padding:0 4px"></div>
+    </div>
+    <p class="note">Oro por debajo del 3 %. Los otros palos aparecen como señales, nunca como decoración.</p>
+  </section>
+
+  <section id="tipografia">
+    <h2>Tipografía</h2>
+    <div class="widths" aria-label="Anchos de Archivo">
+      <span style="font-stretch:125%">Ancho 125</span>
+      <span style="font-stretch:112%">112</span>
+      <span style="font-stretch:100%">100</span>
+      <span style="font-stretch:78%">78</span>
+      <span style="font-stretch:62%">62</span>
+    </div>
+    <p class="note">Archivo, de Omnibus-Type (Buenos Aires). Una sola familia: cambia de ancho según el trabajo.</p>
+    <div class="spec"><div class="lbl"><b>Display</b><span>125 % · 850 · 52–152 px</span></div><div class="t-display">Sentate.</div></div>
+    <div class="spec"><div class="lbl"><b>Título</b><span>112 % · 800 · 36–72 px</span></div><div class="t-title">Si te miran, te cazan.</div></div>
+    <div class="spec"><div class="lbl"><b>Canto</b><span>125 % · 900 · 28–48 px</span></div><div class="t-canto">¡Quiero retruco!</div></div>
+    <div class="spec"><div class="lbl"><b>Bajada</b><span>100 % · 400 · 20–26 px</span></div><div class="t-lead">Truco argentino online, en 3D. Sin cuenta, sin instalar, sin flor.</div></div>
+    <div class="spec"><div class="lbl"><b>Texto</b><span>100 % · 400 · 18 px / 1,55</span></div><div class="t-body">Estás sentado en la mesa de un bar. Mirás a tu compañero, te guiña un ojo: tiene el ancho de basto. Pero el de enfrente también lo estaba mirando.</div></div>
+    <div class="spec"><div class="lbl"><b>Rótulo</b><span>78 % · 650 · 15 px</span></div><div class="t-label">2 vs 2 · a 30 puntos · faltan 2</div></div>
+    <div class="spec"><div class="lbl"><b>Cifra</b><span>62 % · 800 · tabulares</span></div><div class="t-num">15 · 30 · 33</div></div>
+    <div class="spec"><div class="lbl"><b>Legal</b><span>100 % · 400 · 13 px</span></div><div class="t-legal">Cartas: diseño "Naipes Libres" de Basquetteur (Wikimedia Commons), CC BY-SA 3.0, vectorizadas por gjenkins20.</div></div>
+  </section>
+
+  <section id="componentes">
+    <h2>Componentes</h2>
+    <h3>En páginas</h3>
+    <div class="stage">
+      <button class="btn primary big">Jugar ahora</button>
+      <button class="btn secondary big">Practicar con bots</button>
+      <button class="btn call">¡Quiero!</button>
+      <button class="btn danger">¡Mostrá las dos!</button>
+      <label class="field"><span>¿Cómo te llaman en la mesa?</span><input value="Pocha"></label>
+    </div>
+    <h3 style="margin-top:var(--space-6)">Del juego, tal cual</h3>
+    <div class="stage" style="background:var(--pano-3)">
+      <span class="bubble">¡Truco!</span>
+      <span class="nameplate">Coca <span class="eye">te mira</span></span>
+      <span class="nameplate t1 turn">El Ruso</span>
+      <button class="btn game">Crear sala</button>
+      <span class="code">ABCDE</span>
+      <div class="anot"><div class="h"><span>Nos</span><span>Ellos</span></div><div class="b" id="palitos"></div><div class="f"><span>12</span><span>9</span></div></div>
+      <div class="toast">Pocha muestra sus 31.</div>
+      <div class="toast bad">Beto dos encimadas: quedó quemado el 4 de copa.</div>
+    </div>
+  </section>
+
+  <section id="recursos">
+    <h2>Recursos del juego</h2>
+    <h3>Las cuatro grandes, y una quemada</h3>
+    <div class="cards">
+      <img src="../public/cards/1E.webp" alt="Ancho de espada">
+      <img src="../public/cards/1B.webp" alt="Ancho de basto">
+      <img src="../public/cards/7E.webp" alt="Siete de espada">
+      <img src="../public/cards/7O.webp" alt="Siete de oro">
+      <div class="card-burn"><img src="../public/cards/4C.webp" alt="Cuatro de copa quemado"></div>
+      <img src="../public/cards/back.webp" alt="Dorso">
+    </div>
+    <h3 style="margin-top:var(--space-7)">Las 11 señas</h3>
+    <div class="faces" id="faces"><p class="note">Las caras se dibujan con characters.js del juego: abrí esta lámina servida por HTTP para verlas.</p></div>
+  </section>
+
+  <section id="voz">
+    <h2>Voz</h2>
+    <div class="voice">
+      <div class="yes"><h3>Así</h3><ul><li>Sentate, que se reparte.</li><li>Si te cazan la seña, te la cazaron.</li><li>Sin cuenta. Sin instalar. Sin flor.</li><li>¡Mostrá las dos!</li><li>¿Un truquito? Entrá a mi mesa.</li></ul></div>
+      <div class="no"><h3>Así no</h3><ul><li>¡Únete a la experiencia de truco definitiva!</li><li>Comunicate con tu compañero mediante gestos.</li><li>Registrate gratis en segundos.</li><li>Denunciar jugada sospechosa.</li><li>El mejor truco online.</li></ul></div>
+    </div>
+  </section>
+
+  <footer>
+    <img src="logo/palabra.svg" alt="Trukeados">
+    <p class="t-legal">Archivo: Omnibus-Type, OFL. Cartas: "Naipes Libres" de Basquetteur, CC BY-SA 3.0, vectorizadas por gjenkins20.</p>
+  </footer>
+</div>
+
+<script>
+  // anotador: misma geometría que palitos() de public/js/hud.js
+  function palitos(pts, target) {
+    const groups = Math.ceil(target / 5), gap = 6, size = 16, rule = target === 30 ? 12 : 0;
+    const h = groups * (size + gap) + rule, wob = [0.6, -0.8, 0.4, -0.5, 0.7, -0.3];
+    let s = `<svg viewBox="0 0 28 ${h}" width="28" height="${h}" aria-label="${pts} puntos">`;
+    for (let g = 0; g < groups; g++) {
+      const n = Math.max(0, Math.min(5, pts - g * 5)), y = g * (size + gap) + (rule && g >= 3 ? rule : 0) + 4, x = 5, w = wob[g % wob.length];
+      [[x, y + w, x, y + size], [x, y, x + size, y - w], [x + size, y, x + size + w, y + size], [x, y + size, x + size, y + size + w], [x + 2, y + size - 2, x + size - 2, y + 2]]
+        .forEach((l, i) => { const on = i < n; s += `<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke="${on ? '#f5f5f5' : 'rgba(255,255,255,0.08)'}" stroke-width="${on ? 2.6 : 1.4}" stroke-linecap="round"/>`; });
+    }
+    if (rule) { const y = 3 * (size + gap) + rule / 2 - 2; s += `<line x1="0" y1="${y}" x2="28" y2="${y}" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-dasharray="3 3"/>`; }
+    return s + '</svg>';
+  }
+  document.getElementById('palitos').innerHTML = palitos(12, 30) + palitos(9, 30);
+</script>
+<script type="module">
+  // caras reales: characters.js y config.js del juego (requiere HTTP)
+  try {
+    const { drawCharacter, lookFor, W, H } = await import('../public/js/characters.js');
+    const { SENAS, BOT_NAMES } = await import('../public/js/config.js');
+    const box = document.getElementById('faces');
+    box.innerHTML = '';
+    const CROP = { x: 106, y: 100, size: 300 };
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    Object.entries(SENAS).forEach(([id, s], i) => {
+      const name = BOT_NAMES[i % BOT_NAMES.length];
+      const full = document.createElement('canvas'); full.width = W; full.height = H;
+      drawCharacter(full.getContext('2d'), lookFor(name, i), { expr: s.expr });
+      const c = document.createElement('canvas'); c.width = c.height = 150 * dpr;
+      c.getContext('2d').drawImage(full, CROP.x, CROP.y, CROP.size, CROP.size, 0, 0, c.width, c.height);
+      c.setAttribute('role', 'img'); c.setAttribute('aria-label', `${name}: ${s.desc.toLowerCase()} (${s.label.toLowerCase()})`);
+      const f = document.createElement('div'); f.className = 'face';
+      f.append(c); f.insertAdjacentHTML('beforeend', `<b>${s.label}</b><span>${name} · ${s.desc}</span>`);
+      box.append(f);
+    });
+  } catch (e) { /* abierta como archivo: queda la nota */ }
+</script>
+</body>
+</html>
