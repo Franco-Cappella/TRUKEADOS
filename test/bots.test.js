@@ -1,8 +1,8 @@
 // Bots: lo que aprenden (brain.js), cómo deciden y sus trampas (bot.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, act, waitingFor, nextHand, closeShow, rank } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims } from '../public/js/bot.js';
+import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
+import { botAction, botShow, stackDeck, botClaims, imagine } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkEvent, BOT_TALK } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
@@ -219,3 +219,29 @@ for (const mode of ['1v1', '2v2']) {
     assert.ok(brain.m.trucoAccept.n > 0 && brain.m.envidoCall.n > 0, 'no aprendió nada');
   });
 }
+
+test('señas: el bot imagina que su compañero tiene la carta que le marcó', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const cards = [['4C', '5O', '6B'], ['4O', '5C', '6E'], ['1E', '3O', '12C'], ['4B', '5B', '6O']];
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  const rng = seeded(7);
+  const share = (ctx, f) => {
+    const ws = imagine(g, 0, ctx, rng);
+    return ws.filter((x) => f(x.world.full)).length / ws.length;
+  };
+  // sin seña: el ancho de espada lo tiene el 2 en pocas manos imaginadas
+  assert.ok(share({}, (f) => f[2].includes('1E')) < 0.3);
+  // con la seña del compañero (el 2), casi siempre
+  assert.ok(share({ senas: [{ seat: 2, sena: 'ancho_espada' }] }, (f) => f[2].includes('1E')) > 0.8);
+  // seña de un tres: imagina un tres
+  assert.ok(share({ senas: [{ seat: 2, sena: 'tres' }] }, (f) => f[2].some((c) => parseInt(c, 10) === 3)) > 0.8);
+});
+
+test('señas de tantos: pesa más las manos que cuadran con "30 o más"', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const ws = imagine(g, 0, { senas: [{ seat: 2, sena: 'treinta' }] }, seeded(3));
+  const t30 = (x) => tanto(x.world.full[2]).value >= 30;
+  assert.ok(ws.some((x) => !t30(x))); // hay manos imaginadas que no cuadran...
+  for (const x of ws) assert.ok(t30(x) ? x.w >= 0.5 : x.w < 0.5); // ...y pesan mucho menos
+});

@@ -1,5 +1,16 @@
 # Cambios
 
+## 1.7.6 — "30 en mesa" y bots que leen las señas
+- **Mostrar los tantos**: el que muestra dice "30 en mesa" (globo y voz) y tira a la mesa, boca arriba, las cartas
+  de sus tantos que le quedaban en la mano (las tapadas se dan vuelta). Ya no aparece el cartelito con las cartas.
+  Si no tenía lo que cantó, un rival le dice "¡Cantaste 33!" y el envido va para el otro equipo.
+- **En mesa durante la mano**: si el que ganó el envido ya tiró a la vista las cartas de sus tantos, lo dice en ese
+  momento ("22 en mesa") y después no tiene que mostrar.
+- **No mostraste**: el rival que reclama dice "¡No mostraste!" en vez del cartelito.
+- **Los bots leen las señas**: las de su compañero siempre y las de un rival si justo lo estaban mirando. Con eso
+  imaginan mejor las manos (si te guiñó, tenés el ancho de basto; "30 o más" pesa los tantos) y deciden qué cantar,
+  querer y tirar con lo que tiene el equipo.
+
 ## 1.7.5 — tantos en equipo, tantos a la vista y desconexiones
 - **Arreglado**: en equipo, al que le tocaba cantar los tantos cuando su equipo ya iba ganando se lo salteaba y, si
   después el rival cantaba más, no le volvía a tocar (un bot con 33 perdió contra 32). Ahora le vuelve a tocar.

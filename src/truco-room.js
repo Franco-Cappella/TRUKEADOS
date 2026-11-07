@@ -216,7 +216,8 @@ export class TrucoRoom extends DurableObject {
 
       case 'sena': {
         if (seat == null || !SENAS[msg.sena] || r.status !== 'playing') return;
-        return this.deliverSena(seat, msg.sena);
+        this.deliverSena(seat, msg.sena);
+        return this.save();
       }
 
       case 'chat': {
@@ -344,6 +345,7 @@ export class TrucoRoom extends DurableObject {
     r.botClaimAt = 0;
     r.dealUntil = Date.now() + dealMs(r.game.n);
     r.botSenaDue = {};
+    r.senaSeen = {}; // señas que vio cada bot en esta mano
     r.claimWatch = null;
     r.paceEv = r.game.evId;
     r.botReadyAt = 0;
@@ -376,6 +378,7 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     return {
       peek: !!r.botPeek?.[seat],
+      senas: r.senaSeen?.[seat] || [],
       bots: r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0),
       brainOf: (s) => {
         const p = r.seats[s];
@@ -542,6 +545,7 @@ export class TrucoRoom extends DurableObject {
       if (e.id <= (r.paceEv || 0)) continue;
       if (e.type === 'call') wait = Math.max(wait, speechMs(e.text) + TIMING.botAfterTalk + 400);
       if (e.type === 'tanto') wait = Math.max(wait, speechMs(e.value ?? 'Son buenas') + TIMING.botAfterTalk + 400);
+      if (e.type === 'show') wait = Math.max(wait, speechMs(`${e.value} en mesa`) + TIMING.botAfterTalk + 400);
       if (e.type === 'round' || e.type === 'envido-done' || e.type === 'flor-done') wait += TIMING.roundPause;
     }
     r.paceEv = g.evId;
@@ -658,6 +662,13 @@ export class TrucoRoom extends DurableObject {
   // La seña solo la ven los que en ese momento están mirando al que la hace.
   deliverSena(seat, sena) {
     const watchers = new Set(Object.entries(this.gaze).filter(([s, t]) => t === seat && Number(s) !== seat).map(([s]) => Number(s)));
+    // los bots la anotan para decidir: el compañero siempre está atento; un rival, solo si justo lo miraba
+    const r = this.room;
+    r.senaSeen ||= {};
+    r.seats.forEach((p, b) => {
+      if (!p?.bot || b === seat || (team(b) !== team(seat) && !watchers.has(b))) return;
+      (r.senaSeen[b] ||= []).push({ seat, sena });
+    });
     for (const s of this.sockets()) {
       const pid = s.deserializeAttachment()?.pid;
       const viewer = pid ? this.seatOf(pid) : null;

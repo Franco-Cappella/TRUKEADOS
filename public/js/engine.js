@@ -293,6 +293,41 @@ export function actionsFor(g, seat) {
 // ---------------------------------------------------------------- acciones
 
 export function act(g, seat, a) {
+  const r = actInner(g, seat, a);
+  if (r.ok && g.h?.phase === 'play') enMesa(g);
+  return r;
+}
+
+// "30 en mesa": si el que ganó el envido ya tiene a la vista en la mesa las cartas de los tantos que cantó,
+// ya mostró (lo dice en ese momento y después no hace falta mostrar).
+function enMesa(g) {
+  const h = g.h;
+  const e = h.envido;
+  if (e.state !== 'done' || !e.needsShow || e.shown || e.winnerSeat == null) return;
+  const s = e.winnerSeat;
+  const real = myTanto(g, s);
+  if (real.value !== e.saidValue) return;
+  const seen = (c) => h.table[s].some((p) => p.c === c && !p.faceDown && (!p.under || p.revealed));
+  if (!real.cards.every(seen)) return;
+  e.shown = true;
+  event(g, { type: 'show', seat: s, value: real.value, said: e.saidValue, cards: real.cards, ok: true, enMesa: true });
+}
+
+// Mostrar los tantos: las cartas que los forman quedan boca arriba en la mesa (las que tenía en la mano
+// las tira; las que había tirado tapadas o abajo de dos encimadas, las da vuelta).
+function revealTanto(g, seat, cards) {
+  const h = g.h;
+  for (const c of cards) {
+    const p = h.table[seat].find((x) => x.c === c);
+    if (p) p.revealed = true;
+    else if (h.inHand[seat].includes(c)) {
+      h.inHand[seat] = h.inHand[seat].filter((x) => x !== c);
+      h.table[seat].push({ c, faceDown: false, round: null, shown: true });
+    }
+  }
+}
+
+function actInner(g, seat, a) {
   const h = g.h;
   if (g.status !== 'playing') return { error: 'La partida terminó' };
   if (!h) return { error: 'Esperá la próxima mano' };
@@ -576,6 +611,7 @@ function actShow(g, seat, a) {
     const real = myTanto(g, seat);
     h.envido.shown = true;
     const ok = real.value === s.value;
+    revealTanto(g, seat, real.cards);
     event(g, { type: 'show', seat, value: real.value, said: s.value, cards: real.cards, ok });
     finishHand(g, ok ? null : 'mal-cantado');
     return { ok: true };
@@ -731,6 +767,7 @@ function endHand(g, winnerTeam, pts, reason) {
   h.trucoResult = { team: winnerTeam, pts, reason };
   event(g, { type: 'hand-end', team: winnerTeam, pts, reason });
   const e = h.envido;
+  enMesa(g);
   if (e.needsShow && !e.shown && allShown(h, e.winnerSeat)) {
     // jugó sus 3 cartas a la vista: ya están mostradas. Si no tenía lo que cantó, el envido es del otro equipo.
     const real = myTanto(g, e.winnerSeat);
@@ -798,11 +835,11 @@ export function viewFor(g, seat) {
       list.map(({ thrownIn, ...p }) => {
         const mine = s === seat;
         // la tapada y la de abajo de dos encimadas no se ven hasta que termina la mano
-        const hidden = !mine && !done && (p.faceDown || (p.under && !p.revealed));
+        const hidden = !mine && !done && !p.revealed && (p.faceDown || p.under);
         // la de arriba de dos encimadas recién se ve quemada (para todos, también el que la tiró)
         // cuando termina la ronda en que se tiró
         const burned = !!p.burned && (done || thrownIn === undefined || h.r > thrownIn);
-        return { ...p, c: hidden ? null : p.c, hidden, burned };
+        return { ...p, c: hidden ? null : p.c, hidden, burned, faceDown: !!p.faceDown && !p.revealed };
       })
     ),
     // quién ganó cada ronda: a la vista solo si la mesa no permite trampas (no hay nada que esconder)

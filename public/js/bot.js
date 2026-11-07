@@ -10,8 +10,11 @@
 // (`ctx.peek`), miente en el envido y después se va sin mostrar, tira dos encimadas y, cuando reparte,
 // se acomoda una carta buena (`stackDeck`).
 //
-// ctx (lo arma el servidor): { peek, bots: asientos que son bots, brainOf(seat) }. Sin ctx juega honesto
-// con lo que se supone de cualquiera.
+// ctx (lo arma el servidor): { peek, bots: asientos que son bots, brainOf(seat), senas: [{ seat, sena }] }.
+// `senas` son las señas que vio en esta mano: todas las de su compañero y las de los rivales que justo
+// estaba mirando. Con eso imagina las manos de los demás (si el compañero le guiñó, tiene el ancho de basto)
+// y decide qué cantar y qué tirar sabiendo con qué cuenta el equipo. Sin ctx juega honesto con lo que se
+// supone de cualquiera.
 import {
   rank, tanto, team, cardNum, playValue, actionsFor, waitingFor, envidoOpenFor, florFor, act, newDeck, shuffle,
   validTanto, envidoAcceptedPoints, envidoDeclinedPoints,
@@ -35,9 +38,33 @@ function knownSeats(g, seat, ctx) {
 // Carta de la mesa que el bot puede ver (las tapadas y la de abajo de dos encimadas, no).
 const visible = (p) => !p.faceDown && !(p.under && !p.revealed);
 
+// ---- señas: qué carta (o qué tantos) dice cada una
+const SENA_CARD = { ancho_espada: (c) => c === '1E', ancho_basto: (c) => c === '1B', siete_espada: (c) => c === '7E', siete_oro: (c) => c === '7O', tres: (c) => cardNum(c) === 3, dos: (c) => cardNum(c) === 2, ancho_falso: (c) => c === '1C' || c === '1O' };
+const BRAVA = new Set(['1E', '1B', '7E', '7O']);
+const SENA_FITS = {
+  ciego: (full) => !full.some((c) => BRAVA.has(c) || cardNum(c) === 3 || cardNum(c) === 2),
+  envido_alto: (full, m) => tanto(full, m).value >= 27,
+  treinta: (full, m) => tanto(full, m).value >= 30,
+  nada_envido: (full, m) => tanto(full, m).value <= 25,
+};
+// cuánto le cree a una seña: la del compañero casi siempre es verdad; la de un rival puede ser para despistar
+const senaTrust = (seat, s) => (team(s) === team(seat) ? 0.95 : 0.8);
+
+// Peso de un mundo por las señas de tantos o de "nada": si no cuadra, es poco creíble.
+function senaWeight(g, seat, ctx, world, known) {
+  let w = 1;
+  for (const { seat: s, sena } of ctx.senas || []) {
+    const fits = SENA_FITS[sena];
+    if (!fits || known.has(s)) continue;
+    w *= fits(world.full[s], g.h.muestra) ? 1 : 1 - senaTrust(seat, s);
+  }
+  return w;
+}
+
 // Un "mundo": las cartas que imagina para cada asiento desconocido.
 // hands[s] = lo que tiene en la mano; full[s] = sus 3 cartas originales (para el envido).
-function sampleWorld(g, seat, known, rng) {
+// Si alguien hizo la seña de una carta, casi siempre se la da (si todavía puede tenerla).
+function sampleWorld(g, seat, known, rng, senas = []) {
   const h = g.h;
   const used = new Set();
   if (h.muestra) used.add(h.muestra);
@@ -55,7 +82,14 @@ function sampleWorld(g, seat, known, rng) {
   for (const s of unknown) {
     const seen = h.table[s].filter(visible).map((p) => p.c);
     const hidden = 3 - seen.length;
-    const mine = pool.splice(0, hidden);
+    const forced = [];
+    for (const x of senas) {
+      const is = x.seat === s && SENA_CARD[x.sena];
+      if (!is || forced.length >= hidden || seen.some(is) || rng() > senaTrust(seat, s)) continue;
+      const i = pool.findIndex(is);
+      if (i >= 0) forced.push(...pool.splice(i, 1));
+    }
+    const mine = [...forced, ...pool.splice(0, hidden - forced.length)];
     hands[s] = mine.slice(0, h.inHand[s].length);
     full[s] = [...seen, ...mine];
   }
@@ -120,11 +154,14 @@ function worlds(g, seat, ctx, rng, weigh) {
   const n = known.size === g.n ? 1 : ctx.samples || BOT.samples; // si ve todo, con una alcanza
   const out = [];
   for (let i = 0; i < n; i++) {
-    const world = sampleWorld(g, seat, known, rng);
-    out.push({ world, w: weigh ? weigh(world, known) : 1 });
+    const world = sampleWorld(g, seat, known, rng, ctx.senas);
+    out.push({ world, w: (weigh ? weigh(world, known) : 1) * senaWeight(g, seat, ctx, world, known) });
   }
   return out;
 }
+
+// Para los tests: las manos que imagina `seat` (con sus pesos).
+export const imagine = (g, seat, ctx = {}, rng = Math.random) => worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
 
 const brainOf = (ctx, s) => ctx.brainOf?.(s) || null;
 

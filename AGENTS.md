@@ -106,6 +106,9 @@ npm run dev       # http://localhost:8787
   algunas manos (`botPeek`), el bot que reparte se acomoda una carta buena (`stackDeck`), mienten en el envido y
   se van sin mostrar (menos contra quien suele reclamar), y tiran dos encimadas. Más seguido si van perdiendo.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).
+- **Leen las señas** (`ctx.senas`, lo anota `deliverSena` en `room.senaSeen`): todas las de su compañero y las de
+  un rival si justo lo miraban. Una seña de carta hace que casi siempre imaginen esa carta en esa mano
+  (`sampleWorld`); una de tantos o "ciego" pesa los repartos (`senaWeight`). La del rival se cree un poco menos.
 - **Compañero bot**: si un canto (truco, envido, flor) lo puede contestar tu equipo y hay un bot en él, el bot
   contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes; si el canto lo tenés que contestar vos (el envido lo contesta el pie), decide por vos (`partnerAt` en truco-room.js).
 - **Charla** (`talk.js`): los bots tiran frases en el chat al cantar y contestar (`talkFor`), reaccionan a lo que
