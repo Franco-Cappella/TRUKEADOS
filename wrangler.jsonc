@@ -23,6 +23,6 @@
   // La clave secreta va aparte, como secreto: npx wrangler secret put SUPABASE_SECRET_KEY (ver docs/CUENTAS.md).
   "vars": {
     "SUPABASE_URL": "https://kvcmmwtptgpwnxjqlpxh.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": ""
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_FSuHcj4rHi1f4AjywOh1zw_rpwzoGsm"
   }
 }

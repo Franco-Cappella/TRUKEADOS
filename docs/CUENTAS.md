@@ -1,7 +1,7 @@
 # Cuentas
 
 Sin cuenta no se juega. La sesión es de **Supabase Auth** (Google o mail y contraseña) y los perfiles viven en la
-base de Supabase (proyecto `kvcmmwtptgpwnxjqlpxh`, São Paulo).
+base de Supabase (proyecto `kvcmmwtptgpwnxjqlpxh`, Virginia/us-east-1).
 
 ## Cómo está armado
 
@@ -27,7 +27,8 @@ api() / join {token} ─▶ src/auth.js: verifica el token con las claves
 ## Configuración (una sola vez)
 
 ### 1. Base de datos
-Aplicar `supabase/migrations/*.sql` en el proyecto (SQL Editor del panel o `supabase db push`).
+Aplicar `supabase/migrations/*.sql` en el proyecto (SQL Editor del panel o `supabase db push`). La de
+`profiles` ya está aplicada (2026-11-07).
 
 ### 2. Claves en Cloudflare
 - `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` van en `vars` de `wrangler.jsonc` (son públicas). La publicable
