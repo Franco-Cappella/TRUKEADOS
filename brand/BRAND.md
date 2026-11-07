@@ -202,11 +202,12 @@ Español rioplatense, de mesa: "jugá", "sentate", "cantá", "vos". Frases corta
 |---|---|
 | "Sentate, que se reparte." | "¡Únete a la experiencia de truco definitiva!" |
 | "Si te cazan la seña, te la cazaron." | "Comunicate con tu compañero mediante gestos." |
-| "Sin cuenta. Sin instalar. Sin flor." | "Registrate gratis en segundos." |
+| "Sin cuenta. Sin instalar." | "Registrate gratis en segundos." |
 | "¡Mostrá las dos!" | "Denunciar jugada sospechosa" |
 
 Los cantos van en mayúsculas con signos de apertura: **¡TRUCO!**, **¡QUIERO RETRUCO!**, **¡ENVIDO!**
-Nunca se promete lo que el juego no tiene (flor, ranking, cuentas).
+Nunca se promete lo que el juego no tiene (ranking, cuentas). La flor y la muestra existen como opciones de
+la sala: se nombran como opciones, no como lo que pasa siempre.
 
 ## 10. Regenerar los logos
 

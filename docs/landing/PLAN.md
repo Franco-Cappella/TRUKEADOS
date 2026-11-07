@@ -23,7 +23,7 @@ Medida de éxito: clics en "Jugar ahora" y "Practicar con bots" sobre visitas.
 | D3 | **Marca** | Trukeados, con el brandkit de [../../brand/](../../brand/). |
 | D4 | **Hilo** | "Te están mirando": las señas son el diferencial. |
 | D5 | **Nivel 3: mundo de scroll** | Cambia lo que se había decidido antes (una cara como primera pantalla, sin 3D): se pidió una landing muy inmersiva. El bar del juego es el mundo, el scroll mueve la cámara y el recorrido termina sentado en tu silla, que es la misma vista del juego. |
-| D6 | **URL del juego** | Se mantiene `truco3d`. El dominio propio queda para después ([../../brand/ALINEACION.md](../../brand/ALINEACION.md) §5). |
+| D6 | **URL del juego** | El Worker ya se llama `trukeados` (juego 1.5.1). El dominio propio queda para después ([../../brand/ALINEACION.md](../../brand/ALINEACION.md) §5). |
 
 La regla del juego de no tener build ni frameworks sigue valiendo para el juego. La landing es otro proyecto.
 
@@ -49,7 +49,7 @@ Siete momentos, una idea y un encuadre de cámara por sección (el detalle está
 3. **Señas**: primer plano de una cara que hace las 11 señas.
 4. **Mirada**: "Solo la ve quien te está mirando." La cámara orbita la mesa.
 5. **Trampa**: la carta quemada sobre el paño.
-6. **Mesas**: 1 vs 1, 2 vs 2, 3 vs 3; a 15 o a 30; sin flor.
+6. **Mesas**: 1 vs 1, 2 vs 2, 3 vs 3; a 15 o a 30; con flor o sin flor, como quiera la sala.
 7. **Sentate**: la vista de tu silla. Escribís tu nombre y aparece tu cara (la misma que en el juego). CTA final.
 
 Más el pie con créditos, la imagen para compartir, los metadatos y el favicon.

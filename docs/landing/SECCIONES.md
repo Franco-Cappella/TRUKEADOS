@@ -130,7 +130,7 @@ Con mini capturas reales. Opcional: botón "Compartir por WhatsApp" directo.
 ## 13. Reglas en corto + glosario rioplatense 🟡 · S
 Acordeones: truco/retruco/vale cuatro, envido/real/falta, pardas, al mazo, tapada. Glosario con
 humor: *parda, pie, mano, son buenas, las viejas (27), las perdedoras (29), irse al mazo, ciego*.
-Link a las reglas completas. "Sin flor" dicho con orgullo.
+Link a las reglas completas. La flor, la muestra y la mesa sin trampas, como opciones de la sala.
 - **Skills**: `ui-ux-pro-max` → `impeccable` (lectura, accesibilidad del acordeón).
 
 ## 14. El anotador como hilo ⚪ · S
@@ -149,13 +149,13 @@ arriba. *"En el bondi también."*
 - **Skills**: `imagegen-frontend-web` (mockup de referencia) → `design-taste-frontend`.
 
 ## 17. Lo que tiene / lo que no 🟡 · S
-Tabla honesta: ✅ 3D, señas, trampa, voz, salas privadas, espectador, bots · ❌ flor, cuenta,
-descargas. Convierte "sin flor" en una decisión, no en una falta.
+Tabla honesta: ✅ 3D, señas, trampa, voz, salas privadas, espectador, bots, flor y muestra (opcionales) ·
+❌ cuenta, descargas.
 - **Skills**: `design-taste-frontend`.
 
 ## 18. Preguntas frecuentes 🟢 · S
 ¿Es gratis? ¿Necesito cuenta? ¿Tiene flor? ¿Anda en el celu? ¿Qué pasa si se me corta internet?
-(40 s y juega un bot por vos) ¿Puedo mirar sin jugar? ¿Se puede hacer trampa? (sí, una, y te pueden cazar)
+(40 s y juega un bot por vos) ¿Puedo mirar sin jugar? ¿Se puede hacer trampa? (sí, una, y te pueden cazar; la sala puede no permitirla)
 - **Skills**: `ui-ux-pro-max` → `impeccable`.
 
 ## 19. CTA final 🟢 · S–M

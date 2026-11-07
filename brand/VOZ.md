@@ -12,8 +12,8 @@ sonar como el juego, no como una publicidad.
    de malas palabras ni de estereotipos.
 4. **Concreto.** Se dice lo que pasa en la mesa ("si te miran, te cazan la seña"), no adjetivos
    ("experiencia inmersiva única").
-5. **Honesto.** Nunca se promete lo que el juego no tiene: flor, ranking, cuentas, torneos, premios,
-   cantidad de jugadores.
+5. **Honesto.** Nunca se promete lo que el juego no tiene: ranking, cuentas, torneos, premios, cantidad de
+   jugadores. La flor, la muestra y la mesa sin trampas son opciones de la sala: se nombran como opciones.
 
 ## Vocabulario del juego (se usa tal cual)
 
@@ -48,7 +48,7 @@ En el estilo tipográfico Canto (ver [BRAND.md](BRAND.md) §4) pueden ir en may�
 
 ## Textos reales del juego (referencia de tono)
 
-- Menú: "En 3D, online, con señas de verdad. Sin flor." · "¿Cómo te llaman en la mesa?" · "Te sienta
+- Menú: "Truco argentino en 3D, online, con señas de verdad." · "¿Cómo te llaman en la mesa?" · "Te sienta
   en una mesa pública que esté esperando gente, o abre una nueva." · "No hay mesas públicas ahora.
   ¡Abrí una con 'Partida rápida'!"
 - Compartir por WhatsApp: "¿Un truquito? Entrá a mi mesa: [enlace]"
@@ -78,7 +78,7 @@ En el estilo tipográfico Canto (ver [BRAND.md](BRAND.md) §4) pueden ir en may�
 - "Si te miran, te cazan."
 - "Acá se puede hacer trampa."
 - "Sentate, que se reparte."
-- "Sin cuenta. Sin instalar. Sin flor."
+- "Sin cuenta. Sin instalar."
 - "De a dos, de a cuatro o de a seis."
 
 **Palabras prohibidas**: experiencia, inmersivo/a (en el texto visible), definitivo, revolucionario,

@@ -15,7 +15,7 @@ sola. Qué se copia:
 | `public/cards/*.webp` | `public/cards/` | Cartas |
 | `public/js/characters.js` | `src/game/characters.js` | Personajes y caras |
 | `public/js/theme.js` | `src/game/theme.js` | Colores del canvas (lo usa `characters.js`) |
-| `public/js/config.js` | `src/game/config.js` | Señas (`SENAS`), nombres de bots, tiempos |
+| `public/js/config.js` | `src/game/config.js` | Nombre (`APP_NAME`), señas (`SENAS`), nombres de bots, tiempos, opciones de sala |
 | `public/js/engine.js` (si hace falta) | `src/game/engine.js` | `cardName`, `rank`, `tanto` |
 | `brand/tokens.css` | `src/brand/tokens.css` | Tokens |
 | `brand/logo/*.svg` | `public/brand/` | Logos |
@@ -65,7 +65,8 @@ Dibujados en 2D sobre canvas por `characters.js`. No son imágenes: se generan.
   ancho y alto de cara, mandíbula, ropa (`button`, `sweater`, `tee`, `jacket`, `polo`) y pantalón.
 - **Recorte de cara**: `{ x: 106, y: 100, size: 300 }` sobre el lienzo de 512 × 1200 (el que usa
   `drawFace` en `hud.js` para el menú de señas y el espejo). Fondo de la cara: `--face-bg` `#262626`.
-- **Contorno**: tinta `INK` `#2b2320`. Paletas en `PALETTE` de `theme.js`.
+- **Contorno**: tinta `INK` `#2b2320`. Paletas en `PALETTE` de `theme.js`; colores de la boca (beso, dientes,
+  lengua) en `FACE`.
 - **No parpadean solos**: los ojos cerrados son solo la seña "ciego". Una página nunca anima un
   parpadeo automático.
 - **Nitidez**: dibujar el canvas a `devicePixelRatio` (ancho y alto multiplicados, CSS al tamaño real).
@@ -81,8 +82,8 @@ Dibujados en 2D sobre canvas por `characters.js`. No son imágenes: se generan.
 | `siete_espada` | Siete de espada | `mouthRight` | Torcer la boca a la derecha |
 | `siete_oro` | Siete de oro | `mouthLeft` | Torcer la boca a la izquierda |
 | `tres` | Un tres | `bite` | Morderse el labio |
-| `dos` | Un dos | `kiss` | Trompita |
-| `ancho_falso` | Ancho falso | `tongue` | Asomar la punta de la lengua |
+| `dos` | Un dos | `kiss` | Tirar un beso (trompita bien marcada) |
+| `ancho_falso` | Ancho falso | `open` | Abrir la boca |
 | `ciego` | Nada (ciego) | `eyesClosed` | Cerrar los ojos |
 | `envido_alto` | Tengo envido | `puff` | Inflar los cachetes |
 | `treinta` | 30 o más de envido | `nose` | Fruncir la nariz |
@@ -94,7 +95,8 @@ Texto alternativo de una cara haciendo una seña: **"[Nombre] guiña un ojo: anc
 ## 4. Nombres de los bots
 
 `BOT_NAMES` de `config.js`: Tito, Coca, El Ruso, Chacho, Pocha, Beto, Nené, Cacho, Mirta, Pirulo,
-Tota, Rulo. Son los únicos nombres de ejemplo que usan las páginas (no inventar otros).
+Tota, Rulo, Sancho, Volcho, Olcho, Carlitos, Tronco. En una mesa no se repiten. Son los únicos nombres de
+ejemplo que usan las páginas (no inventar otros).
 
 ## 5. Anotador de palitos
 
@@ -112,7 +114,7 @@ otro). Para una página: copiar la función o reproducir sus medidas exactas (ve
 ## 7. La escena del bar (`scene.js`, colores en `SCENE` de `theme.js`)
 
 Lámpara colgante de pantalla verde (`#2f4f3a`) con luz `#ffd9a0`, paño verde (`#2e7344` → `#1a4529`)
-con "Truco 3D" escrito (pendiente de cambiar, ver [ALINEACION.md](ALINEACION.md)), mesa de madera,
+con el nombre del juego escrito (`SCENE.feltName`, que sale de `APP_NAME`), mesa de madera,
 paredes `#6b3b2a` con zócalo, piso de tablas, vaso de vino, botella, mate con bombilla y cuatro cuadros:
 "Boca vs. River", "Gardel", "Mate & Truco", "Mar del Plata".
 

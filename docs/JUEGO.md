@@ -4,7 +4,7 @@ Documentación funcional completa: qué ve, qué puede hacer y qué siente quien
 para la landing (ver [landing/](landing/)). Para el código, [AGENTS.md](../AGENTS.md); para el detalle
 de cada regla, [REGLAS.md](REGLAS.md).
 
-> Estado documentado: versión 1.2.0 (commit `7d20129`).
+> Estado documentado: versión 1.5.3 (commit `4766ecf`).
 
 ---
 
@@ -21,11 +21,11 @@ Esto es lo que tiene que contar la landing. Ordenado de más a menos diferencial
 
 | # | Diferencial | Por qué importa |
 |---|---|---|
-| 1 | **Señas con la cara de verdad** | 11 señas (cejas, guiño, boca torcida, lengua, trompita, cachetes inflados…). El servidor solo se la manda a **quien te está mirando en ese momento**. Si el rival te estaba mirando, la vio. Es el truco de verdad, no un menú de "enviar seña al compañero". |
+| 1 | **Señas con la cara de verdad** | 11 señas (cejas, guiño, boca torcida, boca abierta, un beso, cachetes inflados…). El servidor solo se la manda a **quien te está mirando en ese momento**. Si el rival te estaba mirando, la vio. Es el truco de verdad, no un menú de "enviar seña al compañero". |
 | 2 | **Primera persona en un bar** | Estás sentado. Mirás a los costados, bajás la vista a la mesa, hacés zoom a una cara. Lámpara colgante, paño verde, vino, mate, cuadros de "Boca vs. River" y "Gardel" en la pared. |
-| 3 | **Se puede hacer trampa** | "Dos encimadas": tirás una carta tapada con otra. La de abajo juega; la de arriba queda **quemada** (se ve carbonizada). Cualquier rival puede pedir "¡mostrá las dos!". |
-| 4 | **Se puede mentir el envido** | Cantás el número que quieras. Si ganás tenés que mostrar; si no coincide o te reclaman, perdés los puntos. |
-| 5 | **1 vs 1, 2 vs 2 y 3 vs 3** | Con "pie" de cada equipo, truco desde segunda en equipos, y las reglas del reglamento tradicional. |
+| 3 | **Se puede hacer trampa** | "Dos encimadas": tirás una carta tapada con otra. La de abajo juega; la de arriba queda **quemada** (se ve carbonizada). Cualquier rival puede pedir "¡mostrá las dos!". La sala puede no permitir trampas. |
+| 4 | **Se puede mentir el envido** | Cantás el número que quieras. Si ganás tenés que mostrar; si no coincide o te reclaman, perdés los puntos (salvo en una sala sin trampas). |
+| 5 | **1 vs 1, 2 vs 2 y 3 vs 3** | Con "pie" de cada equipo, truco desde segunda en equipos, y las reglas del reglamento tradicional. La flor y la muestra son opciones de la sala. |
 | 6 | **Cero fricción** | Sin cuenta. Nombre y listo. Sala por código de 5 letras, link `/sala/CÓDIGO`, compartir por WhatsApp, partida rápida. |
 | 7 | **Nunca te quedás sin mesa** | Bots con nombres de barrio (Tito, Coca, El Ruso, Chacho, Pocha, Cacho, Mirta, Pirulo…) llenan lugares y juegan por quien se desconecta. |
 | 8 | **Suena a truco** | Voz que canta los cantos ("¡Truco!", "¡A ver esos tantos!", "A ver, mostrá las dos"), ruido de carta en el paño, frases rápidas de chat ("Las viejas", "Jugá, che", "Uy, se me cayó"). |
@@ -34,20 +34,21 @@ Esto es lo que tiene que contar la landing. Ordenado de más a menos diferencial
 ## 3. Recorrido de quien juega
 
 ### 3.1 Menú de inicio (`/`)
-- Título "Truco argentino" y bajada *"En 3D, online, con señas de verdad. Sin flor."*
+- Título "Trukeados" y bajada *"Truco argentino en 3D, online, con señas de verdad."*
 - **Tu nombre** ("¿Cómo te llaman en la mesa?"). Se recuerda en el navegador.
 - **Partida rápida**: botones 1 vs 1 / 2 vs 2 / 3 vs 3. Te sienta en una mesa pública que espera gente,
   o abre una nueva.
 - **Unirte con código** (5 letras/números) o con el link `/sala/CÓDIGO`.
-- **Crear sala**: modo, puntos (30 con malas y buenas, o 15), privada o pública, "ayudas" (mostrar quién
-  ganó cada ronda; más fácil, pero arruina la trampa).
+- **Crear sala**: modo, puntos (30 con malas y buenas, o 15), privada o pública, y las opciones de la sala
+  (`ROOM_OPTIONS` en `config.js`): **con flor**, **con muestra** y **no permitir trampas** (sin dos encimadas
+  ni mentir en el envido, y se ve quién ganó cada ronda). Por defecto: sin flor, sin muestra y con trampas.
 - **Practicar con bots**: crea una sala privada y arranca sola, completada con bots.
 - **Mesas públicas** (se actualiza cada 7 s): las que esperan gente ("Sentarme") y las que se están
   jugando con el tanteador ("Van 12 a 9" → "Mirar", modo espectador).
 
 ### 3.2 Sala de espera
 - Asientos alrededor de la mesa; el anfitrión puede **agregar/sacar bots**, **echar** gente, cambiar la
-  configuración (ayudas, pública, truco desde segunda) y **empezar** ("llenar con bots" si faltan).
+  configuración (opciones de la sala, pública, truco desde segunda) y **empezar** ("llenar con bots" si faltan).
 - Se comparte el link o el código (chip "Sala ABCDE" copia el enlace).
 
 ### 3.3 La partida
@@ -57,7 +58,7 @@ se reparte de a una empezando por la mano. Toast: *"Mano 3: reparte Coca y corta
 **Pantalla**:
 - Arriba: salir, código de sala, Voz sí/no, Zoom (tecla Z), Ayuda, Chat.
 - Arriba al centro: **"Mirar a"** (botones para girar la vista hacia cada jugador). "te mira" junto al
-  nombre de quien te está mirando.
+  nombre de quien te está mirando y, en equipos, la marca de quién es **pie** en cada mano.
 - Arriba a la izquierda: **anotador de palitos**.
 - Abajo al centro: **tu mano** en primera persona (tus manos dibujadas sosteniendo las cartas). Las
   cartas se ordenan arrastrándolas.
@@ -87,7 +88,8 @@ vuelve. Si se va el anfitrión, pasa a otro humano.
 
 ## 4. Reglas (resumen para humanos)
 
-Truco argentino **sin flor**, baraja española de 40.
+Truco argentino, baraja española de 40. La **flor** y la **muestra** son opciones de la sala (apagadas
+por defecto), igual que **no permitir trampas**.
 
 - **Jerarquía**: ancho de espada > ancho de basto > 7 de espada > 7 de oro > 3 > 2 > anchos falsos >
   12 > 11 > 10 > 7 falsos > 6 > 5 > 4.
@@ -101,11 +103,16 @@ Truco argentino **sin flor**, baraja española de 40.
 - **Al mazo**: en equipo se va todo el equipo; en primera sin envido cantado, el rival suma 1 extra.
 - **Tapada**: desde segunda, boca abajo, no gana la ronda.
 - **Dos encimadas** (trampa): la de abajo juega, la de arriba queda quemada; "mostrá las dos" la revela.
+- **Flor** (opción): tres del mismo palo, obligatoria y anula el envido; con flor quiero, me achico,
+  contraflor y contraflor al resto. No se puede mentir: la calcula el motor.
+- **Muestra** (opción): se da vuelta una carta; las piezas de ese palo (2, 4, 5, 11 y 10) pasan a ser las
+  más altas y cambian el envido.
 - Partida a **15** o a **30** (malas y buenas).
 - Detalle y fuentes (reglamento de juegosdesalon.com): [REGLAS.md](REGLAS.md).
 
-**No tiene (todavía)**: flor, partidas de 3 con gallo / de 8 / pica-pica, chicos (mejor de dos).
-Importa para el copy: la landing no puede prometer flor. "Sin flor" es parte de la identidad.
+**No tiene (todavía)**: partidas de 3 con gallo / de 8 / pica-pica, chicos (mejor de dos).
+Importa para el copy: la flor, la muestra y las trampas dependen de la sala. Se puede decir "con flor o sin
+flor", nunca que se juega con flor siempre; y "se puede hacer trampa" vale porque es lo que viene por defecto.
 
 ## 5. Las 11 señas
 
@@ -116,8 +123,8 @@ Importa para el copy: la landing no puede prometer flor. "Sin flor" es parte de 
 | Siete de espada | Torcer la boca a la derecha |
 | Siete de oro | Torcer la boca a la izquierda |
 | Un tres | Morderse el labio |
-| Un dos | Trompita |
-| Ancho falso | Asomar la punta de la lengua |
+| Un dos | Tirar un beso (trompita bien marcada) |
+| Ancho falso | Abrir la boca |
 | Nada (ciego) | Cerrar los ojos |
 | Tengo envido | Inflar los cachetes |
 | 30 o más de envido | Fruncir la nariz |
@@ -143,7 +150,8 @@ Corre en el servidor y decide **solo con lo que vería un jugador**. Juega razon
 - Canta envido con 27+ (más agresivo con 30+), quiere con 27+, a veces **farolea** (7 % de envido, 4 % de
   real envido sin tener).
 - Canta truco con mano fuerte (y a veces de farol, 8 %).
-- Muy de vez en cuando **hace trampa** (3 %, dos encimadas en primera).
+- Muy de vez en cuando **hace trampa** (3 %, dos encimadas en primera), si la sala lo permite.
+- Canta y contesta la **flor** y entiende la **muestra** cuando la sala las tiene.
 - **Reclama** si un humano no muestra los tantos (75 %).
 - Piensa entre 0,65 y 1,3 s: ni instantáneo ni lento.
 
@@ -161,7 +169,7 @@ en español (prefiere es-AR) para los cantos. Se apaga con "Voz: no".
   Prohibido: marfil, latón, marrones en la interfaz.
 - **Escena** (solo 3D): bar cálido (paredes `#6b3b2a`, luz de lámpara `#ffd9a0`, paño `#2e7344`).
 - **Cartas**: "Naipes Libres" de Basquetteur (CC BY-SA 3.0) en WebP, 40 + dorso.
-- **Logo**: dos naipes cruzados con el ancho de espada + TRUKEADOS en Archivo Expanded Black ([../brand/logo/](../brand/logo/)). El `favicon.svg` del juego todavía es el viejo (ver [../brand/ALINEACION.md](../brand/ALINEACION.md)).
+- **Logo**: dos naipes cruzados con el ancho de espada + TRUKEADOS en Archivo Expanded Black ([../brand/logo/](../brand/logo/)). El nombre del juego sale de `APP_NAME` (`config.js`); el `favicon.svg` todavía es el viejo (ver [../brand/ALINEACION.md](../brand/ALINEACION.md)).
 - **Voz del copy**: español rioplatense ("tirá", "cantá", "vos").
 
 ## 10. Técnica (lo justo para la landing)
@@ -170,7 +178,7 @@ en español (prefiere es-AR) para los cantos. Se apaga con "Voz: no".
   plan free. Antitrampa real: cada jugador recibe solo lo que puede ver.
 - **Cliente sin build ni frameworks**: HTML/CSS/JS + Three.js como módulo en `public/vendor/`.
 - Rutas: `/` menú, `/sala/CÓDIGO` partida, `/api/lobby` mesas públicas (JSON: `open` y `live`).
-- Tests: motor + 60 partidas completas entre bots por modo.
+- Tests: motor + 60 partidas completas entre bots por modo, y las opciones de sala (`test/opciones.test.js`).
 - Funciona en celular (panel a todo el ancho, filas deslizables). Probado en 1280×720, 768×1024, 375×812.
 
 ## 11. Activos reutilizables para la landing

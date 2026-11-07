@@ -1,8 +1,10 @@
 # Trukeados — alinear el juego con la marca
 
-La marca sale del juego, pero el juego todavía tiene diferencias: el nombre viejo y algunos detalles
-que la marca decidió distinto. Esta es la lista exacta para dejarlos iguales, y los cambios que quedaron
-para más adelante. **Nada de esto está aplicado todavía**: el juego sigue como estaba (commit `7d20129`).
+La marca sale del juego, pero el juego todavía tiene diferencias con algunos detalles que la marca decidió
+distinto. Esta es la lista exacta para dejarlos iguales, y los cambios que quedaron para más adelante.
+
+**Estado (2026-11-06, juego 1.5.3, commit `4766ecf`)**: el nombre ya está cambiado en el juego (1.5.1, con
+`APP_NAME` en `config.js`), salvo el favicon. Lo demás sigue pendiente.
 
 Prioridad: 🔴 nombre (antes de publicar la landing) · 🟡 coherencia visual · ⚪ cuando se pueda.
 
@@ -10,26 +12,21 @@ Prioridad: 🔴 nombre (antes de publicar la landing) · 🟡 coherencia visual 
 
 | Tema | Decisión | Cambio futuro |
 |---|---|---|
-| Nombre visible | **Trukeados** en todo lo que se muestra. | §1 (lista de archivos). |
-| Nombre del Worker | **Se mantiene `truco3d`**. Los links que ya se compartieron siguen andando. | §5, cuando se quiera. |
+| Nombre visible | **Trukeados** en todo lo que se muestra. | ✅ Hecho en 1.5.1, salvo el favicon (§1). |
+| Nombre del Worker | Se había decidido mantener `truco3d`, pero el juego lo cambió a **`trukeados`** en 1.5.1. | Al desplegar, ver §5. |
 | Botón principal | **Por ahora, oro solo en páginas.** El juego sigue con el botón principal blanco. | §4, cuando se quiera. |
 | Paño como fondo | **Una sección entera por página** puede ir en `--pano-3`. En el juego, el paño sigue solo en la escena 3D. | — |
 
-## 1. Nombre: "Truco 3D" → "Trukeados" 🔴
+## 1. Nombre: "Truco 3D" → "Trukeados" ✅ (1.5.1)
 
-| Archivo | Línea | Hoy | Cambiar a |
-|---|---|---|---|
-| `public/index.html` | 6 | `<title>Truco 3D</title>` | `<title>Trukeados</title>` |
-| `public/index.html` | 7 | descripción "Truco argentino online en 3D: …" | dejar la descripción, agregar el nombre al principio |
-| `public/index.html` | 20 | `<h1>Truco <span>argentino</span></h1>` | Logo horizontal (`brand/logo/logo-horizontal.svg`) con `alt="Trukeados"`, y la bajada "Truco argentino online, en 3D." |
-| `public/js/menu.js` | 97 | `document.title = 'Truco 3D'` | `'Trukeados'` |
-| `public/js/room-client.js` | 36 | `` `Truco 3D · Sala ${code}` `` | `` `Trukeados · Sala ${code}` `` |
-| `public/js/main.js` | 137 | `title: 'Truco 3D'` (compartir) | `'Trukeados'` |
-| `public/js/theme.js` | 38 | `feltName: 'Truco 3D'` (lo escrito en el paño) | `'Trukeados'` |
-| `public/css/truco.css` | 1 | comentario "Truco 3D" | "Trukeados" |
-| `README.md`, `AGENTS.md`, `docs/REGLAS.md` | 1 | "Truco 3D" | "Trukeados" |
-| `public/favicon.svg` | — | favicon viejo (naipes marfil, trazo marrón) | `brand/logo/icono-app.svg` |
-| `package.json` / `wrangler.jsonc` | `name` | `truco3d` | **Se mantiene**. Ver §5. Solo el nombre visible cambia. |
+El juego lo hizo en 1.5.1: el nombre del JS sale de `APP_NAME` (`config.js`), y en lo estático está en
+`index.html`, `package.json` y `wrangler.jsonc`.
+
+| Dónde | Estado |
+|---|---|
+| Título, descripción, encabezado del menú, título de la sala, compartir, paño, comentarios, `README.md`, `AGENTS.md`, `docs/REGLAS.md` | ✅ Hecho. El encabezado quedó en texto (`Truke<span>ados</span>`) con la bajada "Truco argentino en 3D, online, con señas de verdad."; el logo SVG queda como opción. |
+| `package.json` / `wrangler.jsonc` (`name`) | ✅ Cambió a `trukeados` (ver §5 antes de desplegar). |
+| `public/favicon.svg` | 🔴 Pendiente: sigue el favicon viejo (naipes marfil, trazo marrón). Cambiar por `brand/logo/icono-app.svg`. |
 
 ## 2. Coherencia visual 🟡
 
@@ -80,12 +77,14 @@ Hoy, en páginas, el botón principal es oro. En el juego es blanco. Si se pasa 
 - **Probar** el panel de acciones en 1280×720, 768×1024 y 375×812 (la misma vara que usa el juego).
 - Después, actualizar `brand/COMPONENTES.md` (fila "Principal") y `brand/lamina.html`.
 
-## 5. Cambio futuro: renombrar el Worker o pasar a dominio propio
+## 5. El Worker renombrado y el dominio propio
 
-Hoy la dirección del juego es `truco3d.<cuenta>.workers.dev` y se mantiene. Para cambiarla más adelante:
+Desde 1.5.1 el Worker se llama `trukeados`: al desplegar, la dirección pasa a
+`trukeados.<cuenta>.workers.dev`. El paso 1 ya está hecho; los demás son para el primer despliegue con el
+nombre nuevo.
 
-**Opción A: renombrar el Worker** (la dirección pasa a `trukeados.<cuenta>.workers.dev`)
-1. Cambiar `name` en `wrangler.jsonc` y en `package.json`.
+**Opción A: renombrar el Worker** (elegida por el juego en 1.5.1)
+1. ✅ Cambiar `name` en `wrangler.jsonc` y en `package.json`.
 2. Antes de desplegar, verificar en la documentación de Cloudflare que los Durable Objects (`TrucoRoom` y `Lobby`) se crean de cero en el Worker nuevo. Si es así, las salas en curso y la lista de mesas públicas arrancan vacías. Las salas son efímeras, pero conviene hacerlo sin partidas abiertas.
 3. `npm run deploy` y probar: partida rápida, entrar con código, práctica con bots y una sala de dos personas.
 4. Mantener el Worker viejo activo mientras los links compartidos se reemplazan. No conviene redirigirlo: las conexiones en vivo (WebSocket) no se redirigen bien, así que las salas se romperían.
