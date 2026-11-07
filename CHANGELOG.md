@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.7.4 — dos encimadas: aviso de qué jugaste
+- Al cerrarse la ronda en que tiraste dos encimadas, te avisa (solo a vos) con qué carta jugaste de verdad: en la
+  mesa la de arriba tapa a la de abajo y parecía que habías jugado esa. Si mataste: "Mataste primera con el 3
+  de espada (el de abajo). Arrancás segunda y el 12 de copa de arriba juega solo y vale." Si no, que se quema.
+
 ## 1.7.3 — tantos más claros y ayuda que se cierra abajo
 - **Tus tantos**: tres botones claros: **Cantar mis N**, **Son buenas** y **Cantar otro número**. Recién al tocar
   el último te pregunta cuánto, con − / + (salta los números que no existen en el envido y arranca en el mínimo

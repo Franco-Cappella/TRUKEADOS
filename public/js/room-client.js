@@ -357,12 +357,27 @@ export class RoomClient {
           this.toast(`${who} fuera de turno: la carta se quema (vale como un 4).`, 'bad', 3500);
         }
         break;
-      case 'round':
+      case 'round': {
+        // dos encimadas propias: en la mesa la de arriba tapa a la de abajo y parece que jugaste esa en esta ronda;
+        // se avisa (solo a vos) con qué carta jugaste de verdad y qué pasa con la de arriba
+        const mine = me != null && g.h.table[me]?.find((p) => p.under && p.round === e.round);
+        const over = mine && g.h.table[me].find((p) => p.over && p.round === e.round + 1);
+        if (mine && over) {
+          const nth = ['primera', 'segunda', 'tercera'][e.round];
+          const next = ['primera', 'segunda', 'tercera'][e.round + 1];
+          const U = (c) => esc(cardName(c));
+          const msg = e.seat === me
+            ? `Mataste ${nth} con el ${U(mine.c)} (el de abajo). Arrancás ${next} y el ${U(over.c)} de arriba juega solo y vale.`
+            : `En ${nth} jugaste el ${U(mine.c)} (el de abajo)${e.result === 'parda' ? ' e hiciste parda' : ''}. El ${U(over.c)} de arriba juega solo en ${next} y se quema (vale un 4).`;
+          this.toast(msg, e.seat === me ? 'good' : '', 5500);
+          break;
+        }
         if (!g.trampas) {
           const t = e.result === 'parda' ? 'Parda' : `${e.result === team(me ?? 0) ? 'Ganamos' : 'Perdimos'} la ronda ${e.round + 1}`;
           this.toast(t, '');
         }
         break;
+      }
       case 'denuncia':
         this.bubble(e.seat, 'A ver, mostrá las dos', 'call', 2600);
         say('A ver, mostrá las dos', e.seat);
