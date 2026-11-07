@@ -190,6 +190,9 @@ export class RoomClient {
       case 'notfound':
         alert('Esa sala no existe o ya cerró.');
         return this.onNotFound();
+      case 'match': // la partida quedó guardada: ELO, monedas y el enlace para verla
+        this.match = m;
+        return this.st && this.renderResult();
       case 'auth': // la sesión venció o no hay perfil: main.js vuelve a la pantalla de entrada
         this.close();
         return dispatchEvent(new Event('trukeados:logout'));
@@ -959,15 +962,26 @@ export class RoomClient {
     const st = this.st;
     const el = $('#result');
     const g = st.game;
-    if (st.room.status !== 'ended' || !g) return el.classList.add('hidden');
+    if (st.room.status !== 'ended' || !g) {
+      if (this.match?.shown) this.match = null; // revancha o vuelta a la sala: el resultado viejo ya no va
+      return el.classList.add('hidden');
+    }
+    if (this.match) this.match.shown = true;
     el.classList.remove('hidden');
     const w = g.winner;
     const won = this.you != null && team(this.you) === w;
     const names = st.room.seats.filter((_, i) => team(i) === w).map((s) => s?.name).join(' y ');
+    // lo que te dejó la partida (llega un ratito después, cuando se guarda)
+    const mine = this.match?.players.find((p) => p.seat === this.you);
+    const gains = mine
+      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Con bots no se juega por ELO</small></span>'}<span>+${mine.coins} monedas</span></div>`
+      : '';
     el.innerHTML = `<div class="card-box">
       <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron!' : 'Perdieron'}</h2>
       <div class="muted">Ganan ${esc(names)}</div>
       <div class="final">${g.score[w]} – ${g.score[1 - w]}</div>
+      ${gains}
+      ${mine ? `<p><button class="btn" data-replay="${esc(this.match.id)}">Ver la partida y el análisis</button></p>` : ''}
       <div class="row center">
         ${this.you != null ? '<button class="btn primary big" data-rematch="1">Revancha</button>' : ''}
         ${st.isHost ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}

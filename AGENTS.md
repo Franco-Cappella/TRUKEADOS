@@ -15,6 +15,8 @@ frameworks (Three.js como módulo en `public/vendor/`).
 src/                      SERVIDOR (Cloudflare Worker)
   index.js                rutas /api (config, perfil, crear sala, partida rápida, lobby, WebSocket)
   auth.js                 sesión de Supabase (verifica el token) y perfiles (lectura/alta en la base)
+  recorder.js             graba la partida en curso (estado al repartir cada mano + jugadas) para el historial
+  matches.js              partida terminada → Supabase (ELO, monedas, historial) y lectura del historial
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
   lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
@@ -24,6 +26,10 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   engine.js *             REGLAS y estado de la mano (sin DOM): newGame, act, actionsFor, waitingFor, viewFor
   bot.js *                jugador automático: Monte Carlo + lo aprendido de cada rival, faroles y trampas
   brain.js *              lo que aprenden los bots de cada persona (regresiones logísticas online)
+  replay.js *             formato del registro de una partida y cómo reproducirla/describirla
+  analysis.js *           análisis post-partida (califica decisiones con evaluateDecision de bot.js)
+  analysis-worker.js      Web Worker que corre el análisis
+  elo.js *                ELO por equipos
   talk.js *               lo que dicen los bots en el chat: frases (BOT_TALK) y cuándo decirlas
   theme.js                COLORES del JS (escena 3D, cartas quemadas, anotador, paletas de personajes)
   dom.js                  $, esc, store (localStorage seguro), KEYS, api() (manda el token de la sesión)
@@ -32,6 +38,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   audio.js                sonidos sintetizados y voz de los cantos
   hud.js                  anotador de palitos, ayuda, caras de las señas, frases rápidas
   menu.js                 menú con pestañas: jugar, mesas, historial, tienda, personalizar y perfil
+  history.js              lista del historial y visor de una partida grabada (/partida/ID) con el análisis
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
   characters.js           personajes 2D dibujados en canvas (caras y señas)
@@ -43,6 +50,7 @@ test/truco.test.js        tests del motor y partidas completas entre bots
 test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
 test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 test/auth.test.js         verificación del token de Supabase y validación del nombre
+test/replay.test.js       grabar y reproducir partidas, ELO y análisis
 supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)
 docs/CUENTAS.md           cuentas: cómo está armado y cómo se configura Supabase
 docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendientes
@@ -82,7 +90,7 @@ Cliente → servidor: `join {token,spectate}` (el token de Supabase: el servidor
 
 Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
-`notfound`, `auth` (sin sesión válida o sin perfil: el cliente vuelve a la pantalla de entrada), `pong`.
+`match {id, players, rated}` (la partida terminada quedó guardada: ELO y monedas de cada uno), `notfound`, `auth` (sin sesión válida o sin perfil: el cliente vuelve a la pantalla de entrada), `pong`.
 
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
@@ -145,3 +153,11 @@ ajedrez). Al separarlo se movió a la raíz, se partió `main.js` en módulos, s
 colores, y se arreglaron: botones chicos, mazo partido después del corte, parpadeo que se confundía con
 la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la carta de arriba de las dos
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
+
+## Historial y análisis
+- La sala graba con `this.rec` (`MatchRecorder`): `start` al empezar o en la revancha, `hand(g)` en `afterDeal`
+  (después de las trampas de los bots) y `step(...)` por cada jugada aceptada (`botAct` para bots y ausentes, con
+  la marca `auto` si un bot jugó por una persona). **Toda jugada nueva que cambie `r.game` tiene que pasar por ahí**
+  o la partida grabada no se va a poder reproducir (lo verifica `test/replay.test.js`).
+- El análisis usa `evaluateDecision` de `bot.js` con `ctx.honest` (el rival que va ganando acepta los cantos):
+  si cambia cómo evalúan los bots, cambia el análisis.

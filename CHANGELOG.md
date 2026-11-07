@@ -1,5 +1,19 @@
 # Cambios
 
+## 1.9.0 — historial, rebobinado, ELO y análisis
+- **Todas las partidas quedan en el historial** (pestaña Historial): resultado, rivales, ELO y monedas. La sala
+  graba el estado al repartir cada mano y cada jugada (`src/recorder.js`); al terminar va a Supabase en una sola
+  transacción (`record_match`).
+- **Rebobinar** (`/partida/ID`, solo para los que jugaron): mano por mano y paso por paso (◀ ▶, flechas del
+  teclado), con las cartas de todos, lo que se jugó en cada ronda, los cantos y el tanteador.
+- **Análisis** al estilo ajedrez: "Analizar mis jugadas" evalúa cada decisión tuya con lo que veías en ese momento
+  (la misma evaluación de los bots, sin faroles ni ruido) y la califica: la mejor, buena, imprecisión, error o
+  error grave, con lo que convenía y cuánto perdiste. Precisión de la partida y "tu jugada más cara". Corre en
+  un Web Worker.
+- **ELO por modo**: solo entre personas (sin bots). En equipo se usa el promedio de cada equipo; las primeras 10
+  partidas mueven más. Al terminar, el cartel muestra cuánto ELO y cuántas monedas ganaste.
+- **Monedas**: 10 por partida terminada y 10 más si ganás (la mitad contra bots).
+
 ## 1.8.0 — cuentas y menú nuevo
 - **Sin cuenta no se juega.** Se entra con Google o con mail y contraseña (Supabase Auth). La primera vez se elige
   el nombre, que es único y es el que aparece en la mesa y en el ranking. Si te pasan `/sala/CÓDIGO` sin sesión,

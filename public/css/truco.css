@@ -509,3 +509,90 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
   #status-line { font-size: 15px; padding-bottom: 6px; }
   #mirror { width: 80px; height: 80px; bottom: auto; top: 100px; }
 }
+
+/* ---------- historial ---------- */
+.hi-list { display: flex; flex-direction: column; gap: 6px; }
+.hi-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-soft); background: var(--surface-2); border: 1px solid transparent; cursor: pointer; text-align: left; width: 100%; }
+.hi-row:hover { border-color: var(--line-2); }
+.hi-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hi-info b { font-weight: 600; }
+.hi-info small, .hi-gain small { font-size: 13px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hi-gain { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.won, .up { color: var(--good-ink); }
+.lost, .down { color: var(--bad-ink); }
+#history-more { align-self: center; }
+
+/* ---------- partida grabada ---------- */
+#replay { overflow-y: auto; background: var(--bg); padding: 16px; }
+.r-wrap { width: min(1100px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.r-top { display: flex; align-items: center; gap: 12px; }
+.r-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.r-title b { font-size: 22px; }
+.r-title small { color: var(--text-dim); font-size: 13px; }
+.r-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; padding: 12px 14px; border-radius: var(--radius-soft); background: var(--surface); border: 1px solid var(--line-2); }
+.r-acc { display: flex; align-items: baseline; gap: 6px; }
+.r-acc b { font-size: 30px; }
+.r-acc small { color: var(--text-dim); }
+.r-grades { display: flex; flex-wrap: wrap; gap: 6px; }
+.r-hands { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+.r-hands button { flex: none; display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: none; color: var(--text-dim); font-stretch: var(--narrow); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.r-hands button small { font-weight: 400; color: var(--muted); }
+.r-hands button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.r-hands button.on small { color: var(--bg); }
+.r-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+.r-board { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-soft); background: radial-gradient(ellipse at 50% 50%, var(--glow), var(--surface) 75%); border: 1px solid var(--line-2); min-height: 300px; }
+.r-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.r-seat { flex: 1 1 220px; max-width: 320px; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: var(--radius-soft); background: var(--panel-soft); border: 1px solid var(--line); border-top: 3px solid var(--tc); }
+.r-seat.t0 { --tc: var(--team0); }
+.r-seat.t1 { --tc: var(--team1); }
+.r-seat.me .r-name { color: var(--accent); }
+.r-seat.turn { box-shadow: 0 0 0 2px var(--accent); }
+.r-name { font-weight: 600; font-size: 15px; }
+.r-name small { font-weight: 400; color: var(--text-dim); font-size: 12px; margin-left: 4px; }
+.r-hand { display: flex; gap: 4px; min-height: 58px; align-items: center; }
+.r-played { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.r-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 58px; }
+.r-slot small { font-size: 11px; color: var(--muted); text-align: center; }
+.r-card { width: 40px; height: auto; border-radius: 3px; display: block; }
+.r-card.down { opacity: 0.45; }
+.r-card.burned { outline: 2px solid var(--red); }
+.r-center { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0; text-align: center; }
+.r-score { display: flex; gap: 18px; font-size: 15px; }
+.r-score .t0 b { color: var(--team0); }
+.r-score .t1 b { color: var(--team1); }
+.r-score b { font-size: 22px; }
+.r-muestra { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 13px; }
+.r-status { color: var(--text-dim); font-size: 14px; }
+.r-now { font-weight: 600; }
+.r-side { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 0; }
+.r-controls { display: flex; align-items: center; gap: 6px; }
+.r-controls #replay-pos { flex: 1; text-align: center; font-size: 13px; color: var(--text-dim); }
+.r-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.r-log li { padding: 7px 10px; border-radius: 6px; font-size: 14px; line-height: 1.35; cursor: pointer; color: var(--text-dim); }
+.r-log li:hover { background: var(--hover-tint); }
+.r-log li.mine { color: var(--text); }
+.r-log li.on { background: var(--surface-2); color: var(--text-hi); box-shadow: inset 3px 0 0 var(--accent); }
+.r-log li.r-deal { color: var(--muted); }
+.r-tip { display: block; color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+.g-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; margin-right: 6px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; white-space: nowrap; }
+.g-badge b { font-weight: 700; }
+.g-mejor { color: var(--good-ink); }
+.g-buena { color: var(--text-dim); }
+.g-imprecision { color: var(--yellow); }
+.g-error { color: var(--bad-ink); }
+.g-grave { color: var(--red); }
+.g-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+.r-gains { display: flex; justify-content: center; gap: 16px; margin: -6px 0 12px; font-weight: 600; }
+@media (max-width: 860px) {
+  .r-main { grid-template-columns: 1fr; }
+  .r-side { position: static; }
+  .r-log { max-height: none; }
+}
+@media (max-width: 560px) {
+  #replay { padding: 12px; }
+  .r-board { padding: 10px; }
+  .r-seat { flex-basis: 140px; padding: 6px 8px; }
+  .r-card { width: 32px; }
+  .r-hand, .r-slot { min-height: 46px; }
+  .hi-info small { white-space: normal; }
+}

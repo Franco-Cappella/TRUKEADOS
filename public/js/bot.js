@@ -17,7 +17,7 @@ import {
   validTanto, envidoAcceptedPoints, envidoDeclinedPoints,
 } from './engine.js';
 import { predict, rate, strength, X } from './brain.js';
-import { BOT } from './config.js';
+import { BOT, ANALYSIS } from './config.js';
 
 const pick = (rng, p) => rng() < p;
 
@@ -209,16 +209,20 @@ function choose(options, rng) {
 const trucoX = (g, level) => (s, world) => X.trucoAccept(strength(g, s, world.hands[s]), level);
 
 // Puntos esperados de cantar (o subir) a `level` cuando la mano vale `cur` si no lo quieren.
+// ctx.honest (análisis): el rival que va ganando acepta casi siempre (ANALYSIS.honestAccept).
+const honest = (ctx, pa, rivalWins) => (ctx.honest ? Math.max(pa, rivalWins * ANALYSIS.honestAccept) : pa);
+
 function evRaise(g, seat, ctx, samples, wins, level, cur) {
   const u = utility(g, seat);
   return wavg(samples, (world) => {
-    const pa = teamAccepts(g, seat, ctx, world, 'trucoAccept', trucoX(g, level));
     const p = wins.get(world);
+    const pa = honest(ctx, teamAccepts(g, seat, ctx, world, 'trucoAccept', trucoX(g, level)), 1 - p);
     return (1 - pa) * u(cur) + pa * (p * u(level) + (1 - p) * u(-level));
   });
 }
 
-function trucoTurn(g, seat, ctx, rng, a) {
+// `aggro`: lo que le suman los bots a cantar y subir (sus faroles). El análisis lo evalúa con 0.
+function trucoTurnOptions(g, seat, ctx, rng, aggro = BOT.aggro) {
   const h = g.h;
   const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
   const wins = new Map(samples.map((x) => [x.world, rollout(g, seat, x.world, null)]));
@@ -226,11 +230,15 @@ function trucoTurn(g, seat, ctx, rng, a) {
   ctx.out = { p: wavg(samples, (w) => wins.get(w)) };
   const u = utility(g, seat);
   const evPass = wavg(samples, (w) => wins.get(w) * u(L) + (1 - wins.get(w)) * u(-L));
-  const evCall = evRaise(g, seat, ctx, samples, wins, L + 1, L) + BOT.aggro;
-  return choose([{ a: null, ev: evPass }, { a: { t: 'truco' }, ev: evCall }], rng);
+  const evCall = evRaise(g, seat, ctx, samples, wins, L + 1, L) + aggro;
+  return [{ a: null, ev: evPass }, { a: { t: 'truco' }, ev: evCall }];
 }
 
-function trucoAnswer(g, seat, ctx, rng, a) {
+function trucoTurn(g, seat, ctx, rng) {
+  return choose(trucoTurnOptions(g, seat, ctx, rng), rng);
+}
+
+function trucoAnswerOptions(g, seat, ctx, rng, a, aggro = BOT.aggro) {
   const h = g.h;
   const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
   const wins = new Map(samples.map((x) => [x.world, rollout(g, seat, x.world, null)]));
@@ -241,8 +249,12 @@ function trucoAnswer(g, seat, ctx, rng, a) {
     { a: { t: 'quiero' }, ev: wavg(samples, (w) => wins.get(w) * u(Lp) + (1 - wins.get(w)) * u(-Lp)) },
     { a: { t: 'noquiero' }, ev: u(-(Lp - 1)) },
   ];
-  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(g, seat, ctx, samples, wins, Lp + 1, Lp) + BOT.aggro });
-  return choose(opts, rng);
+  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(g, seat, ctx, samples, wins, Lp + 1, Lp) + aggro });
+  return opts;
+}
+
+function trucoAnswer(g, seat, ctx, rng, a) {
+  return choose(trucoAnswerOptions(g, seat, ctx, rng, a), rng);
 }
 
 // ---------------------------------------------------------------- envido
@@ -268,7 +280,7 @@ function evEnvido(g, seat, ctx, samples, calls) {
   const u = utility(g, seat);
   return wavg(samples, (world) => {
     const win = envidoWins(g, seat, world);
-    const pa = teamAccepts(g, seat, ctx, world, 'envidoAccept', envidoX(g, calls));
+    const pa = honest(ctx, teamAccepts(g, seat, ctx, world, 'envidoAccept', envidoX(g, calls)), win ? 0 : 1);
     const acc = envidoAcceptedPoints(g, calls, win ? T : 1 - T);
     return (1 - pa) * u(envidoDeclinedPoints(g, calls, T)) + pa * u(win ? acc : -acc);
   });
@@ -278,15 +290,23 @@ function envidoSamples(g, seat, ctx, rng) {
   return worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
 }
 
-function envidoOpen(g, seat, ctx, rng, a) {
+function envidoOpenOptions(g, seat, ctx, rng, a, aggro = BOT.aggro) {
   const samples = envidoSamples(g, seat, ctx, rng);
   ctx.out = { p: wavg(samples, (w) => (envidoWins(g, seat, w) ? 1 : 0)) };
   const opts = [{ a: null, ev: 0 }];
-  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + BOT.aggro / 2 });
-  return choose(opts, rng);
+  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + aggro / 2 });
+  return opts;
+}
+
+function envidoOpen(g, seat, ctx, rng, a) {
+  return choose(envidoOpenOptions(g, seat, ctx, rng, a), rng);
 }
 
 function envidoAnswer(g, seat, ctx, rng, a) {
+  return choose(envidoAnswerOptions(g, seat, ctx, rng, a), rng);
+}
+
+function envidoAnswerOptions(g, seat, ctx, rng, a) {
   const h = g.h;
   const calls = h.envido.calls;
   const T = team(seat);
@@ -305,7 +325,7 @@ function envidoAnswer(g, seat, ctx, rng, a) {
     { a: { t: 'noquiero' }, ev: u(-envidoDeclinedPoints(g, calls, 1 - T)) },
   ];
   for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [...calls, kind]) });
-  return choose(opts, rng);
+  return opts;
 }
 
 // Cantar los tantos. Si pierde y la mesa permite trampas, a veces dice uno más y después no muestra:
@@ -398,12 +418,52 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
       if (e) return e;
     }
     if (a.truco) {
-      const t = trucoTurn(g, seat, ctx, rng, a);
+      const t = trucoTurn(g, seat, ctx, rng);
       if (t) return t;
     }
     return chooseCard(g, seat, ctx, rng, a);
   }
   return null;
+}
+
+// ---------------------------------------------------------------- análisis
+
+/**
+ * Para el análisis post-partida: cuánto vale cada opción que tenía `seat` en esta decisión, desde lo que él veía
+ * (sus cartas y las que estaban a la vista), en puntos equivalentes de la partida (pesados según el tanteador,
+ * como decide un bot pero sin faroles ni ruido). Devuelve { kind, options: [{ a, ev }] } o null si esta
+ * decisión no se evalúa (flor, cantar los tantos, mostrar).
+ * En su turno de jugar, cantar envido vale lo que se espera del envido más la mejor carta (se sigue jugando).
+ */
+export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
+  const h = g.h;
+  if (!h || g.status !== 'playing' || h.phase !== 'play') return null;
+  const w = waitingFor(g);
+  if (!w.seats.includes(seat)) return null;
+  const a = actionsFor(g, seat);
+  if (w.kind === 'envido') return { kind: 'envido', options: envidoAnswerOptions(g, seat, ctx, rng, a) };
+  if (w.kind === 'truco') {
+    const options = trucoAnswerOptions(g, seat, ctx, rng, a, 0);
+    if (a.envido.length) {
+      const pass = Math.max(...options.map((o) => o.ev));
+      for (const o of envidoOpenOptions(g, seat, ctx, rng, a, 0)) if (o.a) options.push({ a: o.a, ev: o.ev + pass });
+    }
+    return { kind: 'truco', options };
+  }
+  if (w.kind !== 'play') return null;
+  const L = h.truco.level;
+  const u = utility(g, seat);
+  const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
+  const options = h.inHand[seat].map((card) => {
+    const p = wavg(samples, (wo) => rollout(g, seat, wo, { t: 'play', card, mode: 'normal' }));
+    return { a: { t: 'play', card, mode: 'normal' }, ev: p * u(L) + (1 - p) * u(-L), p };
+  });
+  const bestCard = Math.max(...options.map((o) => o.ev));
+  if (a.truco) options.push(trucoTurnOptions(g, seat, ctx, rng, 0)[1]);
+  if (envidoOpenFor(g, seat) && a.envido.length) {
+    for (const o of envidoOpenOptions(g, seat, ctx, rng, a, 0)) if (o.a) options.push({ a: o.a, ev: o.ev + bestCard });
+  }
+  return { kind: 'play', options };
 }
 
 // Después de la mano: muestra si dijo la verdad; si mintió, se va sin mostrar.

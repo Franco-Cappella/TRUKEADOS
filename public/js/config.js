@@ -21,6 +21,8 @@ export const ROOM_REUSE_MS = 3 * 60 * 60 * 1000; // una sala vacía e inactiva h
 export const ROUTES = {
   room: (code) => `/sala/${code}`, // enlace para compartir
   roomRe: /^\/sala\/(\d{4})/,
+  match: (id) => `/partida/${id}`, // una partida del historial (solo la ven los que jugaron)
+  matchRe: /^\/partida\/([0-9a-f-]{36})$/,
   home: '/',
   api: {
     rooms: '/api/rooms',
@@ -30,6 +32,8 @@ export const ROUTES = {
     lobby: '/api/lobby',
     config: '/api/config',
     me: '/api/me',
+    matches: '/api/matches',
+    match: (id) => `/api/matches/${id}`,
   },
   card: (id) => `/cards/${id}.webp`,
 };
@@ -106,6 +110,32 @@ export const AUTH = {
   profileTtl: 60_000, // cuánto se guarda un perfil leído en memoria del Worker
 };
 export const ELO_START = 1200;
+// ELO por modo. Solo cuentan las partidas entre personas (ningún bot sentado al empezar). En equipo se usa el
+// promedio de cada equipo y todos los del equipo suman o restan lo mismo.
+export const ELO = {
+  k: 32, // cuánto se mueve por partida
+  kNew: 48, // en las primeras partidas se mueve más, para llegar rápido a tu nivel
+  newGames: 10,
+};
+// Monedas que se ganan al terminar una partida (para la tienda). Contra bots, la mitad.
+export const COINS = { game: 10, win: 10, botFactor: 0.5 };
+// Análisis post-partida: cuántos puntos equivalentes perdiste con tu decisión respecto de la mejor.
+export const ANALYSIS = {
+  samples: 60, // manos imaginadas por decisión (más que un bot: acá no hay apuro)
+  // hasta cuánto perdido es cada calificación (lo que pasa del último es "error grave")
+  grades: [
+    { key: 'mejor', max: 0.05, label: 'La mejor' },
+    { key: 'buena', max: 0.35, label: 'Buena' },
+    { key: 'imprecision', max: 0.8, label: 'Imprecisión' },
+    { key: 'error', max: 1.6, label: 'Error' },
+    { key: 'grave', max: Infinity, label: 'Error grave' },
+  ],
+  accuracyScale: 0.8, // precisión = promedio de exp(-perdido / esto), como un porcentaje
+  // El modelo de base de los bots supone rivales que casi nunca aceptan una falta o un retruco: contra eso,
+  // cualquier farol "conviene". Para aconsejar a una persona se supone que el rival que va ganando acepta así.
+  honestAccept: 0.85,
+};
+export const HISTORY_PAGE = 20; // partidas por página en el historial
 
 // ------------------------------------------------------------------ validación
 export const CODE_RE = /^\d{4}$/;

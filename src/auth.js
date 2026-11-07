@@ -61,7 +61,7 @@ export async function verifyToken(env, token) {
 const bearer = (request) => request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
 
 // ------------------------------------------------------------------ base de datos (PostgREST)
-function rest(env, path, init = {}) {
+export function rest(env, path, init = {}) {
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
     ...init,
     headers: { apikey: env.SUPABASE_SECRET_KEY, 'content-type': 'application/json', ...init.headers },
@@ -73,9 +73,11 @@ const PROFILE_FIELDS = 'id,username,coins,elo_1v1,elo_2v2,elo_3v3,games_1v1,game
 // Perfiles leídos hace poco (por isolate): cada pedido y cada "join" no tiene que ir a la base.
 const cache = new Map();
 
-export async function getProfile(env, id) {
+export const forgetProfile = (id) => cache.delete(id);
+
+export async function getProfile(env, id, { fresh = false } = {}) {
   const hit = cache.get(id);
-  if (hit && Date.now() - hit.at < AUTH.profileTtl) return hit.profile;
+  if (!fresh && hit && Date.now() - hit.at < AUTH.profileTtl) return hit.profile;
   const res = await rest(env, `profiles?id=eq.${encodeURIComponent(id)}&select=${PROFILE_FIELDS}`);
   if (!res.ok) throw new Error('No se pudo leer el perfil');
   const profile = (await res.json())[0] || null;
@@ -106,10 +108,10 @@ export async function createProfile(env, id, username) {
  * Usuario y perfil del pedido (token en "Authorization: Bearer"). Si falta algo devuelve { error: Response }:
  * 401 sin sesión, 403 si todavía no eligió su nombre (salvo con allowNoProfile).
  */
-export async function requireUser(env, request, { allowNoProfile = false } = {}) {
+export async function requireUser(env, request, { allowNoProfile = false, fresh = false } = {}) {
   const user = await verifyToken(env, bearer(request));
   if (!user) return { error: json({ error: 'Tenés que iniciar sesión' }, 401) };
-  const profile = await getProfile(env, user.id);
+  const profile = await getProfile(env, user.id, { fresh });
   if (!profile && !allowNoProfile) return { error: json({ error: 'Elegí tu nombre antes de jugar' }, 403) };
   return { user, profile };
 }

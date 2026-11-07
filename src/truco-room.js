@@ -6,6 +6,8 @@ import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
+import { MatchRecorder } from './recorder.js';
+import { recordMatch } from './matches.js';
 
 const BOT_SHOW_DELAY = 1200; // el bot que ganó el envido muestra a los 1,2 s
 const REACT_MS = 1100; // las reacciones de los bots salen un poco después de lo que las provocó
@@ -19,9 +21,11 @@ export class TrucoRoom extends DurableObject {
     this.gaze = {}; // asiento -> a quién mira (asiento, 'table' o null). Vive en memoria.
     this.brains = null; // lo que los bots saben de cada persona (pid -> cerebro, + global). Lo guarda el Lobby.
     this.learnBuf = []; // lo que hicieron las personas en esta mano, para aprender al terminarla
+    this.rec = new MatchRecorder(ctx.storage); // la partida en curso, para el historial (ver recorder.js)
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || null;
       this.chat = (await ctx.storage.get('chat')) || [];
+      await this.rec.load();
     });
   }
 
@@ -116,6 +120,7 @@ export class TrucoRoom extends DurableObject {
         }
         if (!r.host || this.seatOf(r.host) == null) r.host = this.seatOf(pid) != null ? pid : r.host;
         this.send(ws, { t: 'chat-history', messages: this.chat });
+        if (r.status === 'ended' && r.lastMatch) this.send(ws, { t: 'match', ...r.lastMatch });
         this.send(ws, { t: 'gaze-all', gaze: this.gaze });
         return this.commit();
       }
@@ -189,6 +194,7 @@ export class TrucoRoom extends DurableObject {
         r.status = 'playing';
         const { mode, target, trucoDesdeSegunda } = r.cfg;
         r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
+        await this.rec.start(r);
         await this.loadBrains();
         this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
         this.afterDeal();
@@ -204,6 +210,7 @@ export class TrucoRoom extends DurableObject {
           this.send(ws, { t: 'error', msg: res.error });
           return this.sendState(ws); // por si el cliente tenía un estado viejo
         }
+        this.rec.step(seat, msg.a);
         for (const e of seen) this.learnBuf.push({ pid, ...e });
         if (msg.a?.t === 'reclamar' && r.claimWatch?.includes(pid)) {
           this.learnBuf.push({ pid, key: 'claim', y: true });
@@ -241,6 +248,8 @@ export class TrucoRoom extends DurableObject {
       case 'rematch': {
         if (seat == null || r.status !== 'ended') return;
         rematch(r.game, rng);
+        r.lastMatch = null;
+        await this.rec.start(r);
         r.status = 'playing';
         this.addSystemChat('¡Revancha!');
         this.afterDeal();
@@ -251,6 +260,7 @@ export class TrucoRoom extends DurableObject {
         if (!isHost || r.status !== 'ended') return;
         r.status = 'lobby';
         r.game = null;
+        r.lastMatch = null;
         return this.commit();
       }
     }
@@ -306,12 +316,13 @@ export class TrucoRoom extends DurableObject {
       if (this.isAway(sh.seat, now) && now - since > BOT_SHOW_DELAY && !sh.folded) {
         // si mintió en el envido, se va sin mostrar y reza que no le reclamen
         const a = botShow(g, sh.seat);
-        changed = !!act(g, sh.seat, a).ok;
+        changed = this.botAct(sh.seat, a);
         if (changed && a.t === 'nomostrar') this.onFold(sh.seat);
       } else if (r.botClaimAt && now >= r.botClaimAt) {
-        changed = !!act(g, r.botClaimer, { t: 'reclamar' }).ok;
+        changed = this.botAct(r.botClaimer, { t: 'reclamar' });
       } else if (now - since >= TIMING.showWindow) {
         changed = closeShow(g);
+        if (changed) this.rec.step('close');
       }
       if (changed) this.onGameChange();
     } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0) && now >= (r.botReadyAt || 0)) {
@@ -320,7 +331,7 @@ export class TrucoRoom extends DurableObject {
       const before = waitingFor(g);
       const ev0 = g.evId;
       const a = actor != null && botAction(g, actor, rng, ctx);
-      if (a && act(g, actor, a).ok) {
+      if (a && this.botAct(actor, a)) {
         // contestó por el equipo sin esperar al compañero humano
         const partner = before.seats.some((s) => !r.seats[s].bot && !this.isAway(s, now));
         const speaker = r.seats[actor].bot ? actor : partner ? this.teamBot(actor) : null;
@@ -346,6 +357,31 @@ export class TrucoRoom extends DurableObject {
   }
 
   // ---- lógica de sala ----
+  // Jugada de un bot (o de un ausente): si el motor la acepta, queda grabada.
+  botAct(seat, a) {
+    const ok = !!act(this.room.game, seat, a).ok;
+    if (ok) this.rec.step(seat, a, !this.room.seats[seat]?.bot);
+    return ok;
+  }
+
+  // Partida terminada: va al historial con el ELO y las monedas de cada uno, y se les avisa.
+  async finishMatch() {
+    const r = this.room;
+    if (!this.rec.active) return;
+    const meta = this.rec.meta;
+    try {
+      const done = await recordMatch(this.env, meta, this.rec.log(), r.game);
+      if (done) {
+        r.lastMatch = { ...done, rated: meta.rated };
+        await this.save();
+        this.broadcastRaw({ t: 'match', ...r.lastMatch });
+      }
+    } catch (err) {
+      console.error('finishMatch', err);
+    }
+    await this.rec.clear();
+  }
+
   afterDeal() {
     const r = this.room;
     r.handEndedAt = 0;
@@ -357,6 +393,7 @@ export class TrucoRoom extends DurableObject {
     r.paceEv = r.game.evId;
     r.botReadyAt = 0;
     this.botCheats();
+    this.rec.hand(r.game);
     this.botReact();
     if (r.game.n > 2) {
       r.seats.forEach((s, i) => {
@@ -570,6 +607,7 @@ export class TrucoRoom extends DurableObject {
     if (['truco', 'envido', 'flor'].includes(waitingFor(g).kind)) r.callAt = Date.now();
     if (g.status === 'ended') {
       r.status = 'ended';
+      this.matchDue = true;
       const t = g.winner;
       const names = r.seats.filter((_, i) => team(i) === t).map((s) => s.name).join(' y ');
       this.addSystemChat(`Ganaron ${names} (${g.score[t]} a ${g.score[1 - t]})`);
@@ -700,7 +738,12 @@ export class TrucoRoom extends DurableObject {
       this.learnDue = false;
       await this.flushLearning();
     }
+    await this.rec.flush();
     await this.save();
+    if (this.matchDue) {
+      this.matchDue = false;
+      await this.finishMatch();
+    }
     this.broadcastState();
     await this.scheduleAlarm();
     await this.updateLobby();

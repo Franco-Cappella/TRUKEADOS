@@ -6,6 +6,7 @@ import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
 import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile } from './auth.js';
+import { listMatches, getMatch } from './matches.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -41,7 +42,8 @@ export default {
     }
 
     if (path === '/api/me' && method === 'GET') {
-      const auth = await requireUser(env, request, { allowNoProfile: true });
+      // sin caché: el menú lo pide al volver de una partida, con el ELO y las monedas nuevos
+      const auth = await requireUser(env, request, { allowNoProfile: true, fresh: true });
       return auth.error || json({ user: auth.user, profile: auth.profile });
     }
 
@@ -77,6 +79,20 @@ export default {
       if (found) return json({ code: found, joined: true });
       const code = await createRoom(env, { mode, target: DEFAULT_TARGET, options: roomOptions(), isPublic: true, pid, name });
       return json({ code, joined: false });
+    }
+
+    // historial: tus partidas (de a páginas) y una partida entera con su registro para rebobinarla
+    if (path === '/api/matches' && method === 'GET') {
+      const auth = await requireUser(env, request);
+      if (auth.error) return auth.error;
+      return json({ matches: await listMatches(env, auth.user.id, new URL(request.url).searchParams.get('before')) });
+    }
+    const matchId = path.match(/^\/api\/matches\/([0-9a-f-]{36})$/);
+    if (matchId && method === 'GET') {
+      const auth = await requireUser(env, request);
+      if (auth.error) return auth.error;
+      const match = await getMatch(env, auth.user.id, matchId[1]);
+      return match ? json({ match }) : json({ error: 'No encontramos esa partida' }, 404);
     }
 
     if (path === '/api/lobby' && method === 'GET') return json(await lobbyStub(env).list());

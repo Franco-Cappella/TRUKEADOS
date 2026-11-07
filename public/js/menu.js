@@ -2,7 +2,8 @@
 // Personalizar y Perfil. Las reglas de la mesa (modo, puntos, flor…) se eligen adentro, en la sala de espera.
 import { ROUTES, CODE_RE, APP_NAME, MODES, ELO_START, modeLabel } from './config.js';
 import { $, $$, esc, store, KEYS, api, initial } from './dom.js';
-import { currentMe } from './auth.js';
+import { currentMe, loadMe } from './auth.js';
+import { loadHistory } from './history.js';
 
 const LOBBY_REFRESH_MS = 7000;
 const PUBLIC_MAX = 3; // en la pestaña Jugar, como mucho; en pantallas bajas, las que entren sin scroll
@@ -78,6 +79,7 @@ function showTab(tab) {
     sessionStorage.setItem(TAB_KEY, tab);
   } catch {}
   if (tab === 'jugar' || tab === 'mesas') loadPublic();
+  if (tab === 'historial') loadHistory();
 }
 
 // Tu usuario arriba, las monedas y el ELO de cada modo.
@@ -137,6 +139,8 @@ export function showMenu() {
   $('#menu').classList.remove('hidden');
   document.title = APP_NAME;
   paintMe();
+  // al volver de una partida cambian el ELO y las monedas
+  loadMe().then((me) => me?.profile && paintMe());
   let tab = 'jugar';
   try {
     tab = sessionStorage.getItem(TAB_KEY) || tab;

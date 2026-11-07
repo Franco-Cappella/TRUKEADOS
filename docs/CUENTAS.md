@@ -56,8 +56,8 @@ prendido, Supabase manda un mail para confirmar la cuenta; el servidor de mail q
 direcciones del equipo del proyecto y muy pocos por hora. Para gente de verdad hace falta un SMTP propio
 (Authentication → Emails → SMTP, por ejemplo Resend) o apagar "Confirm email" mientras tanto.
 
-## Pendiente (próximas etapas)
-- Historial de partidas y rebobinado mano por mano.
-- ELO por modo (las columnas `elo_*` y `games_*` ya están; todavía nadie las actualiza).
-- Análisis post-partida.
-- Tienda y personalización (la columna `coins` ya está).
+## Partidas, ELO y monedas
+- `matches` (una fila por partida, con el registro para rebobinarla) y `match_players` (una por persona).
+- Al terminar, la sala llama a `record_match(m)` con la clave secreta: inserta la partida, suma el ELO (como
+  diferencia, para no pisar otra partida simultánea) y las monedas. Solo `service_role` puede ejecutarla.
+- `/api/matches` (tu historial, de a 20) y `/api/matches/ID` (una partida, solo si la jugaste).

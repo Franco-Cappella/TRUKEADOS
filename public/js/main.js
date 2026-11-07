@@ -11,6 +11,7 @@ import { QUICK_PHRASES, helpHtml, drawFace, readOptionChecks } from './hud.js';
 import { initMenu, showMenu, hideMenu } from './menu.js';
 import { initAuth, loadMe, currentMe, onAuthChange, signOut } from './auth.js';
 import { initAccount, showEntry } from './account.js';
+import { initHistory, showReplay, hideReplay } from './history.js';
 import { RoomClient } from './room-client.js';
 
 let scene = null;
@@ -42,9 +43,12 @@ function route() {
   }
   showEntry(null);
   const m = location.pathname.match(ROUTES.roomRe);
-  if (m) return openRoom(m[1].toUpperCase());
+  if (m) return hideReplay(), openRoom(m[1].toUpperCase());
   room?.close();
   room = null;
+  const pm = location.pathname.match(ROUTES.matchRe);
+  if (pm) return showReplay(pm[1]);
+  hideReplay();
   showMenu();
 }
 
@@ -169,6 +173,7 @@ function bindGameUI() {
     if (b.dataset.rematch) room.send({ t: 'rematch' });
     if (b.dataset.tolobby) room.send({ t: 'to-lobby' });
     if (b.dataset.exit) goHome();
+    if (b.dataset.replay) openMatch(b.dataset.replay);
   });
 
   // ayuda
@@ -274,7 +279,17 @@ async function logout() {
   route();
 }
 
+function openMatch(id) {
+  history.pushState({}, '', ROUTES.match(id));
+  route();
+}
+
 initMenu(go, logout);
+initHistory(openMatch, () => {
+  // volver al historial (o atrás, si se llegó desde ahí)
+  sessionStorage.setItem('truco-menu-tab', 'historial');
+  goHome();
+});
 initAccount(refresh, route);
 window.addEventListener('popstate', route);
 // la sesión venció o la cerraron en otra pestaña (si ya se sabe que no hay sesión, no se vuelve a preguntar)

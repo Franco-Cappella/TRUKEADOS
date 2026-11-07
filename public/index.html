@@ -117,8 +117,10 @@
       </div>
 
       <div class="m-card h-panel hidden" data-panel="historial">
-        <h3>Historial <small>próximamente</small></h3>
-        <p class="h-soon">Todas tus partidas van a quedar acá. Vas a poder rebobinarlas mano por mano y ver el análisis: dónde la jugaste bien, qué canto te costó la partida y qué hubiera convenido.</p>
+        <h3>Historial <small>tocá una partida para rebobinarla y ver el análisis</small></h3>
+        <div id="history-list" class="hi-list"></div>
+        <p class="muted hidden" id="history-empty">Todavía no terminaste ninguna partida. Cuando termines una, queda acá para verla mano por mano.</p>
+        <button class="btn ghost hidden" type="button" id="history-more">Ver más</button>
       </div>
 
       <div class="m-card h-panel hidden" data-panel="tienda">
@@ -145,6 +147,32 @@
       <footer class="credits">
         Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
       </footer>
+    </div>
+  </section>
+
+  <!-- ============ PARTIDA GRABADA (historial) ============ -->
+  <section id="replay" class="screen hidden">
+    <div class="r-wrap">
+      <header class="r-top">
+        <button class="btn small ghost" id="replay-back" type="button" title="Volver al historial">✕</button>
+        <div class="r-title"><b id="replay-title"></b><small id="replay-sub"></small></div>
+        <button class="btn small" id="replay-analyze" type="button">Analizar mis jugadas</button>
+      </header>
+      <div class="r-summary hidden" id="replay-summary"></div>
+      <nav class="r-hands" id="replay-hands" aria-label="Manos"></nav>
+      <div class="r-main">
+        <div class="r-board" id="replay-board"></div>
+        <div class="r-side">
+          <div class="r-controls">
+            <button class="btn small" type="button" data-step="first" title="Principio de la mano">⏮</button>
+            <button class="btn small" type="button" data-step="prev" title="Paso anterior (←)">◀</button>
+            <span id="replay-pos"></span>
+            <button class="btn small" type="button" data-step="next" title="Paso siguiente (→)">▶</button>
+            <button class="btn small" type="button" data-step="last" title="Final de la mano">⏭</button>
+          </div>
+          <ol class="r-log" id="replay-log"></ol>
+        </div>
+      </div>
     </div>
   </section>
 
