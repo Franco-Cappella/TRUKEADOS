@@ -10,8 +10,11 @@
 // (`ctx.peek`), miente en el envido y después se va sin mostrar, tira dos encimadas y, cuando reparte,
 // se acomoda una carta buena (`stackDeck`).
 //
-// ctx (lo arma el servidor): { peek, bots: asientos que son bots, brainOf(seat) }. Sin ctx juega honesto
-// con lo que se supone de cualquiera.
+// ctx (lo arma el servidor): { peek, bots: asientos que son bots, brainOf(seat), senas: [{ seat, sena }] }.
+// `senas` son las señas que vio en esta mano: todas las de su compañero y las de los rivales que justo
+// estaba mirando. Con eso imagina las manos de los demás (si el compañero le guiñó, tiene el ancho de basto)
+// y decide qué cantar y qué tirar sabiendo con qué cuenta el equipo. Sin ctx juega honesto con lo que se
+// supone de cualquiera.
 import {
   rank, tanto, team, cardNum, playValue, actionsFor, waitingFor, envidoOpenFor, florFor, act, newDeck, shuffle,
   validTanto, envidoAcceptedPoints, envidoDeclinedPoints,
@@ -35,9 +38,68 @@ function knownSeats(g, seat, ctx) {
 // Carta de la mesa que el bot puede ver (las tapadas y la de abajo de dos encimadas, no).
 const visible = (p) => !p.faceDown && !(p.under && !p.revealed);
 
+// ---- señas: qué carta (o qué tantos) dice cada una
+const SENA_CARD = { ancho_espada: (c) => c === '1E', ancho_basto: (c) => c === '1B', siete_espada: (c) => c === '7E', siete_oro: (c) => c === '7O', tres: (c) => cardNum(c) === 3, dos: (c) => cardNum(c) === 2, ancho_falso: (c) => c === '1C' || c === '1O' };
+const BRAVA = new Set(['1E', '1B', '7E', '7O']);
+const SENA_FITS = {
+  ciego: (full) => !full.some((c) => BRAVA.has(c) || cardNum(c) === 3 || cardNum(c) === 2),
+  envido_alto: (full, m) => tanto(full, m).value >= 27,
+  treinta: (full, m) => tanto(full, m).value >= 30,
+  nada_envido: (full, m) => tanto(full, m).value <= 25,
+  // lo que contestó el compañero a "¿le canto truco?": "cantá" = tiene un tres o algo mejor; "nada" = no
+  truco_si: (full, m) => full.some((c) => rank(c, m) >= rank('3E', m)),
+  truco_no: (full, m) => !full.some((c) => rank(c, m) >= rank('3E', m)),
+};
+
+// Respuesta de un bot cuando el compañero le consulta: 'si' ("Cantá"), 'callado' o 'nada' ("No tengo nada").
+// Con lo que tiene él. Si tiene muchísimo, a veces dice "callado" igual: va a la pesca (que canten los
+// rivales y después se sube). Con poco, casi siempre avisa que no tiene nada (a veces solo "callado").
+export function botAnswer(g, seat, kind, rng = Math.random) {
+  const h = g.h;
+  if (kind === 'tantos') {
+    const v = tanto(h.cards[seat], h.muestra).value;
+    if (v >= 31 && pick(rng, 0.35)) return 'callado';
+    if (v >= 27) return 'si';
+    if (v <= 23) return pick(rng, 0.8) ? 'nada' : 'callado';
+    return 'callado';
+  }
+  const R = (c) => rank(c, h.muestra);
+  const hand = h.inHand[seat].map(R);
+  const best = Math.max(...hand, -1);
+  const bravas = hand.filter((r) => r >= R('7O')).length;
+  if ((hand.some((r) => r >= R('1B')) || bravas >= 2) && pick(rng, 0.35)) return 'callado';
+  if (best >= R('3E') || strength(g, seat) >= 0.5) return 'si';
+  if (best < R('2E')) return pick(rng, 0.8) ? 'nada' : 'callado';
+  return 'callado';
+}
+
+// Qué le pregunta un bot a su compañero antes de decidir (o null): los tantos, si es el que canta el envido;
+// el truco, si lo puede cantar. Le pregunta más seguido a una persona que a otro bot (que ya sabe sus cartas).
+export function botAsks(g, seat, rng, humanPartner) {
+  const h = g.h;
+  const a = actionsFor(g, seat);
+  if (envidoOpenFor(g, seat) && a.envido.length) return pick(rng, humanPartner ? 0.6 : 0.15) ? 'tantos' : null;
+  if (a.truco && h.r <= 1 && !h.truco.pending) return pick(rng, humanPartner ? 0.3 : 0.08) ? 'truco' : null;
+  return null;
+}
+// cuánto le cree a una seña: la del compañero casi siempre es verdad; la de un rival puede ser para despistar
+const senaTrust = (seat, s) => (team(s) === team(seat) ? 0.95 : 0.8);
+
+// Peso de un mundo por las señas de tantos o de "nada": si no cuadra, es poco creíble.
+function senaWeight(g, seat, ctx, world, known) {
+  let w = 1;
+  for (const { seat: s, sena } of ctx.senas || []) {
+    const fits = SENA_FITS[sena];
+    if (!fits || known.has(s)) continue;
+    w *= fits(world.full[s], g.h.muestra) ? 1 : 1 - senaTrust(seat, s);
+  }
+  return w;
+}
+
 // Un "mundo": las cartas que imagina para cada asiento desconocido.
 // hands[s] = lo que tiene en la mano; full[s] = sus 3 cartas originales (para el envido).
-function sampleWorld(g, seat, known, rng) {
+// Si alguien hizo la seña de una carta, casi siempre se la da (si todavía puede tenerla).
+function sampleWorld(g, seat, known, rng, senas = []) {
   const h = g.h;
   const used = new Set();
   if (h.muestra) used.add(h.muestra);
@@ -55,7 +117,14 @@ function sampleWorld(g, seat, known, rng) {
   for (const s of unknown) {
     const seen = h.table[s].filter(visible).map((p) => p.c);
     const hidden = 3 - seen.length;
-    const mine = pool.splice(0, hidden);
+    const forced = [];
+    for (const x of senas) {
+      const is = x.seat === s && SENA_CARD[x.sena];
+      if (!is || forced.length >= hidden || seen.some(is) || rng() > senaTrust(seat, s)) continue;
+      const i = pool.findIndex(is);
+      if (i >= 0) forced.push(...pool.splice(i, 1));
+    }
+    const mine = [...forced, ...pool.splice(0, hidden - forced.length)];
     hands[s] = mine.slice(0, h.inHand[s].length);
     full[s] = [...seen, ...mine];
   }
@@ -120,11 +189,119 @@ function worlds(g, seat, ctx, rng, weigh) {
   const n = known.size === g.n ? 1 : ctx.samples || BOT.samples; // si ve todo, con una alcanza
   const out = [];
   for (let i = 0; i < n; i++) {
-    const world = sampleWorld(g, seat, known, rng);
-    out.push({ world, w: weigh ? weigh(world, known) : 1 });
+    const world = sampleWorld(g, seat, known, rng, ctx.senas);
+    out.push({ world, w: (weigh ? weigh(world, known) : 1) * senaWeight(g, seat, ctx, world, known) });
   }
   return out;
 }
+
+// ---------------------------------------------------------------- memoria de situaciones
+//
+// Como el programa de damas de Samuel (IBM, años 50): las situaciones que ya vio las guarda con lo que calculó.
+// La próxima vez que está en la misma, suma más manos imaginadas a lo que ya sabía (cada vez decide mejor) y
+// cuando juntó BOT.memoSamples ya no piensa: usa lo guardado y decide al toque.
+//
+// Se guardan las sumas de la simulación (chance de ganar la mano, de que quieran el truco, por carta), no la
+// decisión: el tanteador y el ruido se aplican cada vez, así que lo guardado sirve con cualquier resultado.
+// La clave es lo que sabe el bot, con los asientos contados desde él y las cartas por su valor (dos cuatros
+// juegan igual); si importan los palos (se cantaron tantos o hay señas de tantos), por la carta exacta.
+
+// Lo que se guarda por situación: { n: manos imaginadas, sw: suma de pesos, ...sumas pesadas }.
+export class BotMemo {
+  constructor(max = 50000) {
+    this.map = new Map();
+    this.max = max;
+    this.ripe = new Map(); // las que llegaron a BOT.memoSamples desde la última vez que se guardaron
+    this.hits = 0;
+    this.misses = 0;
+  }
+  get(k) {
+    const v = this.map.get(k);
+    if (v) {
+      this.map.delete(k); // la más usada queda al final (se borran primero las viejas)
+      this.map.set(k, v);
+    }
+    return v;
+  }
+  set(k, v) {
+    this.map.set(k, v);
+    if (this.map.size > this.max) this.map.delete(this.map.keys().next().value);
+    if (v.n >= BOT.memoSamples) this.ripe.set(k, v);
+  }
+  load(entries) {
+    for (const [k, v] of entries) if (!this.map.has(k)) this.map.set(k, v);
+  }
+  takeRipe() {
+    const out = [...this.ripe];
+    this.ripe.clear();
+    return out;
+  }
+}
+
+// Hash de 64 bits (dos FNV-1a) para que la clave guardada sea corta.
+function hashKey(s) {
+  let a = 0x811c9dc5;
+  let b = 0x01000193 ^ s.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 16777619);
+    b = Math.imul(b ^ c, 2246822519);
+  }
+  return (a >>> 0).toString(36) + '.' + (b >>> 0).toString(36);
+}
+
+// Lo que sabe `seat` en este momento, como texto (ver arriba).
+function situation(g, seat, ctx, kind) {
+  const h = g.h;
+  const n = g.n;
+  const rel = (s) => (s - seat + n) % n;
+  const known = knownSeats(g, seat, ctx);
+  const e = h.envido;
+  const said = (e.declare?.said || []).filter((x) => x.value != null).map((x) => [rel(x.seat), x.value]);
+  const senas = (ctx.senas || []).filter((x) => !known.has(x.seat)).map((x) => [rel(x.seat), x.sena]).sort();
+  const exact = said.length > 0 || e.state === 'pending' || senas.some(([, s]) => SENA_FITS[s]);
+  const C = (c) => (exact ? c : rank(c, h.muestra));
+  const bySeat = (f) => Array.from({ length: n }, (_, k) => f((seat + k) % n));
+  const tp = h.truco.pending;
+  // los modelos de los rivales cambian la cuenta en el truco (si quieren) y cuando pesan lo que cantaron
+  const brains = kind.startsWith('truco') || !!tp || said.length > 0 || e.state === 'pending';
+  return JSON.stringify([
+    kind, n, h.muestra || '', rel(h.mano), h.r, rel(h.turn), ctx.peek ? 1 : 0,
+    bySeat((s) => (known.has(s) ? [h.cards[s].map(C).sort(), h.inHand[s].map(C).sort()] : h.inHand[s].length)),
+    bySeat((s) => h.table[s].map((p) => [known.has(s) || visible(p) ? C(p.c) : 'x', p.burned ? 1 : 0, p.round, p.under ? 1 : 0])),
+    h.rounds.map((r) => [r.plays.map((p) => [rel(p.seat), C(p.c), p.burned ? 1 : 0]), r.result == null ? '' : r.result === 'parda' ? 'p' : r.result === team(seat) ? 'm' : 't']),
+    bySeat((s) => (h.pre[s] ? C(h.pre[s]) : 0)),
+    bySeat((s) => (h.mazo[s] ? 1 : 0)),
+    [h.truco.level, tp ? [tp.level, rel(tp.bySeat)] : 0],
+    [e.state, e.state === 'pending' ? [rel(e.bySeat), e.calls] : 0, said],
+    senas,
+    brains ? bySeat((s) => (team(s) !== team(seat) ? ctx.brainKey?.(s) ?? '' : '')) : 0,
+  ]);
+}
+
+// Sumas de la simulación para `kind`, usando y engordando la memoria si hay (ctx.memo).
+// compute(samples, S) devuelve sumas pesadas; S(f) = suma de peso * f(mundo). avg(campo) = suma / suma de pesos.
+function simStats(g, seat, ctx, rng, kind, compute) {
+  const memo = ctx.memo;
+  const key = memo && hashKey(situation(g, seat, ctx, kind));
+  let st = memo?.get(key);
+  if (st && st.n >= BOT.memoSamples) memo.hits++;
+  else {
+    if (memo) memo.misses++;
+    const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
+    // si ningún mundo es creíble (pesos en 0), todos pesan igual
+    if (!samples.some((x) => x.w > 0)) for (const x of samples) x.w = 1;
+    const S = (f) => samples.reduce((a, x) => a + x.w * f(x.world), 0);
+    const add = { n: samples.length, sw: samples.reduce((a, x) => a + x.w, 0), ...compute(samples, S) };
+    if (st) for (const k of Object.keys(add)) add[k] += st[k] || 0;
+    st = add;
+    memo?.set(key, st);
+  }
+  return { n: st.n, avg: (k) => (st.sw > 0 ? (st[k] || 0) / st.sw : 0.5) };
+}
+
+// Para los tests: las manos que imagina `seat` (con sus pesos).
+export const imagine = (g, seat, ctx = {}, rng = Math.random) => worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
 
 const brainOf = (ctx, s) => ctx.brainOf?.(s) || null;
 
@@ -208,53 +385,48 @@ function choose(options, rng) {
 
 const trucoX = (g, level) => (s, world) => X.trucoAccept(strength(g, s, world.hands[s]), level);
 
-// Puntos esperados de cantar (o subir) a `level` cuando la mano vale `cur` si no lo quieren.
-// ctx.honest (análisis): el rival que va ganando acepta casi siempre (ANALYSIS.honestAccept).
-const honest = (ctx, pa, rivalWins) => (ctx.honest ? Math.max(pa, rivalWins * ANALYSIS.honestAccept) : pa);
-
-function evRaise(g, seat, ctx, samples, wins, level, cur) {
-  const u = utility(g, seat);
-  return wavg(samples, (world) => {
-    const p = wins.get(world);
-    const pa = honest(ctx, teamAccepts(g, seat, ctx, world, 'trucoAccept', trucoX(g, level)), 1 - p);
-    return (1 - pa) * u(cur) + pa * (p * u(level) + (1 - p) * u(-level));
+// Simulación del truco: chance de ganar la mano (p), de que quieran subir a `level` (pa) y las dos juntas (pap).
+function trucoStats(g, seat, ctx, rng, level) {
+  return simStats(g, seat, ctx, rng, 'truco' + level, (samples, S) => {
+    const wins = new Map(samples.map((x) => [x.world, rollout(g, seat, x.world, null)]));
+    const acc = new Map(samples.map((x) => [x.world, teamAccepts(g, seat, ctx, x.world, 'trucoAccept', trucoX(g, level))]));
+    return { p: S((w) => wins.get(w)), pa: S((w) => acc.get(w)), pap: S((w) => acc.get(w) * wins.get(w)) };
   });
 }
 
-// `aggro`: lo que le suman los bots a cantar y subir (sus faroles). El análisis lo evalúa con 0.
-function trucoTurnOptions(g, seat, ctx, rng, aggro = BOT.aggro) {
+// Puntos esperados de cantar (o subir) a `level` cuando la mano vale `cur` si no lo quieren:
+// promedio de (1 - pa)*u(cur) + pa*(p*u(level) + (1 - p)*u(-level)), armado con las sumas guardadas.
+function evRaise(st, u, level, cur) {
+  const pa = st.avg('pa');
+  const pap = st.avg('pap');
+  return (1 - pa) * u(cur) + pap * u(level) + (pa - pap) * u(-level);
+}
+
+function trucoTurn(g, seat, ctx, rng, a) {
   const h = g.h;
-  const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
-  const wins = new Map(samples.map((x) => [x.world, rollout(g, seat, x.world, null)]));
   const L = h.truco.level;
-  ctx.out = { p: wavg(samples, (w) => wins.get(w)) };
+  const st = trucoStats(g, seat, ctx, rng, L + 1);
+  const p = st.avg('p');
+  ctx.out = { p };
   const u = utility(g, seat);
-  const evPass = wavg(samples, (w) => wins.get(w) * u(L) + (1 - wins.get(w)) * u(-L));
-  const evCall = evRaise(g, seat, ctx, samples, wins, L + 1, L) + aggro;
-  return [{ a: null, ev: evPass }, { a: { t: 'truco' }, ev: evCall }];
-}
-
-function trucoTurn(g, seat, ctx, rng) {
-  return choose(trucoTurnOptions(g, seat, ctx, rng), rng);
-}
-
-function trucoAnswerOptions(g, seat, ctx, rng, a, aggro = BOT.aggro) {
-  const h = g.h;
-  const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
-  const wins = new Map(samples.map((x) => [x.world, rollout(g, seat, x.world, null)]));
-  const Lp = h.truco.pending.level;
-  ctx.out = { p: wavg(samples, (w) => wins.get(w)) };
-  const u = utility(g, seat);
-  const opts = [
-    { a: { t: 'quiero' }, ev: wavg(samples, (w) => wins.get(w) * u(Lp) + (1 - wins.get(w)) * u(-Lp)) },
-    { a: { t: 'noquiero' }, ev: u(-(Lp - 1)) },
-  ];
-  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(g, seat, ctx, samples, wins, Lp + 1, Lp) + aggro });
-  return opts;
+  const evPass = p * u(L) + (1 - p) * u(-L);
+  const evCall = evRaise(st, u, L + 1, L) + BOT.aggro;
+  return choose([{ a: null, ev: evPass }, { a: { t: 'truco' }, ev: evCall }], rng);
 }
 
 function trucoAnswer(g, seat, ctx, rng, a) {
-  return choose(trucoAnswerOptions(g, seat, ctx, rng, a), rng);
+  const h = g.h;
+  const Lp = h.truco.pending.level;
+  const st = trucoStats(g, seat, ctx, rng, Lp + 1);
+  const p = st.avg('p');
+  ctx.out = { p };
+  const u = utility(g, seat);
+  const opts = [
+    { a: { t: 'quiero' }, ev: p * u(Lp) + (1 - p) * u(-Lp) },
+    { a: { t: 'noquiero' }, ev: u(-(Lp - 1)) },
+  ];
+  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(st, u, Lp + 1, Lp) + BOT.aggro });
+  return choose(opts, rng);
 }
 
 // ---------------------------------------------------------------- envido
@@ -280,7 +452,7 @@ function evEnvido(g, seat, ctx, samples, calls) {
   const u = utility(g, seat);
   return wavg(samples, (world) => {
     const win = envidoWins(g, seat, world);
-    const pa = honest(ctx, teamAccepts(g, seat, ctx, world, 'envidoAccept', envidoX(g, calls)), win ? 0 : 1);
+    const pa = teamAccepts(g, seat, ctx, world, 'envidoAccept', envidoX(g, calls));
     const acc = envidoAcceptedPoints(g, calls, win ? T : 1 - T);
     return (1 - pa) * u(envidoDeclinedPoints(g, calls, T)) + pa * u(win ? acc : -acc);
   });
@@ -290,23 +462,15 @@ function envidoSamples(g, seat, ctx, rng) {
   return worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
 }
 
-function envidoOpenOptions(g, seat, ctx, rng, a, aggro = BOT.aggro) {
+function envidoOpen(g, seat, ctx, rng, a) {
   const samples = envidoSamples(g, seat, ctx, rng);
   ctx.out = { p: wavg(samples, (w) => (envidoWins(g, seat, w) ? 1 : 0)) };
   const opts = [{ a: null, ev: 0 }];
-  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + aggro / 2 });
-  return opts;
-}
-
-function envidoOpen(g, seat, ctx, rng, a) {
-  return choose(envidoOpenOptions(g, seat, ctx, rng, a), rng);
+  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + BOT.aggro / 2 });
+  return choose(opts, rng);
 }
 
 function envidoAnswer(g, seat, ctx, rng, a) {
-  return choose(envidoAnswerOptions(g, seat, ctx, rng, a), rng);
-}
-
-function envidoAnswerOptions(g, seat, ctx, rng, a) {
   const h = g.h;
   const calls = h.envido.calls;
   const T = team(seat);
@@ -325,7 +489,7 @@ function envidoAnswerOptions(g, seat, ctx, rng, a) {
     { a: { t: 'noquiero' }, ev: u(-envidoDeclinedPoints(g, calls, 1 - T)) },
   ];
   for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [...calls, kind]) });
-  return opts;
+  return choose(opts, rng);
 }
 
 // Cantar los tantos. Si pierde y la mesa permite trampas, a veces dice uno más y después no muestra:
@@ -365,10 +529,14 @@ function chooseCard(g, seat, ctx, rng, a) {
   const tb = tableBest(g, seat);
   let card = hand[0];
   if (hand.length > 1) {
-    const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
+    // dos cartas del mismo valor juegan igual: se simula una por valor
+    const byRank = new Map(hand.map((c) => [R(c), c]));
+    const st = simStats(g, seat, ctx, rng, 'card', (samples, S) =>
+      Object.fromEntries([...byRank].map(([r, c]) => ['c' + r, S((w) => rollout(g, seat, w, { t: 'play', card: c, mode: 'normal' }))])),
+    );
     let bestP = -1;
     for (const c of hand) {
-      const p = wavg(samples, (w) => rollout(g, seat, w, { t: 'play', card: c, mode: 'normal' }));
+      const p = st.avg('c' + R(c));
       if (p > bestP + 0.03) (bestP = p), (card = c);
     }
   }
@@ -387,6 +555,20 @@ function chooseCard(g, seat, ctx, rng, a) {
 }
 
 // ---------------------------------------------------------------- decisión
+
+// Jugadas de respaldo, en orden, por si el bot falla o lo que eligió no vale: la sala prueba hasta que una
+// entra, así la partida nunca queda trabada esperando a un bot.
+export function fallbackActions(g, seat) {
+  const h = g.h;
+  if (h?.phase === 'show') return [{ t: 'mostrar' }, { t: 'nomostrar' }];
+  const hand = (h?.inHand[seat] || []).slice().sort((x, y) => rank(x, h.muestra) - rank(y, h.muestra));
+  return [
+    { t: 'buenas' }, { t: 'cantar' }, { t: 'quiero' }, { t: 'noquiero' },
+    { t: 'flor', kind: 'flor' }, { t: 'flor', kind: 'quiero' }, { t: 'flor', kind: 'noquiero' },
+    ...hand.map((card) => ({ t: 'play', card, mode: 'normal' })),
+    { t: 'mazo' },
+  ];
+}
 
 export function botAction(g, seat, rng = Math.random, ctx = {}) {
   const h = g.h;
@@ -413,12 +595,13 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
   }
 
   if (w.kind === 'play') {
-    if (envidoOpenFor(g, seat) && a.envido.length) {
+    // si el compañero le dijo "callado", no lo canta él: sigue jugando y que lo canten los rivales
+    if (envidoOpenFor(g, seat) && a.envido.length && !ctx.hush?.tantos) {
       const e = envidoOpen(g, seat, ctx, rng, a);
       if (e) return e;
     }
-    if (a.truco) {
-      const t = trucoTurn(g, seat, ctx, rng);
+    if (a.truco && !ctx.hush?.truco) {
+      const t = trucoTurn(g, seat, ctx, rng, a);
       if (t) return t;
     }
     return chooseCard(g, seat, ctx, rng, a);
@@ -431,38 +614,75 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
 /**
  * Para el análisis post-partida: cuánto vale cada opción que tenía `seat` en esta decisión, desde lo que él veía
  * (sus cartas y las que estaban a la vista), en puntos equivalentes de la partida (pesados según el tanteador,
- * como decide un bot pero sin faroles ni ruido). Devuelve { kind, options: [{ a, ev }] } o null si esta
- * decisión no se evalúa (flor, cantar los tantos, mostrar).
- * En su turno de jugar, cantar envido vale lo que se espera del envido más la mejor carta (se sigue jugando).
+ * como decide un bot pero sin faroles, sin ruido y sin memoria). Devuelve { kind, options: [{ a, ev }] } o null
+ * si esta decisión no se evalúa (flor, cantar los tantos, mostrar).
+ * - El modelo de base de los bots supone rivales que casi nunca aceptan una falta o un retruco; contra eso
+ *   cualquier farol "conviene". Para aconsejar a una persona, el rival que va ganando acepta con
+ *   ANALYSIS.honestAccept.
+ * - En su turno de jugar, cantar envido vale lo que se espera del envido más la mejor carta (se sigue jugando).
  */
 export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
   const h = g.h;
   if (!h || g.status !== 'playing' || h.phase !== 'play') return null;
   const w = waitingFor(g);
-  if (!w.seats.includes(seat)) return null;
+  if (!w.seats.includes(seat) || !['play', 'truco', 'envido'].includes(w.kind)) return null;
   const a = actionsFor(g, seat);
-  if (w.kind === 'envido') return { kind: 'envido', options: envidoAnswerOptions(g, seat, ctx, rng, a) };
-  if (w.kind === 'truco') {
-    const options = trucoAnswerOptions(g, seat, ctx, rng, a, 0);
-    if (a.envido.length) {
-      const pass = Math.max(...options.map((o) => o.ev));
-      for (const o of envidoOpenOptions(g, seat, ctx, rng, a, 0)) if (o.a) options.push({ a: o.a, ev: o.ev + pass });
-    }
-    return { kind: 'truco', options };
-  }
-  if (w.kind !== 'play') return null;
-  const L = h.truco.level;
+  const T = team(seat);
   const u = utility(g, seat);
   const samples = worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
-  const options = h.inHand[seat].map((card) => {
-    const p = wavg(samples, (wo) => rollout(g, seat, wo, { t: 'play', card, mode: 'normal' }));
-    return { a: { t: 'play', card, mode: 'normal' }, ev: p * u(L) + (1 - p) * u(-L), p };
-  });
-  const bestCard = Math.max(...options.map((o) => o.ev));
-  if (a.truco) options.push(trucoTurnOptions(g, seat, ctx, rng, 0)[1]);
-  if (envidoOpenFor(g, seat) && a.envido.length) {
-    for (const o of envidoOpenOptions(g, seat, ctx, rng, a, 0)) if (o.a) options.push({ a: o.a, ev: o.ev + bestCard });
+  if (!samples.some((x) => x.w > 0)) for (const x of samples) x.w = 1;
+  const accept = (pa, rivalWins) => Math.max(pa, rivalWins * ANALYSIS.honestAccept);
+  const winMemo = new Map();
+  const win = (wo) => (winMemo.has(wo) ? winMemo.get(wo) : winMemo.set(wo, rollout(g, seat, wo, null)).get(wo));
+  const handEv = (L) => wavg(samples, (wo) => win(wo) * u(L) + (1 - win(wo)) * u(-L));
+  const raiseEv = (level, cur) =>
+    wavg(samples, (wo) => {
+      const p = win(wo);
+      const pa = accept(teamAccepts(g, seat, ctx, wo, 'trucoAccept', trucoX(g, level)), 1 - p);
+      return (1 - pa) * u(cur) + pa * (p * u(level) + (1 - p) * u(-level));
+    });
+  const envidoEv = (calls) =>
+    wavg(samples, (wo) => {
+      const mine = envidoWins(g, seat, wo);
+      const pa = accept(teamAccepts(g, seat, ctx, wo, 'envidoAccept', envidoX(g, calls)), mine ? 0 : 1);
+      const acc = envidoAcceptedPoints(g, calls, mine ? T : 1 - T);
+      return (1 - pa) * u(envidoDeclinedPoints(g, calls, T)) + pa * u(mine ? acc : -acc);
+    });
+  const options = [];
+
+  if (w.kind === 'envido') {
+    const calls = h.envido.calls;
+    options.push({
+      a: { t: 'quiero' },
+      ev: wavg(samples, (wo) => {
+        const mine = envidoWins(g, seat, wo);
+        const acc = envidoAcceptedPoints(g, calls, mine ? T : 1 - T);
+        return u(mine ? acc : -acc);
+      }),
+    });
+    options.push({ a: { t: 'noquiero' }, ev: u(-envidoDeclinedPoints(g, calls, 1 - T)) });
+    for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([...calls, kind]) });
+    return { kind: 'envido', options };
   }
+
+  if (w.kind === 'truco') {
+    const Lp = h.truco.pending.level;
+    options.push({ a: { t: 'quiero' }, ev: handEv(Lp) }, { a: { t: 'noquiero' }, ev: u(-(Lp - 1)) });
+    if (a.truco) options.push({ a: { t: 'truco' }, ev: raiseEv(Lp + 1, Lp) });
+    // "el envido está primero": cantarlo vale el envido más lo mejor del truco
+    const pass = Math.max(...options.map((o) => o.ev));
+    for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([kind]) + pass });
+    return { kind: 'truco', options };
+  }
+
+  const L = h.truco.level;
+  for (const card of h.inHand[seat]) {
+    const p = wavg(samples, (wo) => rollout(g, seat, wo, { t: 'play', card, mode: 'normal' }));
+    options.push({ a: { t: 'play', card, mode: 'normal' }, ev: p * u(L) + (1 - p) * u(-L), p });
+  }
+  const bestCard = Math.max(...options.map((o) => o.ev));
+  if (a.truco) options.push({ a: { t: 'truco' }, ev: raiseEv(L + 1, L) });
+  if (envidoOpenFor(g, seat)) for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([kind]) + bestCard });
   return { kind: 'play', options };
 }
 

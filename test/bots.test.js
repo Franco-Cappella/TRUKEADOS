@@ -1,9 +1,9 @@
 // Bots: lo que aprenden (brain.js), cómo deciden y sus trampas (bot.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, act, waitingFor, nextHand, closeShow, rank } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkEvent, BOT_TALK } from '../public/js/talk.js';
+import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
+import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
 
@@ -219,3 +219,183 @@ for (const mode of ['1v1', '2v2']) {
     assert.ok(brain.m.trucoAccept.n > 0 && brain.m.envidoCall.n > 0, 'no aprendió nada');
   });
 }
+
+test('señas: el bot imagina que su compañero tiene la carta que le marcó', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const cards = [['4C', '5O', '6B'], ['4O', '5C', '6E'], ['1E', '3O', '12C'], ['4B', '5B', '6O']];
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  const rng = seeded(7);
+  const share = (ctx, f) => {
+    const ws = imagine(g, 0, ctx, rng);
+    return ws.filter((x) => f(x.world.full)).length / ws.length;
+  };
+  // sin seña: el ancho de espada lo tiene el 2 en pocas manos imaginadas
+  assert.ok(share({}, (f) => f[2].includes('1E')) < 0.3);
+  // con la seña del compañero (el 2), casi siempre
+  assert.ok(share({ senas: [{ seat: 2, sena: 'ancho_espada' }] }, (f) => f[2].includes('1E')) > 0.8);
+  // seña de un tres: imagina un tres
+  assert.ok(share({ senas: [{ seat: 2, sena: 'tres' }] }, (f) => f[2].some((c) => parseInt(c, 10) === 3)) > 0.8);
+});
+
+test('señas de tantos: pesa más las manos que cuadran con "30 o más"', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const ws = imagine(g, 0, { senas: [{ seat: 2, sena: 'treinta' }] }, seeded(3));
+  const t30 = (x) => tanto(x.world.full[2]).value >= 30;
+  assert.ok(ws.some((x) => !t30(x))); // hay manos imaginadas que no cuadran...
+  for (const x of ws) assert.ok(t30(x) ? x.w >= 0.5 : x.w < 0.5); // ...y pesan mucho menos
+});
+
+test('frases que nombran la ronda o la carta: solo cuando corresponde', () => {
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  const rng = seeded(11);
+  const said = (e) => {
+    const out = new Set();
+    for (let i = 0; i < 3000; i++) {
+      const t = talkEvent(g, 0, e, [], rng);
+      if (t) out.add(t);
+    }
+    return [...out];
+  };
+  // ganó segunda (perdió primera): nunca dice "primera"
+  const r2 = said({ type: 'round', round: 1, result: 0, seat: 0 });
+  assert.ok(r2.length > 0);
+  assert.ok(r2.every((t) => !/primera|tercera/i.test(t)), r2.join(' | '));
+  assert.ok(r2.some((t) => /segunda/i.test(t)));
+  // parda en tercera: no dice "esto se pone bueno" (ya terminó)
+  assert.deepEqual(said({ type: 'round', round: 2, result: 'parda', seat: null }), []);
+  // un rival tira el 7 de espada: nunca habla de un ancho
+  const s7 = said({ type: 'play', seat: 1, c: '7E', round: 0 });
+  assert.ok(s7.length > 0);
+  assert.ok(s7.every((t) => !/ancho|macho|basto|oro/i.test(t)), s7.join(' | '));
+  const s1 = said({ type: 'play', seat: 1, c: '1B', round: 0 });
+  assert.ok(s1.every((t) => !/siete|espada|macho/i.test(t)), s1.join(' | '));
+});
+
+test('memoria: la misma situación se piensa hasta juntar BOT.memoSamples y después sale de memoria', () => {
+  const memo = new BotMemo();
+  const g = newGame({ mode: '1v1', dealer: 1 });
+  const cards = [['3E', '4C', '12O'], ['5O', '6O', '11B']];
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  g.h.envido.state = 'done'; // el envido ya pasó: decide truco y carta (lo que usa la memoria)
+  const rng = seeded(5);
+  const visits = BOT.memoSamples / BOT.samples;
+  for (let i = 0; i < visits; i++) botAction(g, 0, rng, { memo });
+  const misses = memo.misses;
+  assert.ok(misses > 0);
+  assert.equal(memo.hits, 0);
+  // ya maduró: no vuelve a simular
+  for (let i = 0; i < 5; i++) botAction(g, 0, rng, { memo });
+  assert.equal(memo.misses, misses);
+  assert.ok(memo.hits > 0);
+  assert.ok(memo.takeRipe().length > 0); // lo maduro queda listo para guardarse en el Lobby
+  // los mismos valores con otros palos (4 de oro en vez de 4 de copa) son la misma situación
+  const g2 = newGame({ mode: '1v1', dealer: 1 });
+  const c2 = [['3E', '4O', '12C'], ['5O', '6O', '11B']];
+  g2.h.cards = c2.map((c) => c.slice());
+  g2.h.inHand = c2.map((c) => c.slice());
+  g2.h.envido.state = 'done';
+  const h0 = memo.hits;
+  botAction(g2, 0, rng, { memo });
+  assert.ok(memo.hits > h0);
+});
+
+test('memoria: el bot con memoria juega igual de bien que sin ella', () => {
+  const rng = seeded(21);
+  const memo = new BotMemo();
+  let wins = 0;
+  const G = 60;
+  for (let gi = 0; gi < G; gi++) {
+    const g = newGame({ mode: '1v1', target: 15, trampas: false }, rng);
+    const mt = gi % 2;
+    for (let i = 0; i < 3000 && g.status === 'playing'; i++) {
+      if (g.h.phase === 'ended') { nextHand(g, rng); continue; }
+      if (g.h.phase === 'show') { closeShow(g); continue; }
+      const s = waitingFor(g).seats[0];
+      const a = botAction(g, s, rng, s % 2 === mt ? { memo } : {});
+      if (!a || !act(g, s, a).ok) break;
+    }
+    if (g.winner === mt) wins++;
+  }
+  assert.ok(wins / G > 0.35, 'gana ' + wins + ' de ' + G);
+});
+
+test('respaldo: si el bot elige algo que no vale, alguna jugada de respaldo entra', () => {
+  const rng = seeded(9);
+  for (let k = 0; k < 30; k++) {
+    const g = newGame({ mode: '2v2', target: 15 }, rng);
+    for (let i = 0; i < 40 && g.status === 'playing' && g.h.phase === 'play'; i++) {
+      const s = waitingFor(g).seats[0];
+      assert.ok(fallbackActions(g, s).some((f) => act(structuredClone(g), s, f).ok), 'sin respaldo en ' + waitingFor(g).kind);
+      const a = botAction(g, s, rng, {});
+      if (!a || !act(g, s, a).ok) break;
+    }
+  }
+});
+
+const hand2v2 = (cards, dealer = 3) => {
+  const g = newGame({ mode: '2v2', dealer });
+  g.h.cards = cards.map((c) => c.slice());
+  g.h.inHand = cards.map((c) => c.slice());
+  return g;
+};
+
+test('consulta: el bot contesta Cantá, Callado o No tengo nada según lo que tiene', () => {
+  const rng = seeded(4);
+  const g = hand2v2([['7E', '6E', '4C'], ['4O', '5C', '12B'], ['10O', '11C', '12E'], ['1C', '2O', '3B']]);
+  const many = (s, k) => new Set(Array.from({ length: 200 }, () => botAnswer(g, s, k, rng)));
+  const zero = many(2, 'tantos'); // 0 de envido: casi siempre "no tengo nada", a veces callado
+  assert.ok(zero.has('nada') && !zero.has('si'));
+  const big = many(0, 'tantos'); // 33: casi siempre "cantá", a veces callado (a la pesca)
+  assert.ok(big.has('si') && big.has('callado') && !big.has('nada'));
+  assert.ok(!many(2, 'truco').has('si')); // nada para el truco
+  assert.ok(many(3, 'truco').has('si')); // tiene un 3 y un 2
+});
+
+test('consulta: si el compañero dice "no tengo nada" y el bot tiene, igual canta', () => {
+  const rng = seeded(8);
+  const mk = () => {
+    const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+    for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+    return g;
+  };
+  let sings = 0;
+  for (let i = 0; i < 30; i++) if (botAction(mk(), 3, rng, { senas: [{ seat: 1, sena: 'nada_envido' }] })?.t === 'envido') sings++;
+  assert.ok(sings > 10, 'cantó ' + sings);
+});
+
+test('consulta: "callado" no es "no tengo" (es que lo canten los otros)', () => {
+  for (const k of ['tantos', 'truco']) for (const t of ASK_TALK[k].callado) assert.ok(/callado/i.test(t) && !/no tengo|nada/i.test(t), t);
+  assert.ok(/cant/i.test(talkAnswer('tantos', 'si')));
+  assert.ok(ASK_TALK.tantos.nada.every((t) => !/callado/i.test(t)));
+});
+
+test('consulta: si el compañero dijo callado, el bot no canta eso (pero sigue jugando)', () => {
+  const rng = seeded(8);
+  // el 3 (pie) con 33: casi siempre cantaría envido
+  const mk = () => {
+    const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+    for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+    return g;
+  };
+  let sings = 0;
+  for (let i = 0; i < 30; i++) {
+    const a = botAction(mk(), 3, rng, {});
+    if (a?.t === 'envido') sings++;
+  }
+  assert.ok(sings > 10);
+  for (let i = 0; i < 30; i++) {
+    const a = botAction(mk(), 3, rng, { hush: { tantos: true, truco: true } });
+    assert.ok(a && a.t !== 'envido' && a.t !== 'truco', JSON.stringify(a));
+  }
+});
+
+test('consulta: el bot pie a veces pregunta por los tantos antes de cantar (más a una persona)', () => {
+  const rng = seeded(12);
+  const g = hand2v2([['4O', '5C', '12B'], ['10O', '11C', '12C'], ['4B', '5O', '6C'], ['7E', '6E', '1E']], 3);
+  for (const s of [0, 1, 2]) act(g, s, { t: 'play', card: g.h.inHand[s][0] });
+  const human = Array.from({ length: 200 }, () => botAsks(g, 3, rng, true)).filter((k) => k === 'tantos').length;
+  const bot = Array.from({ length: 200 }, () => botAsks(g, 3, rng, false)).filter((k) => k === 'tantos').length;
+  assert.ok(human > bot && bot > 0);
+});

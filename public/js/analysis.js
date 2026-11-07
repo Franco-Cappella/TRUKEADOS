@@ -44,7 +44,7 @@ export function analyzeHand(hand, seats, seed = 1) {
   for (let i = 1; i < frames.length; i++) {
     const f = frames[i];
     if (f.seat == null || !f.a || f.step[2] || !seats.includes(f.seat)) continue; // f.step[2]: jugó un bot por él
-    const ev = evaluateDecision(clone(frames[i - 1].g), f.seat, rng, { samples: ANALYSIS.samples, honest: true });
+    const ev = evaluateDecision(clone(frames[i - 1].g), f.seat, rng, { samples: ANALYSIS.samples });
     if (!ev || ev.options.length < 2) continue;
     const chosen = chosenOption(ev.options, f.a);
     if (!chosen) continue;

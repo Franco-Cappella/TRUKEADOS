@@ -408,10 +408,19 @@ export class RoomClient {
         break;
       }
       case 'show': {
-        const imgs = e.cards.map((c) => cardImg(c, cardName(c))).join('');
-        this.bubble(e.seat, e.ok ? `Mirá: ${e.value}` : `Tenía ${e.value}...`, 'call', 3000);
-        if (e.ok) this.toast(`${name(e.seat)} muestra sus ${e.value}<br>${imgs}`, 'good', 5000);
-        else this.toast(`${name(e.seat)} cantó ${e.said} pero tenía ${e.value}${e.auto ? ' (jugó las 3 cartas a la vista)' : ''}<br>${imgs}<br>Los puntos del envido van para el otro equipo.`, 'bad', 6000);
+        // "30 en mesa": lo dice el que muestra y las cartas quedan boca arriba en la mesa (sin cartelito)
+        const txt = `${e.value} en mesa`;
+        this.bubble(e.seat, txt, 'call', 3200);
+        say(txt, e.seat);
+        if (!e.ok) {
+          // no tenía lo que cantó: un rival se lo canta
+          const rival = g.h.table.map((_, s) => s).find((s) => team(s) !== team(e.seat));
+          const t = `¡Cantaste ${e.said}!`;
+          setTimeout(() => {
+            this.bubble(rival, t, 'call', 3000);
+            say(t, rival);
+          }, 1400);
+        }
         break;
       }
       case 'flor-done': {
@@ -431,12 +440,11 @@ export class RoomClient {
         flick(0.15, 0.2);
         break;
       case 'reclamo':
-        this.bubble(e.seat, '¡A ver esos tantos!', 'call', 2600);
-        say('¡A ver esos tantos!', e.seat);
-        this.toast(`${name(e.seat)} reclamó: ${name(e.target)} no mostró. Pierde los puntos del envido.`, 'bad', 5000);
+        // el rival que reclama lo dice (el envido pasa al otro equipo: se ve en los tantos)
+        this.bubble(e.seat, '¡No mostraste!', 'call', 3000);
+        say('¡No mostraste!', e.seat);
         break;
       case 'show-timeout':
-        this.toast(`Nadie le pidió a ${name(e.seat)} que muestre: los tantos valen.`, '', 3500);
         break;
       case 'deal':
         flick(0.12, 0.25);
@@ -701,7 +709,7 @@ export class RoomClient {
   // Arma los grupos de botones (en un contenedor suelto) según lo que el motor permite ahora.
   buildActions(g, a) {
     const out = document.createElement('div');
-    const ORDER = ['flor', 'tantos', 'mostrar', 'resp', 'cantar', 'mano'];
+    const ORDER = ['flor', 'tantos', 'mostrar', 'resp', 'cantar', 'equipo', 'mano'];
     const groups = {};
     const group = (key, label) => {
       if (!groups[key]) {
@@ -775,6 +783,19 @@ export class RoomClient {
     if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', acting({ t: 'noquiero' }));
     if (a.truco) add('cantar', 'Cantar', a.truco, 'call', acting({ t: 'truco' }));
     for (const k of a.envido) add('cantar', 'Cantar', ENVIDO_NAMES[k], 'call', acting({ t: 'envido', kind: k }), `Tenés ${g.h.myTanto} de envido`);
+    // Consulta al compañero: preguntarle si cantar, o contestarle ("Cantá" / "Callado")
+    const ask = this.st.ask;
+    const q = ask?.open;
+    if (q && !q.mine && !q.answered) {
+      const what = q.kind === 'tantos' ? 'los tantos' : 'el truco';
+      const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
+      add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
+      add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
+      add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
+    } else if (!q) {
+      if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
+      if (ask?.can.truco) add('equipo', 'Compañero', '¿Le canto truco?', '', () => this.send({ t: 'ask', kind: 'truco' }), 'Le preguntás a tu compañero si cantar truco');
+    }
     if (a.mazo) {
       // dos toques: el primero pide confirmación (sin ventanas del navegador)
       add('mano', 'Mano', this.mazoArmed ? 'Sí, me voy' : 'Irse al mazo', this.mazoArmed ? 'danger' : '', () => {

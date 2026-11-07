@@ -70,6 +70,8 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
 7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
    palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
+8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
+   o texto nuevo sigue esas reglas.
 
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`
@@ -120,7 +122,23 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
 - **Trampas** (solo con la opción de trampas activa, ver `BOT` en config.js): espían las cartas de los rivales
   algunas manos (`botPeek`), el bot que reparte se acomoda una carta buena (`stackDeck`), mienten en el envido y
   se van sin mostrar (menos contra quien suele reclamar), y tiran dos encimadas. Más seguido si van perdiendo.
+- **Memoria de situaciones** (`BotMemo` en bot.js, como el programa de damas de Samuel): guarda las sumas de
+  la simulación (chance de ganar, de que quieran el truco, por carta) por situación, con los asientos contados
+  desde el bot y las cartas por su valor. Cada vez que vuelve a una situación suma manos imaginadas; con
+  `BOT.memoSamples` ya no simula. Una memoria por isolate (`MEMO` en truco-room.js); lo que madura se guarda en
+  el Lobby (`memoPut`) y al arrancar se trae (`memoGet`). Si cambia lo que calcula la simulación o la clave,
+  cambiar el `kind` en `simStats` para no mezclar con lo viejo.
+- **Consulta al compañero** (en equipo): `ask {kind}` / `answer {yes}` por WebSocket; la sala guarda la consulta
+  abierta en `room.asks[equipo]` (una por mano y tipo) y los bots compañeros contestan con `botAnswer` (a veces
+  "callado" para ir a la pesca). Un bot puede consultar antes de decidir (`botAsks`) y espera hasta `TIMING.askWait`;
+  "Cantá" y "No tengo nada" entran como señas (`askSenas`: decide él, y si tiene canta igual); "callado"
+  hace que no cante eso (`ctx.hush`).
+- **Nunca se traba la mesa**: si `botAction` falla o elige algo inválido, la sala prueba `fallbackActions`; si
+  falla la alarma entera, se registra y se reprograma.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).
+- **Leen las señas** (`ctx.senas`, lo anota `deliverSena` en `room.senaSeen`): todas las de su compañero y las de
+  un rival si justo lo miraban. Una seña de carta hace que casi siempre imaginen esa carta en esa mano
+  (`sampleWorld`); una de tantos o "ciego" pesa los repartos (`senaWeight`). La del rival se cree un poco menos.
 - **Compañero bot**: si un canto (truco, envido, flor) lo puede contestar tu equipo y hay un bot en él, el bot
   contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes; si el canto lo tenés que contestar vos (el envido lo contesta el pie), decide por vos (`partnerAt` en truco-room.js).
 - **Charla** (`talk.js`): los bots tiran frases en el chat al cantar y contestar (`talkFor`), reaccionan a lo que

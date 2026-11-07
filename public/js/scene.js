@@ -1012,6 +1012,17 @@ export class TableScene {
           }
         } else {
           setCardFace(card, face);
+          if (card.userData.faceDown && !p.faceDown) {
+            // se dio vuelta (mostró los tantos): queda boca arriba
+            card.userData.faceDown = false;
+            const q0 = card.quaternion.clone();
+            const q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pose.rot));
+            const y0 = card.position.y;
+            this.tween(500, (t) => {
+              card.quaternion.slerpQuaternions(q0, q1, t);
+              card.position.y = y0 + Math.sin(Math.PI * t) * 0.06;
+            });
+          }
         }
         if (p.burned) burnCard(card);
       });
@@ -1040,7 +1051,13 @@ export class TableScene {
     let rot = a;
     list.forEach((p, idx) => {
       if (idx > 0) {
-        if (p.over) {
+        if (p.over && !this.spectator && seat === this.me) {
+          // tus dos encimadas, en tu pantalla: la de arriba corrida para que veas que abajo hay otra
+          // (los demás las siguen viendo casi alineadas)
+          radial -= step * 0.45;
+          side += 0.035;
+          rot += 0.14;
+        } else if (p.over) {
           // dos encimadas: la de arriba queda casi alineada con la de abajo (apenas se nota)
           radial -= 0.003;
           side += 0.002;

@@ -14,6 +14,49 @@
   partidas mueven más. Al terminar, el cartel muestra cuánto ELO y cuántas monedas ganaste.
 - **Monedas**: 10 por partida terminada y 10 más si ganás (la mitad contra bots).
 
+## 1.8.5 — "No tengo nada"
+- A la consulta del compañero también se puede contestar **No tengo nada**, que no es lo mismo que "Callado". Si un
+  bot pregunta y le dicen "no tengo nada", lo toma en cuenta pero decide él: si tiene, canta igual. Los bots con
+  poco contestan casi siempre "no tengo nada" (a veces solo "callado").
+
+## 1.8.4 — consultarle al compañero
+- En equipo, botones **¿Tienen tantos?** y **¿Le canto truco?**: tu compañero te contesta **Cantá** o **Callado**
+  (seguir jugando sin cantarlo, que lo canten los otros: a veces va a la pesca). Si te consultan a vos, aparecen los
+  botones para contestar. Se dice en voz alta, con globo, y los rivales lo escuchan.
+- Los bots también consultan: el pie bot te pregunta por los tantos o el truco antes de decidir, espera tu respuesta
+  (hasta 7 s) y la usa: "Cantá" cuenta como que tenés; "Callado" hace que no lo cante él. Entre bots también se
+  consultan, menos seguido. Un bot con muchísimo a veces contesta "callado" para ir a la pesca.
+
+## 1.8.3 — bots con memoria y a prueba de fallas
+- **Memoria de situaciones**: los bots guardan lo que calcularon en cada situación (por el valor de las cartas: dos
+  cuatros juegan igual). Cuando vuelven a una, suman a lo que ya sabían y, después de juntar 160 manos imaginadas,
+  deciden directo sin simular. Se comparte entre salas y se guarda en el Lobby. En 3.000 partidas de prueba, el 44%
+  de las decisiones ya salían de memoria, con la mitad del tiempo y la misma fuerza (gana el 50% contra el bot sin
+  memoria).
+- **No se traba en producción**: si un bot falla o elige una jugada inválida, juega una de respaldo; si falla la
+  alarma de la sala, se registra y se vuelve a programar. Medido: una decisión tarda 1 a 3 ms (13 ms en el peor
+  caso con el servidor recién arrancado).
+- **Tus dos encimadas**: en tu pantalla la carta de arriba queda corrida, así ves que abajo hay otra. Los demás
+  las siguen viendo alineadas.
+
+## 1.8.2 — frases de los bots que tienen sentido
+- "Primera para nosotros" (y "segunda", "tercera") solo en la ronda que nombra; antes salía al ganar cualquier ronda.
+- Cuando un rival tira una carta brava, la frase nombra esa carta ("Uh, el siete bravo") o es genérica; antes decía
+  "sacó el ancho" aunque fuera un 7.
+- "¡Eso es truco!" solo si la mano se jugó por truco; "compañero" solo en equipo; "Parda, esto se pone bueno" no
+  en tercera (ya terminó).
+
+## 1.8.1 — "30 en mesa" y bots que leen las señas
+- **Mostrar los tantos**: el que muestra dice "30 en mesa" (globo y voz) y tira a la mesa, boca arriba, las cartas
+  de sus tantos que le quedaban en la mano (las tapadas se dan vuelta). Ya no aparece el cartelito con las cartas.
+  Si no tenía lo que cantó, un rival le dice "¡Cantaste 33!" y el envido va para el otro equipo.
+- **En mesa durante la mano**: si el que ganó el envido ya tiró a la vista las cartas de sus tantos, lo dice en ese
+  momento ("22 en mesa") y después no tiene que mostrar.
+- **No mostraste**: el rival que reclama dice "¡No mostraste!" en vez del cartelito.
+- **Los bots leen las señas**: las de su compañero siempre y las de un rival si justo lo estaban mirando. Con eso
+  imaginan mejor las manos (si te guiñó, tenés el ancho de basto; "30 o más" pesa los tantos) y deciden qué cantar,
+  querer y tirar con lo que tiene el equipo.
+
 ## 1.8.0 — cuentas y menú nuevo
 - **Sin cuenta no se juega.** Se entra con Google o con mail y contraseña (Supabase Auth). La primera vez se elige
   el nombre, que es único y es el que aparece en la mesa y en el ranking. Si te pasan `/sala/CÓDIGO` sin sesión,

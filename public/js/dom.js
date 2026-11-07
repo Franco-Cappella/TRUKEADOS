@@ -56,6 +56,6 @@ export async function api(path, body) {
   const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) dispatchEvent(new Event('trukeados:logout'));
-  if (!res.ok) throw new Error(data.error || 'Error de conexión');
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Error de conexión'), { status: res.status });
   return data;
 }

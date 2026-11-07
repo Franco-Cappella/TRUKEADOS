@@ -548,3 +548,31 @@ test('si jugó las 3 cartas a la vista y no tenía los tantos que cantó, el env
   assert.equal(g.h.result.penalty, 'mal-cantado');
   assert.deepEqual(g.score, [1, 2]); // truco 1 para el 0, envido 2 para el 1
 });
+
+test('en mesa: si el que ganó el envido ya tiró las cartas de sus tantos, ya mostró', () => {
+  const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]); // el 0 tiene 33
+  g.trampas = true;
+  ok(act(g, 0, { t: 'play', card: '4C' }));
+  ok(act(g, 1, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 0, { t: 'quiero' }));
+  ok(act(g, 0, { t: 'cantar' }));
+  ok(act(g, 1, { t: 'buenas' }));
+  ok(act(g, 1, { t: 'play', card: '12B' })); // primera para el 1
+  ok(act(g, 1, { t: 'play', card: '5O' }));
+  ok(act(g, 0, { t: 'play', card: '6E' }));
+  assert.ok(!g.h.envido.shown); // falta el 7
+  ok(act(g, 0, { t: 'play', card: '7E' }));
+  assert.ok(g.h.envido.shown);
+  assert.ok(g.ev.some((e) => e.type === 'show' && e.enMesa && e.value === 33));
+});
+
+test('mostrar: las cartas de los tantos que tenía en la mano quedan en la mesa boca arriba', () => {
+  const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]);
+  envidoQuerido(g);
+  mazoAll(g, 1); // el 1 se va: el 0 tiene que mostrar
+  assert.equal(g.h.phase, 'show');
+  ok(act(g, 0, { t: 'mostrar' }));
+  const shown = g.h.table[0].filter((p) => p.shown).map((p) => p.c).sort();
+  assert.deepEqual(shown, ['6E', '7E']);
+  assert.ok(!g.h.inHand[0].includes('7E'));
+});
