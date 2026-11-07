@@ -1,7 +1,7 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
-import { cardName, team, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
+import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, biteAt } from './characters.js';
 import { $, esc, store, KEYS, myPid, savedName, takeSession, initial } from './dom.js';
 import { audio, flick, ding, say, hush } from './audio.js';
@@ -331,9 +331,11 @@ export class RoomClient {
     const shown = this.wasPredicted(e); // lo mío ya se mostró al tocar el botón
     switch (e.type) {
       case 'call':
-        if (shown || this.takeVoiced(e.seat)) break; // un bot ya lo dijo con su frase ("Retruco, y no me hagas perder tiempo")
+        if (shown) break;
+        // el globo del canto sale siempre (con la voz apagada es lo único que te dice qué cantaron); la voz no,
+        // si un bot ya lo dijo con su frase ("Retruco, y no me hagas perder tiempo")
         this.bubble(e.seat, `¡${e.text}!`, 'call', 2600);
-        say(e.text, e.seat);
+        if (!this.takeVoiced(e.seat)) say(e.text, e.seat);
         break;
       case 'tanto': {
         if (shown) break;
@@ -509,7 +511,7 @@ export class RoomClient {
   }
 
   // ---------------------------------------------------- chat
-  // ¿El próximo canto de este asiento ya lo dijo un bot con su frase? (se usa una sola vez)
+  // ¿La voz del próximo canto de este asiento ya la dijo un bot con su frase? (se usa una sola vez)
   takeVoiced(seat) {
     const v = this.voiced;
     if (!v || v.seat !== seat || Date.now() > v.until) return false;
@@ -527,9 +529,9 @@ export class RoomClient {
       const t = msg.seat == null ? '' : `t${team(msg.seat)}`;
       div.innerHTML = `<b class="${t}">${esc(msg.name)}:</b> ${esc(msg.text)}`;
       // lo que escribe cada uno (bots incluidos) sale en un globo y se lee en voz alta, como si lo dijera.
-      // Si la frase de un bot ya dice su canto (msg.call), reemplaza al globo y la voz del canto.
+      // Si la frase de un bot ya dice su canto (msg.call), reemplaza a la voz del canto (el globo del canto sale igual).
       if (live && msg.seat != null) {
-        this.bubble(msg.seat, msg.text, msg.call ? 'call' : 'chat', Math.max(3500, Math.min(8000, 1500 + msg.text.length * 70)));
+        this.bubble(msg.seat, msg.text, 'chat', Math.max(3500, Math.min(8000, 1500 + msg.text.length * 70)));
         // la frase de un bot que dice su canto es un canto; lo demás es charla (se corta si pasa algo en la mesa)
         if (msg.seat !== this.you) say(msg.text, msg.seat, { chat: !msg.call });
         if (msg.call) this.voiced = { seat: msg.seat, until: Date.now() + VOICED_MS };
@@ -602,7 +604,11 @@ export class RoomClient {
         const name = TRUCO_NAMES[g.h.truco.pending.level];
         return mine ? `Te cantaron ${name}: ¿querés?` : `${name}: esperando respuesta`;
       },
-      declare: () => (mine ? 'Cantá tus tantos' : `${who(w.seats[0])} canta los tantos`),
+      declare: () => {
+        if (!mine) return `${who(w.seats[0])} canta los tantos`;
+        const best = g.h.envido.declare?.best;
+        return best ? `Cantaron ${best.value} y vos tenés ${g.h.myTanto}` : `Cantá tus tantos: tenés ${g.h.myTanto}`;
+      },
       flor: () => {
         const name = FLOR_NAMES[g.h.flor.level === 'flor' ? 'flor' : g.h.flor.level];
         return mine ? `Te cantaron ${name}: ¿qué hacés?` : `${name}: esperando respuesta`;
@@ -685,19 +691,49 @@ export class RoomClient {
     };
     const acting = (action) => () => this.act(action);
 
-    if (a.cantar && g.h.myTanto >= (a.minTanto ?? 0)) add('tantos', 'Tus tantos', `Cantar ${g.h.myTanto}`, 'call', acting({ t: 'cantar' }), 'Tus tantos de verdad');
-    if (a.lie) {
-      const min = a.minTanto ?? 0;
-      const max = g.h.muestra ? 39 : 33;
-      // mentir: cantar otro número (si te piden que muestres, perdés los puntos del envido)
-      const wrap = document.createElement('span');
+    // Tantos: "Cantar mis N" (si te alcanzan), "Son buenas" y "Cantar otro número", que recién ahí
+    // pregunta cuánto (mentir: si te piden que muestres, perdés los puntos del envido).
+    if (!a.cantar && !a.lie) this.lieOpen = false;
+    const min = a.minTanto ?? 0;
+    const max = g.h.muestra ? 39 : 33;
+    if (this.lieOpen && a.lie) {
+      const step = (v, d) => {
+        for (let x = v + d; x >= min && x <= max; x += d) if (validTanto(x, g.h.muestra)) return x;
+        return v;
+      };
+      if (!validTanto(this.lieValue, g.h.muestra) || this.lieValue < min) this.lieValue = step(min - 1, 1);
+      const wrap = document.createElement('div');
       wrap.className = 'lie';
-      wrap.title = 'Cantar otro número. Si te piden que muestres, perdés los puntos del envido.';
-      wrap.innerHTML = `<input type="number" min="${min}" max="${max}" value="${Math.max(min, Math.min(max, g.h.myTanto + 3))}"><button class="btn"${this.busy ? ' disabled' : ''}>Cantar otro</button>`;
-      wrap.querySelector('button').onclick = () => this.act({ t: 'cantar', value: Number(wrap.querySelector('input').value) });
-      group('tantos', 'Tus tantos').appendChild(wrap);
+      wrap.innerHTML = `<span class="lie-q">¿Cuánto cantás?</span>
+        <button class="btn lie-step" data-d="-1"${this.busy ? ' disabled' : ''}>−</button>
+        <b class="lie-v">${this.lieValue}</b>
+        <button class="btn lie-step" data-d="1"${this.busy ? ' disabled' : ''}>+</button>
+        <button class="btn call lie-go"${this.busy ? ' disabled' : ''}>Cantar ${this.lieValue}</button>
+        <button class="btn lie-back" title="Volver"${this.busy ? ' disabled' : ''}>Volver</button>`;
+      wrap.querySelectorAll('.lie-step').forEach((b) => (b.onclick = () => {
+        this.lieValue = step(this.lieValue, Number(b.dataset.d));
+        this.renderActions();
+      }));
+      wrap.querySelector('.lie-go').onclick = () => {
+        this.lieOpen = false;
+        this.act({ t: 'cantar', value: this.lieValue });
+      };
+      wrap.querySelector('.lie-back').onclick = () => {
+        this.lieOpen = false;
+        this.renderActions();
+      };
+      group('tantos', 'Cantar otro número').appendChild(wrap);
+    } else {
+      if (a.cantar && g.h.myTanto >= min) add('tantos', 'Tus tantos', `Cantar mis ${g.h.myTanto}`, 'call', acting({ t: 'cantar' }), 'Tus tantos de verdad');
+      if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }), 'No cantás: gana el que cantó más');
+      if (a.lie) {
+        add('tantos', 'Tus tantos', 'Cantar otro número', '', () => {
+          this.lieOpen = true;
+          this.lieValue = Math.max(min, g.h.myTanto + 3);
+          this.renderActions();
+        }, 'Mentir: si te piden que muestres y no lo tenés, perdés los puntos del envido');
+      }
     }
-    if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', acting({ t: 'buenas' }));
     for (const k of a.flor) add('flor', 'Flor', FLOR_NAMES[k], k === 'achico' || k === 'noquiero' ? 'danger' : 'call', acting({ t: 'flor', kind: k }), g.h.myFlor != null ? `Tu flor: ${g.h.myFlor}` : '');
     // mismo color que "Irme al mazo": que no se note cuál conviene
     if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', '', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');

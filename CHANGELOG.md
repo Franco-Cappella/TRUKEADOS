@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.7.3 — tantos más claros y ayuda que se cierra abajo
+- **Tus tantos**: tres botones claros: **Cantar mis N**, **Son buenas** y **Cantar otro número**. Recién al tocar
+  el último te pregunta cuánto, con − / + (salta los números que no existen en el envido y arranca en el mínimo
+  para ganar) y **Volver**. El estado dice "Cantaron 25 y vos tenés 27".
+- El globo del canto ("¡Envido!") sale siempre, aunque el bot lo diga con una frase: con la voz apagada igual
+  sabés qué cantaron. Lo que no se repite es la voz.
+- La ayuda (?) tiene un botón **Entendido** al final para cerrarla sin volver arriba.
+
 ## 1.7.2 — tu altura y el nombre de las cartas
 - **Tu cámara a la altura de los demás**: los ojos estaban a 1,24 m y los de los personajes a ~1,47 m (te sentías
   enano). Ahora `EYE_Y` es 1,46 y la vista arranca un poco más inclinada hacia la mesa.
