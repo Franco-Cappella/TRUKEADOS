@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.7.2 — tu altura y el nombre de las cartas
+- **Tu cámara a la altura de los demás**: los ojos estaban a 1,24 m y los de los personajes a ~1,47 m (te sentías
+  enano). Ahora `EYE_Y` es 1,46 y la vista arranca un poco más inclinada hacia la mesa.
+- **Pasá el mouse por una carta de la mesa** y aparece su nombre ("6 de espada", "ancho de basto · quemada"). En
+  el celular, tocala.
+
 ## 1.7.1 — ritmo de los bots
 - Los bots **esperan a que se termine de decir** el último canto o frase antes de jugar, piensan más (1,3 a 2,3 s)
   y hacen una pausa al cerrarse cada ronda o el envido (`TIMING.roundPause`). La pausa entre manos es más larga.

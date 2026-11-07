@@ -405,6 +405,9 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
   .w-seat { min-height: 36px; }
 }
 
+/* nombre de la carta de la mesa bajo el mouse */
+#card-tip { position: fixed; z-index: 8; transform: translate(14px, -130%); pointer-events: none; padding: 5px 10px; border-radius: var(--radius-soft); background: var(--surface); border: 1px solid var(--line-2); color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+#card-tip.hidden { display: none; }
 #toast-area { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; z-index: 7; width: min(520px, 92vw); }
 .toast { background: var(--panel-hover); border: 1px solid var(--line-2); border-left: 3px solid var(--text-dim); padding: 8px 14px; border-radius: 2px; font-size: 14px; animation: pop 0.18s; text-align: left; line-height: 1.4; width: 100%; }
 .toast.good { border-left-color: var(--green); }

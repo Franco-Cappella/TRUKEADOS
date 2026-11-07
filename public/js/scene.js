@@ -3,14 +3,14 @@ import * as THREE from 'three';
 import { drawCharacter, lookFor, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
-import { newDeck } from './engine.js';
+import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT } from './theme.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
 const TABLE_CARD_SCALE = 1.3; // en la mesa, un poco más grandes que en la vida real: se leen desde lejos
 const TABLE_Y = 0.74;
-const EYE_Y = 1.24;
+const EYE_Y = 1.46; // a la altura de los ojos de los demás personajes (cabeza en y = 214 de 1200 en el canvas)
 const CHAR_H = 1.8; // canvas de 512x1200: del piso (abajo) a la cabeza (arriba)
 const CHAR_W = CHAR_H * (CW / CH);
 
@@ -189,6 +189,11 @@ export class TableScene {
     this.R = 0.9;
     this.chars = new Map(); // seat -> { mesh, canvas, ctx, tex, look, state }
     this.tableCards = new Map(); // "seat:idx" -> card
+    // cartel con el nombre de la carta de la mesa que está bajo el mouse (de lejos no se distinguen)
+    this.cardTip = document.createElement('div');
+    this.cardTip.id = 'card-tip';
+    this.cardTip.className = 'hidden';
+    document.body.appendChild(this.cardTip);
     this.handCards = [];
     this.selected = null;
     this.hover = null;
@@ -638,7 +643,7 @@ export class TableScene {
     } else {
       this.camera.position.set(0, EYE_Y, this.R + 0.24);
       this.yaw = this.tYaw = 0;
-      this.pitch = this.tPitch = -0.2;
+      this.pitch = this.tPitch = -0.3; // más alto: se mira un poco más para abajo para ver la mesa
     }
     this.applyCamera();
   }
@@ -754,6 +759,7 @@ export class TableScene {
       down = null;
       this.dragging = null;
     });
+    el.addEventListener('pointerleave', () => this.showCardTip(null));
     el.addEventListener('dblclick', (e) => {
       this.setPointer(e);
       const card = this.pickHand();
@@ -787,6 +793,7 @@ export class TableScene {
   }
 
   setPointer(e) {
+    this.pointerPx = { x: e.clientX, y: e.clientY };
     const r = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   }
@@ -810,12 +817,39 @@ export class TableScene {
     const card = this.pickHand();
     this.hover = card;
     this.renderer.domElement.style.cursor = card ? 'grab' : 'default';
+    this.showCardTip(card ? null : this.pickTable());
+  }
+
+  // Carta de la mesa bajo el puntero (la más cercana a la cámara, o sea la de arriba).
+  pickTable() {
+    if (!this.tableCards.size) return null;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = this.raycaster.intersectObjects([...this.tableCards.values()], true)[0];
+    let o = hit?.object;
+    while (o && !o.userData.front) o = o.parent;
+    return o || null;
+  }
+
+  showCardTip(card, ms = 0) {
+    const tip = this.cardTip;
+    clearTimeout(this.cardTipT);
+    const id = card?.userData.id;
+    if (!card || !this.pointerPx) return tip.classList.add('hidden');
+    const known = id && id !== 'back' && id !== 'blank';
+    const name = known ? cardName(id) : 'Carta tapada';
+    tip.textContent = name[0].toUpperCase() + name.slice(1) + (known && card.userData.burned ? ' · quemada (vale un 4)' : '');
+    tip.style.left = this.pointerPx.x + 'px';
+    tip.style.top = this.pointerPx.y + 'px';
+    tip.classList.remove('hidden');
+    if (ms) this.cardTipT = setTimeout(() => tip.classList.add('hidden'), ms);
   }
 
   click(e) {
     this.setPointer(e);
     const card = this.pickHand();
     if (card && this.onCardClick) this.onCardClick(card.userData.id);
+    // en el celular no hay hover: tocar una carta de la mesa muestra su nombre un momento
+    if (!card && e.pointerType !== 'mouse') this.showCardTip(this.pickTable(), 1800);
   }
 
   // ------------------------------------------------------------ mis cartas (en la mano, pegadas a la cámara)
