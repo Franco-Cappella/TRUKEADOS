@@ -17,6 +17,7 @@ Truco argentino online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**. Corre entero en
   modo espectador y práctica con bots. Los bots ocupan lugares y juegan por quien se desconecta; aprenden cómo
   juega cada persona, farolean y, si la mesa permite trampas, también hacen trampa.
 - Chat con frases rápidas, globos sobre cada jugador y voz que canta los cantos.
+- **Cuentas**: se juega con sesión (Google o mail), con un nombre único y ELO por modo.
 
 Reglas completas (y las que faltan): [docs/REGLAS.md](docs/REGLAS.md).
 Guía del código para quien siga desarrollando: [AGENTS.md](AGENTS.md).
@@ -32,7 +33,9 @@ npm install
 npm run dev
 ```
 
-Abrí http://localhost:8787. Para probar con varias personas, abrí la sala en otra ventana de incógnito.
+Antes, copiá `.dev.vars.example` a `.dev.vars` y poné la clave secreta de Supabase (ver
+[docs/CUENTAS.md](docs/CUENTAS.md)). Abrí http://localhost:8787. Para probar con varias personas, entrá con otra
+cuenta en una ventana de incógnito.
 
 ```bash
 npm test
@@ -58,3 +61,4 @@ que estar en la misma cuenta de Cloudflare). También sigue respondiendo en `*.w
   (Wikimedia Commons), vectorizado por [gjenkins20](https://github.com/gjenkins20/spanish-playing-cards-svg),
   [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); convertidas a WebP.
 - [Three.js](https://threejs.org): MIT (`public/vendor/three.LICENSE.txt`).
+- [@supabase/auth-js](https://github.com/supabase/auth-js): MIT (`public/vendor/supabase-auth.LICENSE.txt`).

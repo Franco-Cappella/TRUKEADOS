@@ -6,13 +6,15 @@ Leé esto antes de tocar código. Las reglas del juego están en [docs/REGLAS.md
 Trukeados: truco argentino online en 3D (1v1, 2v2, 3v3). El nombre está en `APP_NAME` (config.js) y,
 en lo estático, en `index.html`, `package.json` y `wrangler.jsonc`. Un Cloudflare Worker sirve los archivos de `public/` y
 un Durable Object por sala (`TrucoRoom`) es la **única fuente de verdad**: valida cada jugada con el
-motor de reglas y manda a cada jugador solo lo que puede ver. El cliente es HTML/CSS/JS sin build ni
+motor de reglas y manda a cada jugador solo lo que puede ver. **Sin cuenta no se juega**: la sesión es de
+Supabase Auth y los perfiles viven en la base de Supabase (ver [docs/CUENTAS.md](docs/CUENTAS.md)). El cliente es HTML/CSS/JS sin build ni
 frameworks (Three.js como módulo en `public/vendor/`).
 
 ## Mapa del código
 ```
 src/                      SERVIDOR (Cloudflare Worker)
-  index.js                rutas /api (crear sala, partida rápida, lobby, WebSocket)
+  index.js                rutas /api (config, perfil, crear sala, partida rápida, lobby, WebSocket)
+  auth.js                 sesión de Supabase (verifica el token) y perfiles (lectura/alta en la base)
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
   lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
@@ -24,20 +26,25 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   brain.js *              lo que aprenden los bots de cada persona (regresiones logísticas online)
   talk.js *               lo que dicen los bots en el chat: frases (BOT_TALK) y cuándo decirlas
   theme.js                COLORES del JS (escena 3D, cartas quemadas, anotador, paletas de personajes)
-  dom.js                  $, esc, store (localStorage seguro), KEYS, myPid, api()
+  dom.js                  $, esc, store (localStorage seguro), KEYS, api() (manda el token de la sesión)
+  auth.js                 Supabase Auth en el navegador: iniciar sesión, perfil (loadMe), cerrar sesión
+  account.js              pantallas de entrada: iniciar sesión / crear cuenta y elegir el nombre
   audio.js                sonidos sintetizados y voz de los cantos
   hud.js                  anotador de palitos, ayuda, caras de las señas, frases rápidas
-  menu.js                 pantalla de inicio
+  menu.js                 menú con pestañas: jugar, mesas, historial, tienda, personalizar y perfil
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
   characters.js           personajes 2D dibujados en canvas (caras y señas)
   hands.js                tus manos en primera persona
-  main.js                 arranque y rutas (/ y /sala/CÓDIGO), eventos fijos de la UI
+  main.js                 arranque (sesión), rutas (/ y /sala/CÓDIGO) y eventos fijos de la UI
 public/css/truco.css      todo el estilo; colores y tamaños en variables de :root
 public/cards/             cartas WebP (id = número + palo: 1E, 7O, 12C… y back)
 test/truco.test.js        tests del motor y partidas completas entre bots
 test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
 test/bots.test.js         aprendizaje, decisiones y trampas de los bots
+test/auth.test.js         verificación del token de Supabase y validación del nombre
+supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)
+docs/CUENTAS.md           cuentas: cómo está armado y cómo se configura Supabase
 docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendientes
 ```
 
@@ -69,13 +76,13 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 4. `alarm()` hace jugar a los bots / ausentes, pasa a la mano siguiente y cierra el "mostrar tantos".
 
 ## Protocolo WebSocket (`/api/rooms/CÓDIGO/ws`)
-Cliente → servidor: `join {pid,name,spectate}`, `sit {seat}`, `stand`, `addbot {seat}`, `removebot {seat}`,
+Cliente → servidor: `join {token,spectate}` (el token de Supabase: el servidor saca de ahí el id y el nombre), `sit {seat}`, `stand`, `addbot {seat}`, `removebot {seat}`,
 `kick {seat}`, `move {from, to}` (anfitrión: cambia o intercambia lugares en la sala de espera), `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
 `rematch`, `to-lobby`, `ping`.
 
 Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
-`notfound`, `pong`.
+`notfound`, `auth` (sin sesión válida o sin perfil: el cliente vuelve a la pantalla de entrada), `pong`.
 
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
@@ -86,7 +93,7 @@ Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada =
 ```bash
 npm install
 npm test          # motor + 60 partidas completas entre bots por modo
-npm run dev       # http://localhost:8787
+npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRET_KEY, ver .dev.vars.example)
 ```
 - `npm run dev` usa `workerd`, que en Windows necesita el *Microsoft Visual C++ Redistributable*
   (si falla con "write EOF", es eso).
