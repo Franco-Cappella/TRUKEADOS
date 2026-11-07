@@ -50,6 +50,9 @@ npm run deploy
 O desde el panel de Cloudflare: **Workers & Pages → Create → Import a repository** con este repositorio
 (comando de deploy `npx wrangler deploy`). Los Durable Objects usan SQLite, incluido en el plan gratuito.
 
+Está publicado en **https://game.trukeados.com** (`routes` en `wrangler.jsonc`; la zona `trukeados.com` tiene
+que estar en la misma cuenta de Cloudflare). También sigue respondiendo en `*.workers.dev`.
+
 ## Licencias
 - Cartas: diseño “Naipes Libres” de [Basquetteur](https://commons.wikimedia.org/wiki/User:Basquetteur)
   (Wikimedia Commons), vectorizado por [gjenkins20](https://github.com/gjenkins20/spanish-playing-cards-svg),
