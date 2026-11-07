@@ -706,7 +706,7 @@ export class RoomClient {
   // Arma los grupos de botones (en un contenedor suelto) según lo que el motor permite ahora.
   buildActions(g, a) {
     const out = document.createElement('div');
-    const ORDER = ['flor', 'tantos', 'mostrar', 'resp', 'cantar', 'mano'];
+    const ORDER = ['flor', 'tantos', 'mostrar', 'resp', 'cantar', 'equipo', 'mano'];
     const groups = {};
     const group = (key, label) => {
       if (!groups[key]) {
@@ -780,6 +780,19 @@ export class RoomClient {
     if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', acting({ t: 'noquiero' }));
     if (a.truco) add('cantar', 'Cantar', a.truco, 'call', acting({ t: 'truco' }));
     for (const k of a.envido) add('cantar', 'Cantar', ENVIDO_NAMES[k], 'call', acting({ t: 'envido', kind: k }), `Tenés ${g.h.myTanto} de envido`);
+    // Consulta al compañero: preguntarle si cantar, o contestarle ("Cantá" / "Callado")
+    const ask = this.st.ask;
+    const q = ask?.open;
+    if (q && !q.mine && !q.answered) {
+      const what = q.kind === 'tantos' ? 'los tantos' : 'el truco';
+      const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
+      add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
+      add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
+      add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
+    } else if (!q) {
+      if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
+      if (ask?.can.truco) add('equipo', 'Compañero', '¿Le canto truco?', '', () => this.send({ t: 'ask', kind: 'truco' }), 'Le preguntás a tu compañero si cantar truco');
+    }
     if (a.mazo) {
       // dos toques: el primero pide confirmación (sin ventanas del navegador)
       add('mano', 'Mano', this.mazoArmed ? 'Sí, me voy' : 'Irse al mazo', this.mazoArmed ? 'danger' : '', () => {

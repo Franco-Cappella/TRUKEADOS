@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/js/engine.js';
-import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply } from '../public/js/talk.js';
+import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
@@ -244,6 +244,18 @@ export class TrucoRoom extends DurableObject {
         return this.broadcastRaw({ t: 'chat', msg: entry });
       }
 
+      // Consulta al compañero: "¿tienen tantos?" / "¿le canto truco?" y la respuesta ("Cantá" o "Callado").
+      case 'ask': {
+        if (!this.canAsk(seat, msg.kind)) return;
+        this.startAsk(seat, msg.kind);
+        return this.commit();
+      }
+
+      case 'answer': {
+        if (!ASK_ANSWERS.includes(msg.ans) || !this.answerAsk(seat, msg.ans)) return;
+        return this.commit();
+      }
+
       case 'rematch': {
         if (seat == null || r.status !== 'ended') return;
         rematch(r.game, rng);
@@ -339,7 +351,14 @@ export class TrucoRoom extends DurableObject {
       const before = waitingFor(g);
       const ev0 = g.evId;
       let a = null;
-      if (actor != null) {
+      // un bot que tiene que decidir a veces primero le consulta al compañero ("¿tienen tantos?")
+      const askKind = actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
+        botAsks(g, actor, rng, this.partnersOf(actor).some((s) => !r.seats[s]?.bot && !this.isAway(s, now)));
+      const asked = !!askKind && this.canAsk(actor, askKind);
+      if (asked) {
+        this.startAsk(actor, askKind);
+        changed = true;
+      } else if (actor != null) {
         try {
           a = botAction(g, actor, rng, ctx);
         } catch (e) {
@@ -348,7 +367,7 @@ export class TrucoRoom extends DurableObject {
       }
       let ok = !!a && !!act(g, actor, a).ok;
       // si el bot falló o eligió algo que no vale, juega lo primero que entre (nunca se traba la mesa)
-      if (!ok && actor != null && waitingFor(g).seats.includes(actor)) {
+      if (!ok && !asked && actor != null && waitingFor(g).seats.includes(actor)) {
         for (const f of fallbackActions(g, actor)) {
           if (act(g, actor, f).ok) {
             console.warn('bot fallback', JSON.stringify(a), '->', JSON.stringify(f));
@@ -372,6 +391,7 @@ export class TrucoRoom extends DurableObject {
         changed = true;
       }
     }
+    if (this.botAnswers(now)) changed = true;
     if (this.noteAfk(now) && !changed) {
       await this.save();
       this.broadcastState();
@@ -432,7 +452,8 @@ export class TrucoRoom extends DurableObject {
         if (b && b.hands >= 20) return p.pid + ':' + Math.floor(b.hands / 50);
         return p?.bot ? 'bot' : 'g:' + Math.floor((this.brains?.global?.hands || 0) / 500);
       },
-      senas: r.senaSeen?.[seat] || [],
+      senas: [...(r.senaSeen?.[seat] || []), ...this.askSenas(seat)],
+      hush: this.askHush(seat),
       bots: r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0),
       brainOf: (s) => {
         const p = r.seats[s];
@@ -483,6 +504,112 @@ export class TrucoRoom extends DurableObject {
     } catch (e) {
       console.error('learn failed', e);
     }
+  }
+
+  // ---- consulta al compañero
+  // r.asks[equipo] = { seat, kind, hand, at, answers: { asiento: sí/no }, botDue }: la consulta abierta del equipo.
+  // Cada equipo puede consultar una vez por mano cada cosa (r.asked). Todos la escuchan (es en voz alta).
+
+  partnersOf(seat) {
+    const g = this.room.game;
+    return this.room.seats.map((_, i) => i).filter((i) => i !== seat && team(i) === team(seat) && !g.h.mazo[i]);
+  }
+
+  openAsk(T, now = Date.now()) {
+    const r = this.room;
+    const q = r.asks?.[T];
+    return q && q.hand === r.game.handNo && !q.done && now < q.at + TIMING.askWait ? q : null;
+  }
+
+  canAsk(seat, kind) {
+    const r = this.room;
+    const g = r.game;
+    if (seat == null || r.status !== 'playing' || !g?.h || g.h.phase !== 'play' || g.n <= 2 || g.h.mazo[seat]) return false;
+    const T = team(seat);
+    if (this.openAsk(T) || (r.asked?.[T] || []).includes(g.handNo + ':' + kind) || !this.partnersOf(seat).length) return false;
+    if (kind === 'tantos') return g.h.r === 0 && g.h.envido.state === 'none';
+    if (kind === 'truco') return g.h.truco.level < 4 && !g.h.truco.pending;
+    return false;
+  }
+
+  startAsk(seat, kind) {
+    const r = this.room;
+    const g = r.game;
+    const now = Date.now();
+    const T = team(seat);
+    r.asks ||= {};
+    r.asked ||= {};
+    (r.asked[T] ||= []).push(g.handNo + ':' + kind);
+    const bots = this.partnersOf(seat).filter((s) => r.seats[s]?.bot);
+    r.asks[T] = { seat, kind, hand: g.handNo, at: now, answers: {}, botDue: bots.length ? now + TIMING.askBotAnswer + Math.floor(rng() * 900) : 0 };
+    this.teamSay(seat, talkAsk(kind, rng));
+    // si pregunta un bot, espera la respuesta antes de jugar (como mucho TIMING.askWait)
+    if (r.seats[seat]?.bot) r.botReadyAt = Math.max(r.botReadyAt || 0, now + TIMING.askWait);
+  }
+
+  answerAsk(seat, ans) {
+    const r = this.room;
+    if (seat == null || !r.game?.h) return false;
+    const T = team(seat);
+    const q = this.openAsk(T);
+    if (!q || q.seat === seat || q.answers[seat] != null || r.game.h.mazo[seat]) return false;
+    q.answers[seat] = ans;
+    const text = talkAnswer(q.kind, ans, rng);
+    this.teamSay(seat, text);
+    if (this.partnersOf(q.seat).every((s) => q.answers[s] != null)) {
+      q.done = true;
+      // ya contestaron todos: el que preguntó (si es bot) sigue apenas se termina de decir la respuesta
+      if (r.seats[q.seat]?.bot) r.botReadyAt = Date.now() + speechMs(text) + TIMING.botAfterTalk + 300;
+    }
+    return true;
+  }
+
+  // Los bots compañeros contestan la consulta abierta (con lo que tienen ellos).
+  botAnswers(now) {
+    const r = this.room;
+    let any = false;
+    for (const T of [0, 1]) {
+      const q = this.openAsk(T, now);
+      if (!q || !q.botDue || now < q.botDue) continue;
+      q.botDue = 0;
+      for (const s of this.partnersOf(q.seat)) {
+        if (r.seats[s]?.bot && q.answers[s] == null) any = this.answerAsk(s, botAnswer(r.game, s, q.kind, rng)) || any;
+      }
+    }
+    return any;
+  }
+
+  // Lo que le contestaron a un bot en esta mano. "Cantá" y "No tengo nada" son como señas (tiene / no tiene):
+  // con eso decide él (si le dicen que no tienen nada y él tiene, igual puede cantar). "Callado" no dice qué
+  // tiene (puede ir a la pesca): solo que no lo cante él.
+  askSenas(seat) {
+    const q = this.myAsk(seat);
+    if (!q) return [];
+    const map = { tantos: { si: 'envido_alto', nada: 'nada_envido' }, truco: { si: 'truco_si', nada: 'truco_no' } }[q.kind];
+    return Object.entries(q.answers).filter(([, ans]) => map[ans]).map(([s, ans]) => ({ seat: Number(s), sena: map[ans] }));
+  }
+
+  askHush(seat) {
+    const q = this.myAsk(seat);
+    const answers = q ? Object.values(q.answers) : [];
+    return answers.includes('callado') && !answers.includes('si') ? { [q.kind]: true } : null;
+  }
+
+  myAsk(seat) {
+    const r = this.room;
+    const q = r.asks?.[team(seat)];
+    return q && q.seat === seat && q.hand === r.game.handNo ? q : null;
+  }
+
+  // Algo dicho en la mesa por cualquiera (persona o bot), sin el límite de charla de los bots.
+  teamSay(seat, text) {
+    const r = this.room;
+    const now = Date.now();
+    const entry = { name: r.seats[seat].name, seat, text, ts: now };
+    this.pushChat(entry);
+    this.ctx.storage.put('chat', this.chat);
+    this.broadcastRaw({ t: 'chat', msg: entry });
+    this.waitTalk(now, text);
   }
 
   // Un bot dice algo en el chat (como mucho uno cada TIMING.botChatGap).
@@ -801,6 +928,11 @@ export class TrucoRoom extends DurableObject {
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
     for (const [s, since] of Object.entries(r.afkSince || {})) if (!r.afkBot?.[s]) at = Math.min(at, Math.max(now + 100, since + TIMING.afk));
     if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
+    for (const T of [0, 1]) {
+      const q = this.openAsk(T, now);
+      if (q?.botDue) at = Math.min(at, Math.max(now + 100, q.botDue));
+      if (q) at = Math.min(at, q.at + TIMING.askWait + 50);
+    }
     await this.ctx.storage.setAlarm(Math.max(now + 100, at));
   }
 
@@ -849,6 +981,14 @@ export class TrucoRoom extends DurableObject {
     };
   }
 
+  askView(seat) {
+    const q = this.openAsk(team(seat));
+    return {
+      can: { tantos: this.canAsk(seat, 'tantos'), truco: this.canAsk(seat, 'truco') },
+      open: q ? { seat: q.seat, kind: q.kind, answered: q.answers[seat] != null, mine: q.seat === seat } : null,
+    };
+  }
+
   stateFor(ws, online) {
     const pid = ws.deserializeAttachment()?.pid;
     const seat = pid ? this.seatOf(pid) : null;
@@ -859,6 +999,8 @@ export class TrucoRoom extends DurableObject {
       you: seat,
       isHost: !!pid && pid === r.host,
       game: r.game ? viewFor(r.game, seat) : null,
+      // consulta al compañero: qué puede preguntar y la consulta abierta de su equipo
+      ask: seat != null && r.status === 'playing' && r.game?.h ? this.askView(seat) : null,
       dealLeft: r.status === 'playing' ? Math.max(0, (r.dealUntil || 0) - Date.now()) : 0, // ms de reparto que faltan
       now: Date.now(),
     };

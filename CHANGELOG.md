@@ -1,5 +1,18 @@
 # Cambios
 
+## 1.8.5 — "No tengo nada"
+- A la consulta del compañero también se puede contestar **No tengo nada**, que no es lo mismo que "Callado". Si un
+  bot pregunta y le dicen "no tengo nada", lo toma en cuenta pero decide él: si tiene, canta igual. Los bots con
+  poco contestan casi siempre "no tengo nada" (a veces solo "callado").
+
+## 1.8.4 — consultarle al compañero
+- En equipo, botones **¿Tienen tantos?** y **¿Le canto truco?**: tu compañero te contesta **Cantá** o **Callado**
+  (seguir jugando sin cantarlo, que lo canten los otros: a veces va a la pesca). Si te consultan a vos, aparecen los
+  botones para contestar. Se dice en voz alta, con globo, y los rivales lo escuchan.
+- Los bots también consultan: el pie bot te pregunta por los tantos o el truco antes de decidir, espera tu respuesta
+  (hasta 7 s) y la usa: "Cantá" cuenta como que tenés; "Callado" hace que no lo cante él. Entre bots también se
+  consultan, menos seguido. Un bot con muchísimo a veces contesta "callado" para ir a la pesca.
+
 ## 1.8.3 — bots con memoria y a prueba de fallas
 - **Memoria de situaciones**: los bots guardan lo que calcularon en cada situación (por el valor de las cartas: dos
   cuatros juegan igual). Cuando vuelven a una, suman a lo que ya sabían y, después de juntar 160 manos imaginadas,

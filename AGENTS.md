@@ -62,6 +62,8 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
 7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
    palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
+8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
+   o texto nuevo sigue esas reglas.
 
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`
@@ -118,6 +120,11 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   `BOT.memoSamples` ya no simula. Una memoria por isolate (`MEMO` en truco-room.js); lo que madura se guarda en
   el Lobby (`memoPut`) y al arrancar se trae (`memoGet`). Si cambia lo que calcula la simulación o la clave,
   cambiar el `kind` en `simStats` para no mezclar con lo viejo.
+- **Consulta al compañero** (en equipo): `ask {kind}` / `answer {yes}` por WebSocket; la sala guarda la consulta
+  abierta en `room.asks[equipo]` (una por mano y tipo) y los bots compañeros contestan con `botAnswer` (a veces
+  "callado" para ir a la pesca). Un bot puede consultar antes de decidir (`botAsks`) y espera hasta `TIMING.askWait`;
+  "Cantá" y "No tengo nada" entran como señas (`askSenas`: decide él, y si tiene canta igual); "callado"
+  hace que no cante eso (`ctx.hush`).
 - **Nunca se traba la mesa**: si `botAction` falla o elige algo inválido, la sala prueba `fallbackActions`; si
   falla la alarma entera, se registra y se reprograma.
 - Los compañeros bots conocen las cartas entre ellos (como si se pasaran todo por señas).

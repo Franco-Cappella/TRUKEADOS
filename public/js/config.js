@@ -50,6 +50,8 @@ export const TIMING = {
   botAfterTalk: 500, // después de que termina de decirse un canto o una frase, antes de que un bot juegue
   roundPause: 1400, // al cerrarse una ronda (o el envido), para ver quién ganó
   botHeartbeat: 2500, // latido para las miradas de los bots
+  askWait: 7000, // consulta al compañero ("¿tienen tantos?"): lo que se espera la respuesta antes de seguir
+  askBotAnswer: 1600, // + hasta 0,9 s: lo que tarda un bot en contestarle al compañero
   partnerAnswer: 3500, // en equipo, lo que espera el compañero bot antes de contestar un canto por los dos
   botChatGap: 2200, // como mucho un mensaje de bot cada tanto
   botIdle: 9000, // si una persona tarda más que esto en jugar, algún bot la apura
