@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.12.0 — ELO, revisión de partidas y menú nuevo
+- **Nivel al registrarte**: elegís entre cinco niveles y arrancás en ese ELO (400 a 2000), con 200 monedas de regalo.
+- **ELO como en chess.com**: las primeras partidas mueven mucho (hasta 160 de K) y, cuando el sistema encontró tu nivel, poquito. Hay premio en monedas por cada escalón de 100 que alcanzás por primera vez.
+- **Partida rápida con búsqueda**: pantalla de "Buscando rivales" y mesa que arranca sola. Si no aparece gente, completan la mesa rivales de ELO parecido, que juegan según su nivel y sin trampas.
+- **Revisión de partidas en 3D**: la partida se reproduce en la mesa frase por frase, para adelante y para atrás, con cada jugada calificada (mentira brillante, gran jugada, la mejor, excelente, buena, arriesgada, imprecisión, error, insensata y oportunidad perdida), barra y gráfico de ventaja, y precisión por equipo.
+- **Menú nuevo** con barra lateral: Jugar, Mesas, Partidas, Amigos, Ranking, Tienda, Taquilla y Perfil.
+- **Amigos** por nombre de usuario, **foto de perfil** y **ranking** por modo.
+
 ## 1.11.0 — arte propio
 - **Personajes redibujados**: ilustración plana de tinta y sepia, con proporciones adultas, cara angulosa, párpado
   pesado, sombras de borde duro y grano de papel. Arquetipos nuevos: chaleco con corbata y gaucho (poncho con guarda

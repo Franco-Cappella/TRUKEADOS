@@ -1,3 +1,5 @@
+> **Migración pendiente de aplicar:** `supabase/migrations/20261109000000_social.sql` (foto de perfil, récord de ELO y amigos). Hasta aplicarla, el juego funciona pero esas tres cosas quedan apagadas.
+
 # Cuentas
 
 Sin cuenta no se juega. La sesión es de **Supabase Auth** (Google o mail y contraseña) y los perfiles viven en la

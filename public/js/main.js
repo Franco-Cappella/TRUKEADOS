@@ -293,7 +293,7 @@ function openMatch(id) {
 initMenu(go, logout);
 initHistory(openMatch, () => {
   // volver al historial (o atrás, si se llegó desde ahí)
-  sessionStorage.setItem('truco-menu-tab', 'historial');
+  sessionStorage.setItem('truco-menu-tab', 'partidas');
   goHome();
 });
 initAccount(refresh, route);

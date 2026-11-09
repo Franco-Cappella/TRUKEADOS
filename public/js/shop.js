@@ -99,7 +99,7 @@ export function initShop(paint) {
       const r = await api(ROUTES.api.buy, { item: item.id });
       state.owned.push(item.id);
       setCoins(r.coins);
-      $('#shop-msg').textContent = `¡Compraste ${item.name}! Ponételo en Personalizar.`;
+      $('#shop-msg').textContent = `¡Compraste ${item.name}! Ponételo en la Taquilla.`;
       $('#shop-msg').classList.remove('bad');
       renderShop();
     } catch (err) {

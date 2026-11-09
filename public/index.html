@@ -61,103 +61,135 @@
 
   <!-- ============ MENÚ ============ -->
   <section id="menu" class="screen hidden">
-    <div class="h-wrap">
-      <header class="h-top">
-        <h1 class="h-logo">Truke<span>ados</span></h1>
-        <button class="h-user" type="button" data-tab="perfil" title="Tu perfil">
-          <span class="w-av" id="me-av">?</span>
-          <span class="h-uname"><b id="me-name"></b><small id="me-sub"></small></span>
+    <div class="ap">
+      <aside class="ap-side">
+        <h1 class="ap-logo">Truke<span>ados</span></h1>
+        <nav class="ap-nav" id="tabs" aria-label="Menú">
+          <button type="button" data-tab="jugar" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="11" height="16" rx="2"/><path d="M19 7l2 1-4 13-7-2"/></svg><span>Jugar</span></button>
+          <button type="button" data-tab="mesas"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="9" rx="9" ry="5"/><path d="M12 14v7M8 21h8"/></svg><span>Mesas</span></button>
+          <button type="button" data-tab="partidas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Partidas</span></button>
+          <button type="button" data-tab="amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7"/><path d="M16 4a4 4 0 010 8M18 14c2 1 4 3 4 7"/></svg><span>Amigos</span><i class="ap-badge hidden" id="nav-friends-badge"></i></button>
+          <button type="button" data-tab="ranking"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 01-10 0zM7 6H3c0 4 2 6 4 6M17 6h4c0 4-2 6-4 6M12 14v4M8 21h8l-1-3H9z"/></svg><span>Ranking</span></button>
+          <button type="button" data-tab="tienda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16l-1 13H5zM8 8V6a4 4 0 018 0v2"/></svg><span>Tienda</span></button>
+          <button type="button" data-tab="taquilla"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 11h18M10 15h4"/></svg><span>Taquilla</span></button>
+          <button type="button" data-tab="perfil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 4-8 8-8s8 3 8 8"/></svg><span>Perfil</span></button>
+        </nav>
+        <button class="ap-user" type="button" data-tab="perfil" title="Tu perfil">
+          <span id="me-av"></span>
+          <span class="ap-uname"><b id="me-name"></b><small id="me-sub"></small></span>
         </button>
-      </header>
+      </aside>
 
-      <nav class="h-tabs" id="tabs" aria-label="Menú">
-        <button type="button" data-tab="jugar" class="on">Jugar</button>
-        <button type="button" data-tab="mesas">Mesas</button>
-        <button type="button" data-tab="historial">Historial</button>
-        <button type="button" data-tab="tienda">Tienda</button>
-        <button type="button" data-tab="personalizar">Personalizar</button>
-        <button type="button" data-tab="perfil">Perfil</button>
-      </nav>
+      <main class="ap-main">
+        <div class="ap-panel h-panel" data-panel="jugar">
+          <div class="ho-hero" id="quick">
+            <h2>Partida rápida</h2>
+            <p>Te buscamos gente de tu nivel. Juega por ELO.</p>
+            <div class="ho-modes">
+              <button type="button" data-mode="1v1" class="ho-mode"><b>1 vs 1</b><small id="quick-elo-1v1"></small></button>
+              <button type="button" data-mode="2v2" class="ho-mode"><b>2 vs 2</b><small id="quick-elo-2v2"></small></button>
+              <button type="button" data-mode="3v3" class="ho-mode"><b>3 vs 3</b><small id="quick-elo-3v3"></small></button>
+            </div>
+          </div>
+          <div class="ho-grid">
+            <div class="m-card" id="practice">
+              <h3>Practicar <small>contra bots, sin ELO</small></h3>
+              <div class="m-pills">
+                <button type="button" data-mode="1v1">1 vs 1</button>
+                <button type="button" data-mode="2v2">2 vs 2</button>
+                <button type="button" data-mode="3v3">3 vs 3</button>
+              </div>
+            </div>
+            <div class="m-card">
+              <h3>Con amigos <small>tus reglas, tu mesa</small></h3>
+              <button class="btn primary" id="create" type="button">Armar una mesa</button>
+              <form id="join-form" class="ho-join">
+                <input id="join-code" maxlength="4" placeholder="Código" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" aria-label="Código de la mesa">
+                <button class="btn">Entrar</button>
+              </form>
+            </div>
+            <div class="m-card ho-wide" id="public-wrap">
+              <h3>Mesas públicas <small id="public-count"></small> <button type="button" class="a-link" data-tab="mesas">Ver todas</button></h3>
+              <div id="public-list" class="m-tables"></div>
+              <p class="muted hidden" id="public-none">No hay mesas abiertas ahora. Probá una partida rápida.</p>
+            </div>
+            <div class="m-card ho-wide">
+              <h3>Últimas partidas <button type="button" class="a-link" data-tab="partidas">Ver todas</button></h3>
+              <div id="recent-list" class="hi-list"></div>
+              <p class="muted hidden" id="recent-empty">Cuando termines una partida, la vas a poder revisar jugada por jugada.</p>
+            </div>
+          </div>
+        </div>
 
-      <div class="m-card h-panel" data-panel="jugar">
-        <div class="m-main">
-          <button class="btn primary big m-create" id="create" type="button">Armar una mesa<small>Elegís las reglas adentro e invitás a quien quieras</small></button>
-          <form id="join-form" class="m-join">
-            <input id="join-code" maxlength="4" placeholder="····" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" aria-label="Código de la mesa">
-            <button class="btn big">Entrar</button>
-            <small>¿Te pasaron un código? Ponelo acá.</small>
+        <div class="m-card ap-panel h-panel hidden" data-panel="mesas">
+          <h3>Mesas públicas</h3>
+          <div id="public-all" class="m-tables"></div>
+          <p class="muted hidden" id="public-empty">No hay mesas públicas ahora. Armá una o entrá a una partida rápida.</p>
+        </div>
+
+        <div class="m-card ap-panel h-panel hidden" data-panel="partidas">
+          <h3>Tus partidas <small>tocá una para revisarla jugada por jugada</small></h3>
+          <div id="history-list" class="hi-list"></div>
+          <p class="muted hidden" id="history-empty">Todavía no terminaste ninguna partida. Cuando termines una, queda acá para revisarla.</p>
+          <button class="btn ghost hidden" type="button" id="history-more">Ver más</button>
+        </div>
+
+        <div class="m-card ap-panel h-panel hidden" data-panel="amigos" id="panel-amigos">
+          <h3>Amigos</h3>
+          <form id="fr-form" class="ho-join">
+            <input id="fr-name" maxlength="20" placeholder="Nombre de usuario" autocomplete="off" spellcheck="false" aria-label="Nombre de usuario">
+            <button class="btn primary">Agregar</button>
           </form>
+          <p class="a-msg" id="fr-msg" role="status"></p>
+          <div class="hidden" id="fr-incoming-wrap"><h3>Te quieren agregar</h3><div id="fr-incoming" class="so-list"></div></div>
+          <div id="fr-list" class="so-list"></div>
+          <p class="muted hidden" id="fr-empty">Todavía no agregaste a nadie. Buscalos por su nombre de usuario.</p>
+          <div class="hidden" id="fr-outgoing-wrap"><h3>Esperando respuesta</h3><div id="fr-outgoing" class="so-list"></div></div>
         </div>
 
-        <div class="m-modes">
-          <div class="m-mode" id="quick">
-            <h3>Partida rápida <small>con gente</small></h3>
-            <div class="m-pills">
-              <button type="button" data-mode="1v1">1 vs 1</button>
-              <button type="button" data-mode="2v2">2 vs 2</button>
-              <button type="button" data-mode="3v3">3 vs 3</button>
+        <div class="m-card ap-panel h-panel hidden" data-panel="ranking">
+          <h3>Ranking</h3>
+          <div class="m-pills rk-modes" id="rk-modes"></div>
+          <div id="rk-list" class="so-list"></div>
+        </div>
+
+        <div class="m-card ap-panel h-panel hidden" data-panel="tienda">
+          <h3>Tienda <small>tenés <b id="shop-coins">0</b> monedas · ganás jugando y subiendo de ELO</small></h3>
+          <div id="shop-list" class="sh-list"></div>
+          <p class="a-msg" id="shop-msg" role="status"></p>
+        </div>
+
+        <div class="m-card ap-panel h-panel hidden" data-panel="taquilla">
+          <h3>Taquilla <small>lo que te ponés lo ven todos en la mesa</small></h3>
+          <div class="cu-wrap">
+            <div class="cu-preview">
+              <canvas id="cu-bust" width="256" height="280" aria-label="Así te ven"></canvas>
+              <div class="cu-table"><canvas id="cu-felt" width="120" height="70" aria-label="Paño"></canvas><canvas id="cu-back" width="46" height="70" aria-label="Mazo"></canvas></div>
             </div>
+            <div id="cu-slots" class="cu-slots"></div>
           </div>
-          <div class="m-mode" id="practice">
-            <h3>Practicar <small>contra bots</small></h3>
-            <div class="m-pills">
-              <button type="button" data-mode="1v1">1 vs 1</button>
-              <button type="button" data-mode="2v2">2 vs 2</button>
-              <button type="button" data-mode="3v3">3 vs 3</button>
-            </div>
+          <p class="a-msg" id="cu-msg" role="status"></p>
+        </div>
+
+        <div class="m-card ap-panel h-panel hidden" data-panel="perfil">
+          <div class="p-head">
+            <span id="profile-av"></span>
+            <span class="h-uname"><b id="profile-name"></b><small id="profile-email"></small></span>
           </div>
-        </div>
-
-        <div class="m-public hidden" id="public-wrap">
-          <h3>Mesas públicas <small id="public-count"></small> <button type="button" class="a-link" data-tab="mesas">Ver todas</button></h3>
-          <div id="public-list" class="m-tables"></div>
-        </div>
-      </div>
-
-      <div class="m-card h-panel hidden" data-panel="mesas">
-        <h3>Mesas públicas</h3>
-        <div id="public-all" class="m-tables"></div>
-        <p class="muted hidden" id="public-empty">No hay mesas públicas ahora. Armá una o entrá a una partida rápida.</p>
-      </div>
-
-      <div class="m-card h-panel hidden" data-panel="historial">
-        <h3>Historial <small>tocá una partida para rebobinarla y ver el análisis</small></h3>
-        <div id="history-list" class="hi-list"></div>
-        <p class="muted hidden" id="history-empty">Todavía no terminaste ninguna partida. Cuando termines una, queda acá para verla mano por mano.</p>
-        <button class="btn ghost hidden" type="button" id="history-more">Ver más</button>
-      </div>
-
-      <div class="m-card h-panel hidden" data-panel="tienda">
-        <h3>Tienda <small>tenés <b id="shop-coins">0</b> monedas · ganás jugando, nada se compra con plata</small></h3>
-        <div id="shop-list" class="sh-list"></div>
-        <p class="a-msg" id="shop-msg" role="status"></p>
-      </div>
-
-      <div class="m-card h-panel hidden" data-panel="personalizar">
-        <h3>Personalizar <small>lo que te ponés lo ven todos en la mesa</small></h3>
-        <div class="cu-wrap">
-          <div class="cu-preview">
-            <canvas id="cu-bust" width="256" height="280" aria-label="Así te ven"></canvas>
-            <div class="cu-table"><canvas id="cu-felt" width="120" height="70" aria-label="Paño"></canvas><canvas id="cu-back" width="46" height="70" aria-label="Mazo"></canvas></div>
+          <div class="p-photo">
+            <label class="btn small">Cambiar foto<input type="file" id="av-file" accept="image/*" hidden></label>
+            <button class="btn small ghost" type="button" id="av-clear">Sacar foto</button>
+            <span class="a-msg" id="av-msg" role="status"></span>
           </div>
-          <div id="cu-slots" class="cu-slots"></div>
+          <h3>ELO <small>con <i>?</i>, todavía en calibración: se mueve mucho hasta encontrar tu nivel</small></h3>
+          <div class="p-elo" id="profile-elo"></div>
+          <button class="btn ghost" type="button" id="logout">Cerrar sesión</button>
         </div>
-        <p class="a-msg" id="cu-msg" role="status"></p>
-      </div>
 
-      <div class="m-card h-panel hidden" data-panel="perfil">
-        <div class="p-head">
-          <span class="w-av" id="profile-av">?</span>
-          <span class="h-uname"><b id="profile-name"></b><small id="profile-email"></small></span>
-        </div>
-        <h3>ELO <small>solo partidas entre personas, sin bots</small></h3>
-        <div class="p-elo" id="profile-elo"></div>
-        <button class="btn ghost" type="button" id="logout">Cerrar sesión</button>
-      </div>
-
-      <footer class="credits">
-        Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
-      </footer>
+        <footer class="credits">
+          Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
+        </footer>
+      </main>
     </div>
   </section>
 

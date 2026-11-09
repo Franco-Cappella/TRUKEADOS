@@ -18,6 +18,8 @@ src/                      SERVIDOR (Cloudflare Worker)
   recorder.js             graba la partida en curso (estado al repartir cada mano + jugadas) para el historial
   matches.js              partida terminada → Supabase (ELO, monedas, historial) y lectura del historial
   shop.js                 tienda: comprar (buy_item) y elegir lo que tenés puesto (profiles.equipped)
+  social.js               amigos por nombre de usuario, foto de perfil y ranking
+  matchmaking.js          partida rápida: nombre, ELO y ropa de los rivales automáticos que completan la mesa
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
   lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
   util.js                 validación de nombres/pid, códigos de sala, json(), rng()
@@ -30,7 +32,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   replay.js *             formato del registro de una partida y cómo reproducirla/describirla
   analysis.js *           análisis post-partida (califica decisiones con evaluateDecision de bot.js)
   analysis-worker.js      Web Worker que corre el análisis
-  elo.js *                ELO por equipos
+  elo.js *                ELO por equipos: K alto al principio que baja con las partidas, y premio por escalones
   talk.js *               lo que dicen los bots en el chat: frases (BOT_TALK) y cuándo decirlas
   theme.js                COLORES del JS (escena 3D, cartas quemadas, anotador, paletas de personajes)
   dom.js                  $, esc, store (localStorage seguro), KEYS, api() (manda el token de la sesión)
@@ -38,8 +40,9 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   account.js              pantallas de entrada: iniciar sesión / crear cuenta y elegir el nombre
   audio.js                sonidos sintetizados y voz de los cantos
   hud.js                  anotador de palitos, ayuda, caras de las señas, frases rápidas
-  menu.js                 menú con pestañas: jugar, mesas, historial, tienda, personalizar y perfil
-  history.js              lista del historial y visor de una partida grabada (/partida/ID) con el análisis
+  menu.js                 menú con barra lateral: jugar, mesas, partidas, amigos, ranking, tienda, taquilla y perfil
+  social.js               pantallas de amigos y ranking, y subir la foto de perfil
+  history.js              lista de partidas y revisión de una partida (/partida/ID): 3D, íconos, gráfico y precisión
   shop.js                 pestañas Tienda y Personalizar
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
@@ -180,7 +183,14 @@ colores, y se arreglaron: botones chicos, mazo partido después del corte, parpa
 la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la carta de arriba de las dos
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
 
+## Partida rápida y ELO
+- `/api/quick` manda a una mesa abierta de ELO parecido (`Lobby.findOpen`) o crea una con `room.quick`. Esa mesa arranca sola al llenarse. Si no aparece gente, `quickTick` sienta rivales automáticos: el primero a los 6-22 s, los demás más seguido (`MATCH` en config.js).
+- Esos rivales son asientos con `bot: true, disguised: true, elo`. **`disguised` nunca sale del servidor**: `publicRoom` los manda como jugadores comunes y `forClient` (matches.js) limpia el historial. Juegan por ELO, con fuerza según su ELO (`botSkill`), sin trampas y sin pasarse las cartas.
+- El ELO se calcula en `elo.js`: K baja de 160 a 14 según las partidas jugadas. Los rivales automáticos cuentan con su ELO para el promedio del equipo.
+- Migración `20261109000000_social`: foto, récord de ELO y amigos. El código funciona sin aplicarla (se leen todas las columnas con `*` y lo que falta se ignora): sin foto, sin amigos y sin premios por escalón.
+
 ## Historial y análisis
+- Calificaciones (`classify` en analysis.js, umbrales en `ANALYSIS`): se miden en chance de ganar la partida perdida, como los *expected points* de chess.com. `evaluateDecision` devuelve `slope` (cuánto vale un punto ahora) para pasar de puntos a chance. La serie del gráfico sale de `winChance` (bot.js), que ve todas las cartas.
 - La sala graba con `this.rec` (`MatchRecorder`): `start` al empezar o en la revancha, `hand(g)` en `afterDeal`
   (después de las trampas de los bots) y `step(...)` por cada jugada aceptada (`botAct` para bots y ausentes, con
   la marca `auto` si un bot jugó por una persona). **Toda jugada nueva que cambie `r.game` tiene que pasar por ahí**

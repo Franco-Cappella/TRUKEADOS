@@ -1,13 +1,15 @@
-// Menú principal (con sesión iniciada): arriba tu usuario y las pestañas Jugar, Mesas, Historial, Tienda,
-// Personalizar y Perfil. Las reglas de la mesa (modo, puntos, flor…) se eligen adentro, en la sala de espera.
-import { ROUTES, CODE_RE, APP_NAME, MODES, ELO_START, modeLabel } from './config.js';
-import { $, $$, esc, store, KEYS, api, initial } from './dom.js';
+// Menú principal (con sesión iniciada), como el de chess.com: barra lateral con Jugar, Mesas, Partidas, Amigos,
+// Ranking, Tienda, Taquilla y Perfil. Las reglas de la mesa (modo, puntos, flor…) se eligen adentro, en la sala de espera.
+import { ROUTES, CODE_RE, APP_NAME, MODES, ELO_START, ELO, modeLabel } from './config.js';
+import { $, $$, esc, store, KEYS, api, avatarHtml } from './dom.js';
 import { currentMe, loadMe } from './auth.js';
-import { loadHistory } from './history.js';
+import { loadHistory, rowHtml } from './history.js';
 import { initShop, loadShop } from './shop.js';
+import { initSocial, loadFriends, loadRanking } from './social.js';
 
 const LOBBY_REFRESH_MS = 7000;
-const PUBLIC_MAX = 3; // en la pestaña Jugar, como mucho; en pantallas bajas, las que entren sin scroll
+const PUBLIC_MAX = 5; // en la pantalla de inicio, como mucho
+const RECENT_MAX = 4;
 const TAB_KEY = 'truco-menu-tab';
 let lobbyTimer = null;
 
@@ -68,6 +70,7 @@ export function initMenu(go, logout) {
   });
   $('#logout').addEventListener('click', logout);
   initShop(paintMe);
+  initSocial(paintMe);
 }
 
 function showTab(tab) {
@@ -81,8 +84,23 @@ function showTab(tab) {
     sessionStorage.setItem(TAB_KEY, tab);
   } catch {}
   if (tab === 'jugar' || tab === 'mesas') loadPublic();
-  if (tab === 'historial') loadHistory();
-  if (tab === 'tienda' || tab === 'personalizar') loadShop(tab);
+  if (tab === 'jugar') loadRecent();
+  if (tab === 'partidas') loadHistory();
+  if (tab === 'amigos') loadFriends();
+  if (tab === 'ranking') loadRanking();
+  if (tab === 'tienda') loadShop('tienda');
+  if (tab === 'taquilla') loadShop('personalizar');
+}
+
+// Las últimas partidas en la pantalla de inicio.
+async function loadRecent() {
+  try {
+    const { matches } = await api(ROUTES.api.matches);
+    $('#recent-list').innerHTML = matches.slice(0, RECENT_MAX).map(rowHtml).join('');
+    $('#recent-empty').classList.toggle('hidden', matches.length > 0);
+  } catch {
+    $('#recent-empty').classList.remove('hidden');
+  }
 }
 
 // Tu usuario arriba, las monedas y el ELO de cada modo.
@@ -90,19 +108,21 @@ function paintMe() {
   const p = currentMe()?.profile;
   if (!p) return;
   const games = Object.keys(MODES).reduce((n, m) => n + (p[`games_${m}`] || 0), 0);
-  for (const id of ['#me-av', '#profile-av']) $(id).textContent = initial(p.username);
+  for (const id of ['#me-av', '#profile-av']) $(id).innerHTML = avatarHtml(p);
   $('#me-name').textContent = p.username;
   $('#profile-name').textContent = p.username;
   $('#me-sub').textContent = `${p.coins} monedas`;
   $('#profile-email').textContent = currentMe().user.email;
   $('#shop-coins').textContent = p.coins;
+  const eloText = (m) => `${p[`elo_${m}`] ?? ELO_START}${(p[`games_${m}`] || 0) < ELO.provisional ? '?' : ''}`;
+  for (const m of Object.keys(MODES)) $(`#quick-elo-${m}`).textContent = `ELO ${eloText(m)}`;
   $('#profile-elo').innerHTML = Object.keys(MODES)
     .map((m) => {
       const n = p[`games_${m}`] || 0;
-      return `<div class="p-stat"><small>${esc(modeLabel(m))}</small><b>${esc(p[`elo_${m}`] ?? ELO_START)}</b><span>${n === 1 ? '1 partida' : `${n} partidas`}</span></div>`;
+      return `<div class="p-stat"><small>${esc(modeLabel(m))}</small><b>${esc(eloText(m))}</b><span>${n === 1 ? '1 partida' : `${n} partidas`}</span></div>`;
     })
     .join('');
-  $('#profile-elo').title = games ? '' : 'Todavía no jugaste partidas por ELO: todos arrancan en ' + ELO_START;
+  $('#profile-elo').title = games ? '' : 'Todavía no jugaste partidas por ELO';
 }
 
 const tableHtml = ([r, isLive]) => {
@@ -125,12 +145,8 @@ async function loadPublic() {
 
     const list = $('#public-list');
     list.innerHTML = all.slice(0, PUBLIC_MAX).map(tableHtml).join('');
-    wrap.classList.toggle('hidden', !all.length);
-    // si el menú no entra en pantalla, se sacan mesas de la lista corta (en "Mesas" están todas)
-    const menu = $('#menu');
-    while (list.children.length > 1 && menu.scrollHeight > menu.clientHeight) list.lastElementChild.remove();
+    $('#public-none').classList.toggle('hidden', all.length > 0);
     const shown = list.children.length;
-    wrap.classList.toggle('hidden', !shown);
     $('#public-count').textContent = all.length > shown ? `${shown} de ${all.length}` : '';
   } catch {
     wrap.classList.add('hidden');
