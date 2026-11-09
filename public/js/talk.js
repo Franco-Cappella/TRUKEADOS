@@ -3,6 +3,10 @@
 // se hacen los guapos. Reaccionan a lo que pasa en la mesa, chicanean, se calientan y charlan entre ellos.
 import { team, rank } from './engine.js';
 
+// Regla de la charla: decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo.
+// Por eso solo las frases de canto nombran el canto (strongCall, humbleCall, raise, envidoStrong, envidoHumble, falta).
+// Las demás, cuando hablan del tema, dicen "el segundo" (truco) o "el primero", "los tantos", "los puntos" (envido),
+// y al no querer el envido no lo nombran. test/bots.test.js lo verifica.
 export const BOT_TALK = {
   // ---- cantos: {C} / {c} es el canto de verdad ("Truco", "Retruco", "Vale cuatro", "Real envido"...).
   // Cada frase dice el canto o la respuesta: reemplaza al "¡Truco!" o al "Quiero" de siempre, no se le suma.
@@ -45,8 +49,8 @@ export const BOT_TALK = {
   ],
   envidoHumble: ['{C}... por las dudas.', 'Tiro un {c}, a ver.', '{C}, total es gratis.', '{C}, y que sea lo que Dios quiera.'],
   falta: ['¡Falta envido, y que se termine acá!', 'Falta envido. Todo o nada.', 'Falta envido, y que tiemble la mesa.'],
-  envidoAccept: ['Quiero el envido. Cantá.', 'Quiero, a ver esos tantos.', 'Dale, quiero. Contá despacito.'],
-  envidoDecline: ['No quiero el envido, llevate el poroto.', 'No quiero. Tomá tu punto y callate.', 'No quiero, para qué.'],
+  envidoAccept: ['Quiero los tantos. Cantá.', 'Quiero, a ver esos tantos.', 'Dale, quiero. Contá despacito.'],
+  envidoDecline: ['No quiero los tantos, llevate el poroto.', 'No quiero. Tomá tu punto y callate.', 'No quiero, para qué.'],
   partner: [
     'Este lo contesto yo, compañero.', 'Tranqui, lo manejo yo.', 'Dejámelo a mí.', 'Tranqui, que de este me encargo.',
     'Compañero, esta va por mí.', 'Vos tomate el mate, yo contesto.',
@@ -56,7 +60,7 @@ export const BOT_TALK = {
     'Anotá, anotá.', 'Así se juega.', 'Una más para la cuenta.', 'Fácil.', 'Y van...',
     '¡Adentro!', 'Andá contando los palitos, que te faltan.', 'Como robarle un caramelo a un nene.', 'Otra para el bolsillo.',
   ],
-  winTruco: ['¡Eso es truco!', 'Truco querido, truco ganado.'], // solo si se jugó por truco o más
+  winTruco: ['¡Y el segundo era nuestro!', 'El segundo querido, el segundo ganado.'], // solo si se jugó por truco o más
   loseHand: [
     'Me mataste.', 'Bien jugado, eh.', 'Ya va a venir la mía.', 'Qué mano fea me tocó.', 'La próxima es mía.',
     'Esta no cuenta, estaba pensando en otra cosa.', 'Suerte de principiante.', 'Disfrutala, que dura poco.', 'Ah, ¿así que así viene la cosa?',
@@ -73,11 +77,11 @@ export const BOT_TALK = {
   gameLost: ['Bien ganado. Pero quiero la revancha.', 'Me ganaste porque te dejé.', 'Revancha. Ya.', 'Las cartas no me quieren hoy.'],
   // ---- reacciones a los demás
   rivalTruco: [
-    '¿Truco? Mirá cómo tiemblo.', 'Uh, se vino con todo.', '¿Vos con qué cartas, a ver?', 'Ese truco tiene olor a mentira.',
-    'Huele a farol...', '¿Truco? Te veo la cara y no te creo.', 'Ay, ay, ay... qué miedo.',
+    '¿El segundo? Mirá cómo tiemblo.', 'Uh, se vino con todo.', '¿Vos con qué cartas, a ver?', 'Ese segundo tiene olor a mentira.',
+    'Huele a farol...', '¿El segundo? Te veo la cara y no te creo.', 'Ay, ay, ay... qué miedo.',
   ],
-  rivalEnvido: ['¿Envido? Ya va.', 'Mmm... ese envido me suena.', '¿Envido vos? Mirá vos.', 'Uh, éste vino con tantos.'],
-  rivalFalta: ['¿Falta envido? ¿Estás de la cabeza?', 'Uh, se viene la grande.', '¿Todo o nada? Me gusta.'],
+  rivalEnvido: ['¿Los tantos? Ya va.', 'Mmm... esos tantos me suenan.', '¿Los tantos, vos? Mirá vos.', 'Uh, éste vino con tantos.'],
+  rivalFalta: ['¿La falta? ¿Estás de la cabeza?', 'Uh, se viene la grande.', '¿Todo o nada? Me gusta.'],
   rivalQuiero: ['¿Querés? Ahora vas a ver.', 'Te gusta sufrir, ¿eh?', 'Valiente. Me gusta.'],
   rivalNoQuiero: ['Ah, ¿no querés? Gallina.', 'Se achicó.', 'Sabía que no te ibas a animar.', 'Cobarde, pero inteligente.', 'Tomo nota, eh.'],
   rivalMazo: ['¡Se fue al mazo! Corré, corré.', 'Uh, ni pelearon.', 'Al mazo... qué tristeza.', 'Eso, andate, que te conviene.'],
@@ -166,13 +170,13 @@ export const talkCaught = (rng = Math.random) => say('caught', rng);
 // puede cantar si tiene él.
 export const ASK_TALK = {
   tantos: {
-    ask: ['¿Tienen tantos?', '¿Cómo andan de tantos?', '¿Canto envido?', '¿Hay tantos, compañeros?'],
+    ask: ['¿Tienen tantos?', '¿Cómo andan de tantos?', '¿Canto el primero?', '¿Hay tantos, compañeros?'],
     si: ['Tengo, cantá.', 'Cantá nomás.', 'Dale, que tengo.', 'Cantá, que hay.'],
     callado: ['Callado.', 'Callado, que canten ellos.', 'Mejor callado.', 'Callado, compañero.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'De tantos, nada.', 'Ni para empezar.'],
   },
   truco: {
-    ask: ['¿Le canto truco?', '¿Cómo vienen? ¿Canto?', '¿Truco o no?', '¿Canto, compañeros?'],
+    ask: ['¿Le canto el segundo?', '¿Cómo vienen? ¿Canto?', '¿El segundo o no?', '¿Canto, compañeros?'],
     si: ['Dale, cantá.', 'Cantá, que vengo bien.', 'Cantale nomás.', 'Dale, que tengo con qué.'],
     callado: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'Vengo seco.', 'Con esto no gano ni una.'],

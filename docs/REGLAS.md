@@ -89,6 +89,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | Si pasan 15 s sin que el ganador muestre ni nadie reclame, los tantos valen | `TIMING.showWindow` |
 | Señas: solo las ve quien te está mirando en ese momento | `TrucoRoom.deliverSena` |
 | Los personajes no parpadean solos: los ojos cerrados son únicamente la seña "ciego" | `characters.js` |
+| En la charla de los bots, decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo: solo las frases de canto nombran el canto. Para hablar del tema dicen "el segundo" (truco) o "el primero", "los tantos" o "los puntos" (envido), y al no querer el envido no lo nombran | `talk.js` (`BOT_TALK`, `ASK_TALK`); test en `bots.test.js` |
 
 ## No implementadas (todavía)
 - Pedir flor al final de la mano (no hace falta: la flor es obligatoria y el juego la detecta sola). [R] §12.
