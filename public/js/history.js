@@ -9,7 +9,7 @@ import { accuracy, gradeCounts, winSeries, explain } from './analysis.js';
 import { lookFor, dressed } from './characters.js';
 import { TableScene } from './scene.js';
 import { $, esc, api } from './dom.js';
-import { say, hush, isVoiceOn, toggleVoice } from './audio.js';
+import { say, hush, isVoiceOn, toggleVoice, setSeatVoices } from './audio.js';
 
 // ------------------------------------------------------------------ lista
 
@@ -164,8 +164,10 @@ class Viewer {
     $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, match.rated ? 'por ELO' : '', opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
 
     $('#replay-voice').checked = isVoiceOn();
-    this.seats = match.seats.map((s, i) => ({ name: s.name, cos: s.cos || {}, seat: i }));
+    this.seats = match.seats.map((s, i) => ({ name: s.name, cos: s.cos || {}, voice: s.voice || null, seat: i }));
     scene.setLayout({ n: match.seats.length, me: this.me, spectator: false });
+    scene.setDecks(this.seats);
+    setSeatVoices(this.seats);
     scene.setTable({});
     scene.setMyLook(dressed(lookFor(this.names[this.me], this.me), this.seats[this.me].cos));
     this.buildPlates();

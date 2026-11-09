@@ -47,11 +47,13 @@ export const ROUTES = {
     match: (id) => `/api/matches/${id}`,
   },
   card: (id) => `/cards/${id}.webp`,
+  deckCard: (deck, id) => `/cards/${deck}/${id}.png`, // las barajas de la tienda
 };
 
 // ------------------------------------------------------------------ tiempos (ms)
 // La animación de reparto del cliente y la espera del servidor salen de los mismos números.
 export const TIMING = {
+  cardLabel: 2500, // el cartelito de una carta recién tirada
   shuffle: 1100, // el mazo llega al que reparte y se mezcla
   cut: 800, // corta el de la izquierda
   dealStep: 170, // entre carta y carta
@@ -243,6 +245,7 @@ export const COSMETIC_SLOTS = [
   { key: 'objeto', label: 'En la mesa', where: 'Delante tuyo' },
   { key: 'pano', label: 'Paño', where: 'La mesa, cuando sos anfitrión' },
   { key: 'dorso', label: 'Mazo', where: 'El dorso de las cartas, cuando sos anfitrión' },
+  { key: 'baraja', label: 'Baraja', where: 'Las cartas que tirás vos: las ven todos' },
 ];
 export const COSMETICS = [
   { id: 'remera-celeste', slot: 'ropa', name: 'Remera celeste', price: 40 },
@@ -262,6 +265,7 @@ export const COSMETICS = [
   { id: 'dorso-azul', slot: 'dorso', name: 'Dorso azul', price: 100 },
   { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
   { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },
+  { id: 'baraja-pixel', slot: 'baraja', name: 'Baraja pixel art', price: 300, credit: { text: 'Spanish Deck - Pixel Art by jcanabal', url: 'https://jcanabal.itch.io/spanish-deck-pixel-art' } },
 ];
 export const cosmeticById = (id) => COSMETICS.find((c) => c.id === id) || null;
 /** Lo que tiene puesto, limpio: solo ids que existen, cada uno en su ranura (y, si se pasa, solo lo comprado). */

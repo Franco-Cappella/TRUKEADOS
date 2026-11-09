@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.14.4 — baraja pixel art, voz a elección y espectadores
+- En la tienda, la baraja pixel art de jcanabal (300 monedas): las cartas que tira quien la tiene se ven así para todos.
+- En Configuración, cada jugador elige si su voz es de hombre o de mujer.
+- El cartelito de una carta dura 2,5 segundos después de tirarla y vuelve al pasarle el mouse.
+- Espectar pesa menos: los personajes se redibujan menos al girar la cámara y la sombra solo cambia cuando se mueve algo.
+
 ## 1.14.3 — voces y cartelitos
 - Quedan dos voces, alternadas por asiento: la grabada de hombre y la de mujer del dispositivo.
 - El cartelito de una carta se va la primera vez que le pasás el mouse.

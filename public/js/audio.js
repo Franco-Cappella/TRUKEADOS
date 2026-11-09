@@ -1,6 +1,6 @@
 // Sonidos sintetizados (sin archivos) y voz que canta los cantos.
 import { store, KEYS } from './dom.js';
-import { voiceFor, womanVoice, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
+import { VOICES, voiceFor, womanVoice, manVoice, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
 
 let actx = null;
 let sfxOn = store.get(KEYS.sfx, '1') === '1';
@@ -72,13 +72,24 @@ export function toggleVoice() {
   return voiceOn;
 }
 
-// Lo que no tiene audio grabado, y los asientos que no usan la voz grabada, salen con la voz de mujer del dispositivo.
-let woman = null;
-function deviceVoice() {
-  if (!woman && window.speechSynthesis) woman = womanVoice(speechSynthesis.getVoices());
-  return woman;
+// La voz que eligió cada jugador (Configuración). Quien no eligió, según el asiento.
+let myGender = store.get(KEYS.voiceGender, '');
+export const myVoice = () => myGender;
+export function setMyVoice(v) {
+  myGender = v === 'm' || v === 'f' ? v : '';
+  store.set(KEYS.voiceGender, myGender);
 }
-if (typeof window !== 'undefined' && window.speechSynthesis) speechSynthesis.addEventListener?.('voiceschanged', () => (woman = null));
+let seatVoices = [];
+export function setSeatVoices(seats) {
+  seatVoices = seats.map((s) => s?.voice || null);
+}
+const genderOf = (seat) => seatVoices[seat] || (voiceFor(seat) ? 'm' : 'f');
+
+// La voz de mujer y lo que no tiene audio grabado salen con las voces del dispositivo.
+function deviceVoice(gender) {
+  const all = speechSynthesis.getVoices();
+  return (gender === 'm' && manVoice(all)) || womanVoice(all);
+}
 
 const CHAT_STALE_MS = 4000; // una frase de charla que no llegó a decirse en este tiempo ya no se dice
 
@@ -139,9 +150,9 @@ function clipItem(key, voice) {
   };
 }
 
-function speechItem(text) {
+function speechItem(text, gender) {
   const u = new SpeechSynthesisUtterance(text);
-  u.voice = deviceVoice();
+  u.voice = deviceVoice(gender);
   u.lang = u.voice?.lang || 'es-AR';
   u.rate = 1;
   u.volume = volume;
@@ -165,8 +176,8 @@ export function say(text, seat = null, { chat = false } = {}) {
   if (!voiceOn) return;
   try {
     const key = voiceKey(text);
-    const voice = voiceFor(seat);
-    const item = voice && clips?.has(key) ? clipItem(key, voice) : window.speechSynthesis ? speechItem(text) : null;
+    const gender = genderOf(seat);
+    const item = gender === 'm' && clips?.has(key) ? clipItem(key, VOICES[0]) : window.speechSynthesis ? speechItem(text, gender) : null;
     if (!item) return;
     if (!chat) hush(); // un canto corta la charla
     queue.push(Object.assign(item, { chat, at: Date.now() }));

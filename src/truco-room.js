@@ -175,10 +175,12 @@ export class TrucoRoom extends DurableObject {
       case 'join': {
         const name = cleanName(account.name);
         const cos = account.cos;
-        ws.serializeAttachment({ pid, name, cos });
+        const voice = msg.voice === 'm' || msg.voice === 'f' ? msg.voice : null;
+        ws.serializeAttachment({ pid, name, cos, voice });
         if (seat != null) {
           r.seats[seat].name = name;
           r.seats[seat].cos = cos;
+          r.seats[seat].voice = voice;
           r.seats[seat].elo = account.elo;
           r.seats[seat].avatar = account.avatar;
           // volvió después de cortarse: se avisa (y si ya jugaba el bot por él, que deja de jugar)
@@ -190,7 +192,7 @@ export class TrucoRoom extends DurableObject {
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.openSeat(!!msg.invited);
           if (free != null) {
-            r.seats[free] = { pid, name, cos, elo: account.elo, avatar: account.avatar };
+            r.seats[free] = { pid, name, cos, voice, elo: account.elo, avatar: account.avatar };
             this.addSystemChat(`${name} se sentó a la mesa`);
           }
         }
@@ -208,7 +210,7 @@ export class TrucoRoom extends DurableObject {
         const to = msg.seat;
         if (!Number.isInteger(to) || to < 0 || to >= r.seats.length || r.seats[to]) return;
         const att = ws.deserializeAttachment() || {};
-        const me = seat != null ? r.seats[seat] : { pid, name: att.name || 'Invitado', cos: att.cos || {} };
+        const me = seat != null ? r.seats[seat] : { pid, name: att.name || 'Invitado', cos: att.cos || {}, voice: att.voice || null };
         if (seat != null) r.seats[seat] = null;
         r.seats[to] = me;
         return this.commit();
@@ -1340,7 +1342,7 @@ export class TrucoRoom extends DurableObject {
         const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
         const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
         // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
-        return { forfeit: !!since && !this.partnerOnline(i, online), name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
+        return { forfeit: !!since && !this.partnerOnline(i, online), name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, voice: s.voice || null, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
       }),
       // el paño y el mazo son los del anfitrión
       table: (() => {

@@ -11,6 +11,11 @@ export const voiceFor = (seat) => ((seat ?? 0) % 2 === 0 ? VOICES[0] : null);
 const WOMAN = /helena|laura|sabina|elena|paulina|m[oó]nica|dalia|elvira|sof[ií]a|luc[ií]a|catalina|camila|female|mujer/i;
 const MAN = /pablo|ra[uú]l|jorge|diego|tom[aá]s|[aá]lvaro|juan|carlos|\bmale\b/i;
 
+/** La voz de hombre del dispositivo, si tiene alguna. */
+export function manVoice(voices) {
+  return voices.find((v) => v.lang?.toLowerCase().startsWith('es') && MAN.test(v.name)) || null;
+}
+
 /** La voz de mujer del dispositivo: en español y, si hay, una que no sea de hombre. */
 export function womanVoice(voices) {
   const es = voices.filter((v) => v.lang?.toLowerCase().startsWith('es'));

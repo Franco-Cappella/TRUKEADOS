@@ -4,7 +4,7 @@ import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
-import { audio, flick, ding, say, hush } from './audio.js';
+import { audio, flick, ding, say, hush, myVoice, setSeatVoices } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
@@ -63,7 +63,7 @@ export class RoomClient {
     const ws = new WebSocket(`${proto}//${location.host}${ROUTES.api.ws(this.code)}`);
     this.ws = ws;
     ws.onopen = async () => {
-      this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate, invited: this.teamInvited });
+      this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate, invited: this.teamInvited, voice: myVoice() || null });
       this.retry = 0;
     };
     ws.onmessage = (e) => {
@@ -265,6 +265,8 @@ export class RoomClient {
     const seats = st.room.seats;
     const g = st.game;
     scene.setLayout({ n: seats.length, me: st.you ?? 0, spectator: st.you == null });
+    scene.setDecks(seats);
+    setSeatVoices(seats);
     const layoutKey = `${seats.length}:${st.you}`;
     if (layoutKey !== this.layoutKey) {
       this.layoutKey = layoutKey;

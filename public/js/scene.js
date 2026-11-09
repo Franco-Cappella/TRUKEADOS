@@ -10,6 +10,10 @@ const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
 const TABLE_CARD_SCALE = 1.3; // en la mesa, un poco más grandes que en la vida real: se leen desde lejos
 const TABLE_Y = 0.74;
+// El espectador gira alrededor de la mesa y ve a todos: cada personaje se redibuja menos y con menos detalle.
+const SPECTATOR_PIXEL_RATIO = 1.25;
+const SPECTATOR_POSE_TOL = 0.1; // radianes que puede cambiar el ángulo antes de redibujar
+const SPECTATOR_REDRAW_MS = 66;
 const EYE_Y = 1.46; // a la altura de los ojos de los demás personajes (cabeza en y = 214 de 1200 en el canvas)
 const CHAR_H = 1.8; // canvas de 512x1200: del piso (abajo) a la cabeza (arriba)
 const CHAR_W = CHAR_H * (CW / CH);
@@ -18,8 +22,23 @@ const texLoader = new THREE.TextureLoader();
 const texCache = new Map();
 let maxAniso = 4;
 
-function cardTex(id) {
+// Las barajas de la tienda son pixel art: de cerca, sin suavizar.
+function deckTex(deck, id) {
+  const key = `${deck}/${id}`;
+  if (!texCache.has(key)) {
+    const t = texLoader.load(ROUTES.deckCard(deck, id));
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.magFilter = THREE.NearestFilter;
+    t.anisotropy = maxAniso;
+    texCache.set(key, t);
+  }
+  return texCache.get(key);
+}
+const loadedDecks = new Set();
+
+function cardTex(id, deck = null) {
   const key = id || 'back';
+  if (deck && key !== 'blank') return deckTex(deck, key);
   if (key === 'blank' && !texCache.has(key)) {
     // carta de la que no se ve la cara (la de abajo de un tiro doble): blanca con el borde
     const c = document.createElement('canvas');
@@ -99,24 +118,24 @@ function burnCard(card) {
 const cardGeo = new THREE.PlaneGeometry(CARD_W, CARD_H);
 
 // Carta con frente y dorso. El frente mira hacia +Z local.
-function makeCard(id, lit = true) {
+function makeCard(id, lit = true, deck = null) {
   const g = new THREE.Group();
   const Mat = lit ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
-  const front = new THREE.Mesh(cardGeo, new Mat({ map: cardTex(id), alphaTest: 0.5 }));
-  const back = new THREE.Mesh(cardGeo, new Mat({ map: cardTex('back'), alphaTest: 0.5 }));
+  const front = new THREE.Mesh(cardGeo, new Mat({ map: cardTex(id, deck), alphaTest: 0.5 }));
+  const back = new THREE.Mesh(cardGeo, new Mat({ map: cardTex('back', deck), alphaTest: 0.5 }));
   back.rotation.y = Math.PI;
   front.position.z = 0.0003;
   back.position.z = -0.0003;
   back.castShadow = lit; // solo una cara proyecta sombra (si no, la carta se sombrea a sí misma)
   g.add(front, back);
-  g.userData = { id, front, back };
+  g.userData = { id, front, back, deck };
   return g;
 }
 
 function setCardFace(card, id) {
   if (card.userData.id === id) return;
   card.userData.id = id;
-  card.userData.front.material.map = cardTex(id);
+  card.userData.front.material.map = cardTex(id, card.userData.deck);
   card.userData.front.material.needsUpdate = true;
 }
 
@@ -493,10 +512,12 @@ export class TableScene {
     this.R = 0.9;
     this.chars = new Map(); // seat -> { mesh, canvas, ctx, tex, look, state }
     this.tableCards = new Map(); // "seat:idx" -> card
-    // cartelito con el nombre de cada carta de la mesa (de lejos no se distinguen): se va la primera vez que le pasás el mouse
+    // cartelito con el nombre de cada carta de la mesa: un rato al tirarla y cuando le pasás el mouse
     this.cardLabels = document.createElement('div');
     this.cardLabels.className = 'card-labels';
     this.cardLabelEls = new Map(); // "seat:idx" -> elemento
+    this.hoverTable = null; // la carta de la mesa que tiene el mouse encima
+    this.seatDecks = []; // la baraja de la tienda de cada asiento
     this.handCards = [];
     this.selected = null;
     this.hover = null;
@@ -679,6 +700,9 @@ export class TableScene {
     this.n = n;
     this.me = me ?? 0;
     this.spectator = !!spectator;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.spectator ? SPECTATOR_PIXEL_RATIO : 2));
+    this.renderer.shadowMap.autoUpdate = !this.spectator; // al mirar, la sombra solo cambia cuando se mueve algo
+    this.shadowDirty = true;
     this.R = n === 2 ? 0.78 : n === 4 ? 0.95 : 1.18;
     this.tableBuilt = true;
     const g = this.tableGroup;
@@ -882,6 +906,16 @@ export class TableScene {
     this.chars.set(seat, c);
   }
 
+  // La baraja de cada asiento (tienda): las cartas que tira se ven con esa.
+  setDecks(seats) {
+    this.seatDecks = seats.map((p) => p?.cos?.baraja || null);
+    for (const deck of new Set(this.seatDecks)) {
+      if (!deck || loadedDecks.has(deck)) continue;
+      loadedDecks.add(deck);
+      ['back', ...newDeck()].forEach((id) => cardTex(id, deck));
+    }
+  }
+
   setPlayers(seats, handCounts) {
     seats.forEach((p, seat) => this.setSeatObject(seat, p?.cos?.objeto));
     for (const [seat, c] of this.chars) {
@@ -909,6 +943,7 @@ export class TableScene {
     if ((cur?.id || null) === (id || null) || !this.seatObjs) return;
     if (cur) this.tableGroup.remove(cur.obj);
     this.seatObjs.delete(seat);
+    this.shadowDirty = true;
     const obj = id && tableObject(id);
     if (!obj) return;
     const d = this.seatDir(seat);
@@ -1007,10 +1042,16 @@ export class TableScene {
     const pose = this.poseFor(c);
     const st = c.state;
     st.bodyYaw = pose.bodyYaw;
-    const near = (a, b) => Math.abs(a - b) < 0.015;
-    const settled = near(st.headYaw ?? 99, pose.headYaw) && near(st.down ?? 99, pose.down);
+    const near = (a, b, tol = 0.015) => Math.abs(a - b) < tol;
+    const poseTol = this.spectator ? SPECTATOR_POSE_TOL : 0.015;
+    const settled = near(st.headYaw ?? 99, pose.headYaw, poseTol) && near(st.down ?? 99, pose.down);
     const bite = expr === 'bite' ? biteAt(now) : 1;
-    if (!c.dirty && settled && bite === c.drawnBite && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
+    if (!c.dirty && settled && bite === c.drawnBite && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw, poseTol)) return;
+    if (this.spectator) {
+      if (!c.dirty && now - (c.drawnAt ?? 0) < SPECTATOR_REDRAW_MS) return;
+      if (this.redrawsLeft-- <= 0) return; // uno por frame: el resto espera al siguiente
+      if (c.drawnAt) dt = Math.min(0.2, (now - c.drawnAt) / 1000);
+    }
     // la cabeza gira suave
     st.headYaw = st.headYaw === undefined ? pose.headYaw : damp(st.headYaw, pose.headYaw, HEAD_RATE, dt);
     st.down = st.down === undefined ? pose.down : damp(st.down, pose.down, HEAD_RATE, dt);
@@ -1022,6 +1063,7 @@ export class TableScene {
     c.drawnExpr = expr;
     c.drawnTalk = talking;
     c.drawnBody = pose.bodyYaw;
+    c.drawnAt = now;
     c.dirty = false;
   }
 
@@ -1150,6 +1192,7 @@ export class TableScene {
       down = null;
       this.dragging = null;
     });
+    el.addEventListener('pointerleave', () => (this.hoverTable = null));
     el.addEventListener('dblclick', (e) => {
       this.setPointer(e);
       const card = this.pickHand();
@@ -1207,7 +1250,7 @@ export class TableScene {
     const card = this.pickHand();
     this.hover = card;
     this.renderer.domElement.style.cursor = card ? 'grab' : 'default';
-    this.showCardTip(card ? null : this.pickTable());
+    this.hoverTable = card ? null : this.pickTable();
   }
 
   // Carta de la mesa bajo el puntero (la más cercana a la cámara, o sea la de arriba).
@@ -1220,9 +1263,9 @@ export class TableScene {
     return o || null;
   }
 
-  // La primera vez que pasás el mouse (o tocás) una carta, su cartelito se va para siempre.
+  // En el celular no hay mouse: tocar una carta muestra su cartelito un rato.
   showCardTip(card) {
-    if (card) card.userData.labelGone = true;
+    if (card) card.userData.labelUntil = performance.now() + TIMING.cardLabel;
   }
 
   // Cartelitos de las cartas de la mesa: quedan sobre la parte de la carta que no tapa la siguiente.
@@ -1231,7 +1274,7 @@ export class TableScene {
       this.pendingLabels = false;
       this.container.appendChild(this.cardLabels);
     }
-    const r = this.renderer.domElement.getBoundingClientRect();
+    const now = performance.now();
     const p = new THREE.Vector3();
     for (const [key, el] of this.cardLabelEls) {
       if (this.tableCards.has(key)) continue;
@@ -1259,9 +1302,9 @@ export class TableScene {
       const text = name[0].toUpperCase() + name.slice(1) + (burned ? ' · quemada' : '');
       if (el.textContent !== text) el.textContent = text;
       p.copy(card.position).addScaledVector(this.seatDir(seat), CARD_H * TABLE_CARD_SCALE * 0.28).project(this.camera);
-      const visible = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1 && !card.userData.labelGone;
+      const visible = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1 && (now < (card.userData.labelUntil || 0) || this.hoverTable === card);
       el.style.display = visible ? '' : 'none';
-      if (visible) el.style.transform = `translate(calc(${((p.x + 1) / 2) * r.width}px - 50%), calc(${((1 - p.y) / 2) * r.height}px - 50%))`;
+      if (visible) el.style.transform = `translate(calc(${((p.x + 1) / 2) * this.viewW}px - 50%), calc(${((1 - p.y) / 2) * this.viewH}px - 50%))`;
     }
   }
 
@@ -1422,6 +1465,7 @@ export class TableScene {
   // ------------------------------------------------------------ cartas en la mesa
   // table: por asiento, lista de { c, faceDown, under, burned } (ver engine.viewFor).
   syncTable(table, { animate = true } = {}) {
+    this.shadowDirty = true;
     const seen = new Set();
     table.forEach((list, seat) => {
       const poses = this.tablePoses(seat, list);
@@ -1432,7 +1476,8 @@ export class TableScene {
         const face = p.c || (p.faceDown ? 'back' : 'blank');
         const pose = poses[idx];
         if (!card) {
-          card = makeCard(face, true);
+          card = makeCard(face, true, this.seatDecks[seat] || null);
+          card.userData.labelUntil = animate ? performance.now() + THROW_MS + TIMING.cardLabel : 0;
           card.scale.setScalar(TABLE_CARD_SCALE);
           card.userData.faceDown = p.faceDown;
           this.scene.add(card);
@@ -1462,6 +1507,7 @@ export class TableScene {
           if (card.userData.faceDown && !p.faceDown) {
             // se dio vuelta (mostró los tantos): queda boca arriba
             card.userData.faceDown = false;
+            card.userData.labelUntil = performance.now() + 500 + TIMING.cardLabel;
             const q0 = card.quaternion.clone();
             const q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pose.rot));
             const y0 = card.position.y;
@@ -1545,6 +1591,7 @@ export class TableScene {
   setDealer(seat) {
     if (!this.deck || seat == null || this.dealingAnim) return;
     const { pos, rot } = this.deckSpot(seat);
+    this.shadowDirty = true;
     this.deck.position.copy(pos);
     this.deck.rotation.y = rot;
     this.deck.visible = true;
@@ -1667,14 +1714,15 @@ export class TableScene {
     p.y = 1.66; // un poco arriba de la cabeza
     p.project(this.camera);
     const behind = p.z > 1;
-    const r = this.renderer.domElement.getBoundingClientRect();
-    return { x: ((p.x + 1) / 2) * r.width, y: ((1 - p.y) / 2) * r.height, behind, visible: !behind && Math.abs(p.x) < 1.15 && Math.abs(p.y) < 1.2 };
+    return { x: ((p.x + 1) / 2) * this.viewW, y: ((1 - p.y) / 2) * this.viewH, behind, visible: !behind && Math.abs(p.x) < 1.15 && Math.abs(p.y) < 1.2 };
   }
 
   resize() {
     const w = this.container.clientWidth || window.innerWidth;
     const h = this.container.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h);
+    this.viewW = w;
+    this.viewH = h;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -1723,6 +1771,7 @@ export class TableScene {
     }
     this.handGroup.visible = this.camera.fov > baseFov * 0.7;
     this.layoutHand(dt);
+    this.redrawsLeft = 1;
     for (const c of this.chars.values()) {
       // billboard: el recorte siempre mira a la cámara (solo gira en Y)
       c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
@@ -1734,6 +1783,10 @@ export class TableScene {
     if (target !== this.lookTarget) {
       this.lookTarget = target;
       this.onLook?.(target);
+    }
+    if (this.spectator && (this.shadowDirty || running.length)) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowDirty = false;
     }
     this.onFrame?.();
     this.renderer.render(this.scene, this.camera);

@@ -2,7 +2,7 @@
 import { ROUTES, MODES, modeLabel } from './config.js';
 import { $, esc, api } from './dom.js';
 import { rowHtml } from './history.js';
-import { isVoiceOn, toggleVoice, voiceVolume, setVoiceVolume, isSfxOn, toggleSfx } from './audio.js';
+import { isVoiceOn, toggleVoice, voiceVolume, setVoiceVolume, isSfxOn, toggleSfx, myVoice, setMyVoice } from './audio.js';
 
 let rows = [];
 let chartMode = Object.keys(MODES)[0];
@@ -53,6 +53,7 @@ export function loadSettings() {
   $('#set-sfx').checked = isSfxOn();
   $('#set-volume').value = Math.round(voiceVolume() * 100);
   $('#set-volume').disabled = !isVoiceOn();
+  $('#set-gender').value = myVoice();
 }
 
 export function initProfile() {
@@ -70,5 +71,6 @@ export function initProfile() {
   $('#set-sfx').addEventListener('change', (e) => {
     if (e.target.checked !== isSfxOn()) toggleSfx();
   });
+  $('#set-gender').addEventListener('change', (e) => setMyVoice(e.target.value));
   $('#set-volume').addEventListener('input', (e) => setVoiceVolume(Number(e.target.value) / 100));
 }

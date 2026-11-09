@@ -29,6 +29,7 @@ export const KEYS = {
   teamInvite: 'truco-team-invite', // sessionStorage: la mesa a la que te invitaron a su equipo
   activeRoom: 'truco-active-room', // la partida en la que estás sentado (para el cartel de reconectar)
   voiceVol: 'truco-voice-volume',
+  voiceGender: 'truco-voice-gender', // la voz con la que hablás en la mesa: m, f o vacío (según el asiento)
   sfx: 'truco-sfx',
   entered: 'truco-entered', // sessionStorage: la mesa cuyas reglas ya viste
   zoomTip: 'truco-zoom-tip',

@@ -69,10 +69,28 @@ function drawObject(target, colors) {
   });
 }
 
+// Dos cartas de la baraja, sin suavizar el pixel art.
+function drawDeck(target, deck) {
+  const ctx = target.getContext('2d');
+  const { width: w, height: h } = target;
+  ctx.clearRect(0, 0, w, h);
+  const ch = h;
+  const cw = (ch * 73) / 113;
+  ['1E', '1B'].forEach((id, i) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, w / 2 + (i - 1) * (cw + 3) + 1.5, 0, cw, ch);
+    };
+    img.src = ROUTES.deckCard(deck, id);
+  });
+}
+
 const baseLook = () => lookFor(savedName(), 0);
 
 // Vista previa de una cosa de la tienda (o de lo que tenés puesto si item es null).
 function preview(canvas, item) {
+  if (item.slot === 'baraja') return drawDeck(canvas, item.id);
   const L = COSMETIC_LOOK[item.id];
   if (CHARACTER_SLOTS.includes(item.slot)) drawBust(canvas, dressed(baseLook(), { ...state.equipped, [item.slot]: item.id }));
   else if (item.slot === 'pano') drawFelt(canvas, L.felt);
@@ -149,7 +167,7 @@ function renderShop() {
         const btn = owned
           ? `<span class="sh-own">${worn ? 'Puesto' : 'Ya lo tenés'}</span>`
           : `<button type="button" class="btn small ${state.coins >= it.price ? 'primary' : ''}" data-buy="${esc(it.id)}" ${state.coins >= it.price ? '' : 'disabled'}>${it.price} monedas</button>`;
-        return `<div class="sh-item ${owned ? 'owned' : ''}"><canvas width="${CHARACTER_SLOTS.includes(it.slot) ? 128 : 96}" height="${CHARACTER_SLOTS.includes(it.slot) ? 140 : 64}" data-preview="${esc(it.id)}"></canvas><b>${esc(it.name)}</b>${btn}</div>`;
+        return `<div class="sh-item ${owned ? 'owned' : ''}"><canvas width="${CHARACTER_SLOTS.includes(it.slot) ? 128 : 96}" height="${CHARACTER_SLOTS.includes(it.slot) ? 140 : 64}" data-preview="${esc(it.id)}"></canvas><b>${esc(it.name)}</b>${it.credit ? `<a class="sh-credit" href="${esc(it.credit.url)}" target="_blank" rel="noopener">${esc(it.credit.text)}</a>` : ''}${btn}</div>`;
       })
       .join('')}</div></section>`;
   }).join('');
@@ -164,6 +182,6 @@ function renderCustomize() {
   $('#cu-slots').innerHTML = COSMETIC_SLOTS.map((s) => {
     const mine = COSMETICS.filter((c) => c.slot === s.key && state.owned.includes(c.id));
     const chip = (id, label) => `<button type="button" data-slot="${s.key}" data-item="${esc(id || '')}" class="${(eq[s.key] || '') === (id || '') ? 'on' : ''}">${esc(label)}</button>`;
-    return `<div class="cu-slot"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="m-pills cu-pills">${chip(null, { pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre' }[s.key] || 'Nada')}${mine.map((it) => chip(it.id, it.name)).join('')}</div>${mine.length ? '' : '<small class="muted">Comprá algo en la tienda para elegirlo acá.</small>'}</div>`;
+    return `<div class="cu-slot"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="m-pills cu-pills">${chip(null, { pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre', baraja: 'La de siempre' }[s.key] || 'Nada')}${mine.map((it) => chip(it.id, it.name)).join('')}</div>${mine.length ? '' : '<small class="muted">Comprá algo en la tienda para elegirlo acá.</small>'}</div>`;
   }).join('');
 }
