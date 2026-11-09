@@ -86,7 +86,7 @@ export function initMenu(go, logout) {
   $('#logout').addEventListener('click', logout);
   initShop(paintMe);
   initSocial(paintMe, go);
-  initProfile();
+  initProfile(paintMe);
   initRejoin(go);
 }
 
@@ -127,7 +127,7 @@ function paintMe() {
   const p = currentMe()?.profile;
   if (!p) return;
   const games = Object.keys(MODES).reduce((n, m) => n + (p[`games_${m}`] || 0), 0);
-  for (const id of ['#me-av', '#profile-av']) $(id).innerHTML = avatarHtml(p);
+  for (const id of ['#me-av', '#profile-av', '#set-av']) $(id).innerHTML = avatarHtml(p);
   $('#me-name').textContent = p.username;
   $('#profile-name').textContent = p.username;
   $('#set-name').textContent = p.username;

@@ -5,15 +5,17 @@ import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
+import { store, KEYS } from './dom.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
 const TABLE_CARD_SCALE = 1.3; // en la mesa, un poco más grandes que en la vida real: se leen desde lejos
 const TABLE_Y = 0.74;
-// El espectador gira alrededor de la mesa y ve a todos: cada personaje se redibuja menos y con menos detalle.
-const SPECTATOR_PIXEL_RATIO = 1.25;
-const SPECTATOR_POSE_TOL = 0.1; // radianes que puede cambiar el ángulo antes de redibujar
-const SPECTATOR_REDRAW_MS = 66;
+const labelsOn = () => store.get(KEYS.cardLabels, '1') === '1';
+// Modo liviano (espectadores y "Gráficos livianos" en Ajustes): cada personaje se redibuja menos y con menos detalle.
+const LIGHT_PIXEL_RATIO = 1.25;
+const LIGHT_POSE_TOL = 0.1; // radianes que puede cambiar el ángulo antes de redibujar
+const LIGHT_REDRAW_MS = 66;
 const EYE_Y = 1.46; // a la altura de los ojos de los demás personajes (cabeza en y = 214 de 1200 en el canvas)
 const CHAR_H = 1.8; // canvas de 512x1200: del piso (abajo) a la cabeza (arriba)
 const CHAR_W = CHAR_H * (CW / CH);
@@ -539,7 +541,16 @@ export class TableScene {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.clock = new THREE.Clock();
+    this.applyQuality();
     this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  applyQuality() {
+    this.light = this.spectator || store.get(KEYS.lowGfx, '0') === '1';
+    const ratio = Math.min(window.devicePixelRatio, this.light ? LIGHT_PIXEL_RATIO : 2);
+    if (this.renderer.getPixelRatio() !== ratio) this.renderer.setPixelRatio(ratio);
+    this.renderer.shadowMap.autoUpdate = !this.light; // en liviano, la sombra solo cambia cuando se mueve algo
+    this.shadowDirty = true;
   }
 
   // Se frena el dibujo cuando la escena no está a la vista (hay una para jugar y otra para las revisiones).
@@ -549,6 +560,7 @@ export class TableScene {
 
   resume() {
     this.clock.getDelta();
+    this.applyQuality();
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
@@ -700,9 +712,7 @@ export class TableScene {
     this.n = n;
     this.me = me ?? 0;
     this.spectator = !!spectator;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.spectator ? SPECTATOR_PIXEL_RATIO : 2));
-    this.renderer.shadowMap.autoUpdate = !this.spectator; // al mirar, la sombra solo cambia cuando se mueve algo
-    this.shadowDirty = true;
+    this.applyQuality();
     this.R = n === 2 ? 0.78 : n === 4 ? 0.95 : 1.18;
     this.tableBuilt = true;
     const g = this.tableGroup;
@@ -1043,12 +1053,12 @@ export class TableScene {
     const st = c.state;
     st.bodyYaw = pose.bodyYaw;
     const near = (a, b, tol = 0.015) => Math.abs(a - b) < tol;
-    const poseTol = this.spectator ? SPECTATOR_POSE_TOL : 0.015;
+    const poseTol = this.light ? LIGHT_POSE_TOL : 0.015;
     const settled = near(st.headYaw ?? 99, pose.headYaw, poseTol) && near(st.down ?? 99, pose.down);
     const bite = expr === 'bite' ? biteAt(now) : 1;
     if (!c.dirty && settled && bite === c.drawnBite && expr === c.drawnExpr && talking === c.drawnTalk && near(c.drawnBody ?? 99, pose.bodyYaw, poseTol)) return;
-    if (this.spectator) {
-      if (!c.dirty && now - (c.drawnAt ?? 0) < SPECTATOR_REDRAW_MS) return;
+    if (this.light) {
+      if (!c.dirty && now - (c.drawnAt ?? 0) < LIGHT_REDRAW_MS) return;
       if (this.redrawsLeft-- <= 0) return; // uno por frame: el resto espera al siguiente
       if (c.drawnAt) dt = Math.min(0.2, (now - c.drawnAt) / 1000);
     }
@@ -1477,7 +1487,7 @@ export class TableScene {
         const pose = poses[idx];
         if (!card) {
           card = makeCard(face, true, this.seatDecks[seat] || null);
-          card.userData.labelUntil = animate ? performance.now() + THROW_MS + TIMING.cardLabel : 0;
+          card.userData.labelUntil = animate && labelsOn() ? performance.now() + THROW_MS + TIMING.cardLabel : 0;
           card.scale.setScalar(TABLE_CARD_SCALE);
           card.userData.faceDown = p.faceDown;
           this.scene.add(card);
@@ -1507,7 +1517,7 @@ export class TableScene {
           if (card.userData.faceDown && !p.faceDown) {
             // se dio vuelta (mostró los tantos): queda boca arriba
             card.userData.faceDown = false;
-            card.userData.labelUntil = performance.now() + 500 + TIMING.cardLabel;
+            card.userData.labelUntil = labelsOn() ? performance.now() + 500 + TIMING.cardLabel : 0;
             const q0 = card.quaternion.clone();
             const q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pose.rot));
             const y0 = card.position.y;
@@ -1784,7 +1794,7 @@ export class TableScene {
       this.lookTarget = target;
       this.onLook?.(target);
     }
-    if (this.spectator && (this.shadowDirty || running.length)) {
+    if (this.light && (this.shadowDirty || running.length)) {
       this.renderer.shadowMap.needsUpdate = true;
       this.shadowDirty = false;
     }

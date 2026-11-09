@@ -62,6 +62,14 @@ export async function chooseUsername(username, level) {
   return me;
 }
 
+/** Cambia el nombre (una vez cada 14 días: lo controla el servidor). */
+export async function changeUsername(username) {
+  const { profile } = await api(ROUTES.api.username, { username });
+  me.profile = profile;
+  store.set(KEYS.name, profile.username);
+  return me;
+}
+
 // Errores de Supabase Auth en castellano (los que puede ver alguien que se equivocó al escribir).
 const AUTH_ERRORS = {
   invalid_credentials: 'Mail o contraseña incorrectos',

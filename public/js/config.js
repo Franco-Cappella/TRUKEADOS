@@ -35,6 +35,7 @@ export const ROUTES = {
     me: '/api/me',
     matches: '/api/matches',
     avatar: '/api/me/avatar',
+    username: '/api/me/username',
     friends: '/api/friends',
     friendsRespond: '/api/friends/respond',
     friendsRemove: '/api/friends/remove',
@@ -124,10 +125,15 @@ export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 
 export const AUTH = {
   usernameRe: /^[\p{L}\p{N}_.]{3,20}$/u, // el nombre en la mesa y en el ranking: único, sin espacios
   usernameHint: 'Entre 3 y 20 letras o números (también _ y .), sin espacios',
+  usernameCooldownDays: 14,
+  usernameCooldown: 14 * 24 * 60 * 60_000, // cada cuánto se puede cambiar el nombre
   minPassword: 6,
   jwksTtl: 10 * 60_000, // cada cuánto el servidor vuelve a bajar las claves públicas de Supabase
   profileTtl: 60_000, // cuánto se guarda un perfil leído en memoria del Worker
 };
+/** Desde cuándo puede volver a cambiar el nombre (ms). 0 si nunca lo cambió. */
+export const usernameFreeAt = (changedAt) => (changedAt ? new Date(changedAt).getTime() + AUTH.usernameCooldown : 0);
+export const usernameFreeDay = (ms) => new Date(ms).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
 export const ELO_START = 1200;
 // Al registrarte elegís tu nivel y arrancás en ese ELO (en los tres modos).
 export const SKILL_LEVELS = [

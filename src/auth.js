@@ -1,7 +1,7 @@
 // Cuentas: verifica la sesión de Supabase Auth (el token que manda el navegador) y lee el perfil del jugador.
 // La base de datos es la de Supabase; el Worker la usa con la clave secreta (SUPABASE_SECRET_KEY), así que las
 // tablas no necesitan políticas de escritura para el navegador. Ver docs/CUENTAS.md.
-import { AUTH, COINS, levelElo } from '../public/js/config.js';
+import { AUTH, COINS, levelElo, usernameFreeAt, usernameFreeDay } from '../public/js/config.js';
 import { json } from './util.js';
 
 // ------------------------------------------------------------------ token (JWT de Supabase)
@@ -113,6 +113,31 @@ export async function createProfile(env, id, username, level) {
   const profile = (await res.json())[0];
   cache.set(id, { profile, at: Date.now() });
   return { profile };
+}
+
+/**
+ * Cambia el nombre, una vez cada AUTH.usernameCooldown. La fecha también se controla en la base (el filtro del
+ * PATCH): dos pedidos a la vez no pueden cambiarlo dos veces. { profile } o { error }.
+ */
+export async function renameProfile(env, id, profile, username) {
+  const name = String(username ?? '').trim();
+  if (!AUTH.usernameRe.test(name)) return { error: AUTH.usernameHint };
+  if (name === profile.username) return { error: 'Ya te llamás así' };
+  const now = Date.now();
+  const free = usernameFreeAt(profile.username_changed_at);
+  if (now < free) return { error: `Podés volver a cambiarlo el ${usernameFreeDay(free)}` };
+  const cutoff = new Date(now - AUTH.usernameCooldown).toISOString();
+  const res = await rest(env, `profiles?id=eq.${encodeURIComponent(id)}&or=(username_changed_at.is.null,username_changed_at.lte.%22${cutoff}%22)&select=${PROFILE_FIELDS}`, {
+    method: 'PATCH',
+    headers: { prefer: 'return=representation' },
+    body: JSON.stringify({ username: name, username_changed_at: new Date(now).toISOString() }),
+  });
+  if (res.status === 409) return { error: 'Ese nombre ya lo usa otra persona' };
+  if (!res.ok) throw dbError(res, 'No se pudo cambiar el nombre');
+  const updated = (await res.json())[0];
+  if (!updated) return { error: `Solo se puede cambiar una vez cada ${AUTH.usernameCooldownDays} días` };
+  cache.set(id, { profile: updated, at: now });
+  return { profile: updated };
 }
 
 /**

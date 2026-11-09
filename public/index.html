@@ -215,17 +215,44 @@
           <h2 class="st-title">Ajustes</h2>
           <section class="st-sec">
             <h3>Cuenta</h3>
-            <div class="st-row"><span>Nombre de usuario</span><b id="set-name"></b></div>
-            <div class="st-row"><span>Mail</span><b id="profile-email"></b></div>
-            <div class="st-row"><span>Foto de perfil</span><div class="st-actions"><label class="btn small" for="av-file">Cambiar</label><button class="btn small ghost" type="button" id="av-clear">Sacar</button></div></div>
-            <div class="st-row"><span>Sesión</span><button class="btn small ghost" type="button" id="logout">Cerrar sesión</button></div>
+            <div class="st-row">
+              <span class="st-who"><span class="st-av" id="set-av"></span><span class="st-label"><b>Foto de perfil</b><small>Una imagen o un GIF</small></span></span>
+              <div class="st-actions"><label class="btn small" for="av-file">Cambiar</label><button class="btn small ghost" type="button" id="av-clear">Sacar</button></div>
+            </div>
+            <p class="a-msg" id="set-av-msg" role="status"></p>
+            <div class="st-row">
+              <span class="st-label"><b>Nombre de usuario</b><small id="set-name-hint"></small></span>
+              <div class="st-actions st-name"><b id="set-name"></b><button class="btn small" type="button" id="set-name-edit">Cambiar</button></div>
+            </div>
+            <form class="st-rename hidden" id="set-name-form" novalidate>
+              <div class="st-rename-line">
+                <input class="st-input" id="set-name-input" maxlength="20" autocomplete="off" spellcheck="false" aria-label="Nuevo nombre de usuario">
+                <button class="btn small primary" type="submit" id="set-name-save">Guardar</button>
+                <button class="btn small ghost" type="button" id="set-name-cancel">Cancelar</button>
+              </div>
+              <small id="set-name-warn"></small>
+            </form>
+            <p class="a-msg" id="set-name-msg" role="status"></p>
+            <div class="st-row"><span class="st-label"><b>Mail</b></span><b id="profile-email"></b></div>
           </section>
           <section class="st-sec">
             <h3>Sonido</h3>
-            <label class="st-row"><span>Voces de la mesa</span><input class="st-switch" type="checkbox" role="switch" id="set-voice"></label>
-            <label class="st-row"><span>Volumen de las voces</span><input class="st-range" type="range" min="0" max="100" step="5" id="set-volume"></label>
-            <label class="st-row"><span>Tu voz en la mesa</span><select class="st-select" id="set-gender"><option value="">Según el asiento</option><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
-            <label class="st-row"><span>Efectos (cartas y turno)</span><input class="st-switch" type="checkbox" role="switch" id="set-sfx"></label>
+            <label class="st-row"><span class="st-label"><b>Voces de la mesa</b><small>Los cantos y lo que dice cada jugador</small></span><input class="st-switch" type="checkbox" role="switch" id="set-voice"></label>
+            <label class="st-row"><span class="st-label"><b>Volumen de las voces</b></span><span class="st-volume"><input class="st-range" type="range" min="0" max="100" step="5" id="set-volume"><output id="set-volume-val"></output></span></label>
+            <div class="st-row">
+              <label class="st-label" for="set-gender"><b>Tu voz en la mesa</b><small>La escuchan todos, desde la próxima mesa</small></label>
+              <div class="st-actions"><select class="st-select" id="set-gender"><option value="">Según el asiento</option><option value="m">Hombre</option><option value="f">Mujer</option></select><button class="btn small ghost" type="button" id="set-voice-test">Probar</button></div>
+            </div>
+            <label class="st-row"><span class="st-label"><b>Efectos</b><small>El ruido de las cartas y el aviso de tu turno</small></span><input class="st-switch" type="checkbox" role="switch" id="set-sfx"></label>
+          </section>
+          <section class="st-sec">
+            <h3>Mesa</h3>
+            <label class="st-row"><span class="st-label"><b>Nombre de la carta al tirarla</b><small>Un cartelito unos segundos. Pasando el mouse se ve siempre</small></span><input class="st-switch" type="checkbox" role="switch" id="set-labels"></label>
+            <label class="st-row"><span class="st-label"><b>Gráficos livianos</b><small>Menos resolución y sombras fijas, si la mesa se traba</small></span><input class="st-switch" type="checkbox" role="switch" id="set-lowgfx"></label>
+          </section>
+          <section class="st-sec">
+            <h3>Sesión</h3>
+            <div class="st-row"><span class="st-label"><b>Cerrar sesión</b><small>Vas a tener que volver a entrar para jugar</small></span><button class="btn small danger" type="button" id="logout">Cerrar sesión</button></div>
           </section>
         </div>
 

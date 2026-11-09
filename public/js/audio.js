@@ -79,6 +79,11 @@ export function setMyVoice(v) {
   myGender = v === 'm' || v === 'f' ? v : '';
   store.set(KEYS.voiceGender, myGender);
 }
+// Para probarla en Ajustes.
+export function previewVoice() {
+  hush(true);
+  say('Truco', null, { gender: myGender || 'm' });
+}
 let seatVoices = [];
 export function setSeatVoices(seats) {
   seatVoices = seats.map((s) => s?.voice || null);
@@ -172,12 +177,12 @@ function speechItem(text, gender) {
 }
 
 // chat: es charla (se descarta si pasa algo en la mesa antes de decirla); si no, es un canto.
-export function say(text, seat = null, { chat = false } = {}) {
+export function say(text, seat = null, { chat = false, gender = null } = {}) {
   if (!voiceOn) return;
   try {
     const key = voiceKey(text);
-    const gender = genderOf(seat);
-    const item = gender === 'm' && clips?.has(key) ? clipItem(key, VOICES[0]) : window.speechSynthesis ? speechItem(text, gender) : null;
+    const g = gender || genderOf(seat);
+    const item = g === 'm' && clips?.has(key) ? clipItem(key, VOICES[0]) : window.speechSynthesis ? speechItem(text, g) : null;
     if (!item) return;
     if (!chat) hush(); // un canto corta la charla
     queue.push(Object.assign(item, { chat, at: Date.now() }));

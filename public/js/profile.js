@@ -1,8 +1,9 @@
-// Perfil (evolución del ELO y últimas partidas) y Ajustes (cuenta y sonido).
-import { ROUTES, MODES, modeLabel } from './config.js';
-import { $, esc, api } from './dom.js';
+// Perfil (evolución del ELO y últimas partidas) y Ajustes (cuenta, sonido y mesa).
+import { ROUTES, MODES, modeLabel, AUTH, usernameFreeAt, usernameFreeDay } from './config.js';
+import { $, esc, api, store, KEYS } from './dom.js';
+import { currentMe, changeUsername } from './auth.js';
 import { rowHtml } from './history.js';
-import { isVoiceOn, toggleVoice, voiceVolume, setVoiceVolume, isSfxOn, toggleSfx, myVoice, setMyVoice } from './audio.js';
+import { isVoiceOn, toggleVoice, voiceVolume, setVoiceVolume, isSfxOn, toggleSfx, myVoice, setMyVoice, previewVoice } from './audio.js';
 
 let rows = [];
 let chartMode = Object.keys(MODES)[0];
@@ -48,15 +49,37 @@ export async function loadProfile() {
   paintChart();
 }
 
+function paintName() {
+  const free = usernameFreeAt(currentMe()?.profile?.username_changed_at);
+  const locked = Date.now() < free;
+  $('#set-name-edit').disabled = locked;
+  $('#set-name-hint').textContent = locked ? `Podés volver a cambiarlo el ${usernameFreeDay(free)}` : `Podés cambiarlo una vez cada ${AUTH.usernameCooldownDays} días`;
+}
+
+function paintVolume() {
+  $('#set-volume-val').textContent = `${$('#set-volume').value}%`;
+}
+
+function paintVoice() {
+  const on = isVoiceOn();
+  for (const id of ['#set-volume', '#set-gender', '#set-voice-test']) $(id).disabled = !on;
+}
+
 export function loadSettings() {
   $('#set-voice').checked = isVoiceOn();
   $('#set-sfx').checked = isSfxOn();
   $('#set-volume').value = Math.round(voiceVolume() * 100);
-  $('#set-volume').disabled = !isVoiceOn();
   $('#set-gender').value = myVoice();
+  $('#set-labels').checked = store.get(KEYS.cardLabels, '1') === '1';
+  $('#set-lowgfx').checked = store.get(KEYS.lowGfx, '0') === '1';
+  $('#set-name-form').classList.add('hidden');
+  $('#set-name-msg').textContent = '';
+  paintVolume();
+  paintVoice();
+  paintName();
 }
 
-export function initProfile() {
+export function initProfile(repaint) {
   $('#pf-modes').addEventListener('click', (e) => {
     const b = e.target.closest('[data-chart]');
     if (!b) return;
@@ -65,12 +88,52 @@ export function initProfile() {
   });
   $('#set-voice').addEventListener('change', (e) => {
     if (e.target.checked !== isVoiceOn()) toggleVoice();
-    $('#set-volume').disabled = !e.target.checked;
+    paintVoice();
     dispatchEvent(new Event('trukeados:voice'));
   });
   $('#set-sfx').addEventListener('change', (e) => {
     if (e.target.checked !== isSfxOn()) toggleSfx();
   });
   $('#set-gender').addEventListener('change', (e) => setMyVoice(e.target.value));
-  $('#set-volume').addEventListener('input', (e) => setVoiceVolume(Number(e.target.value) / 100));
+  $('#set-volume').addEventListener('input', (e) => {
+    setVoiceVolume(Number(e.target.value) / 100);
+    paintVolume();
+  });
+  $('#set-voice-test').addEventListener('click', previewVoice);
+  $('#set-labels').addEventListener('change', (e) => store.set(KEYS.cardLabels, e.target.checked ? '1' : '0'));
+  $('#set-lowgfx').addEventListener('change', (e) => store.set(KEYS.lowGfx, e.target.checked ? '1' : '0'));
+
+  const nameMsg = (t, bad = true) => {
+    $('#set-name-msg').textContent = t;
+    $('#set-name-msg').classList.toggle('bad', bad);
+  };
+  const closeRename = () => $('#set-name-form').classList.add('hidden');
+  $('#set-name-warn').textContent = `${AUTH.usernameHint}. Después no lo vas a poder cambiar por ${AUTH.usernameCooldownDays} días.`;
+  $('#set-name-edit').addEventListener('click', () => {
+    nameMsg('');
+    $('#set-name-input').value = currentMe()?.profile?.username || '';
+    $('#set-name-form').classList.remove('hidden');
+    $('#set-name-input').select();
+  });
+  $('#set-name-cancel').addEventListener('click', () => {
+    nameMsg('');
+    closeRename();
+  });
+  $('#set-name-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('#set-name-input').value.trim();
+    if (!AUTH.usernameRe.test(name)) return nameMsg(AUTH.usernameHint);
+    $('#set-name-save').disabled = true;
+    try {
+      await changeUsername(name);
+      closeRename();
+      repaint();
+      paintName();
+      nameMsg(`Listo, ahora sos ${name}`, false);
+    } catch (err) {
+      nameMsg(err.message);
+    } finally {
+      $('#set-name-save').disabled = false;
+    }
+  });
 }

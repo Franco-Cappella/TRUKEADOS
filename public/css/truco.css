@@ -882,14 +882,29 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .st-sec h3 { padding-bottom: 8px; border-bottom: 1px solid var(--line-2); }
 .st-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .st-row > b { font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-align: right; }
+.st-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-label b { font-weight: 500; }
+.st-label small, .st-rename small { color: var(--text-dim); font-size: 13px; line-height: 1.3; }
+.st-who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.st-av .w-av { width: 44px; height: 44px; border-radius: 3px; background: var(--surface-2); color: var(--accent); font-size: 21px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.st-name { align-items: center; gap: 12px; min-width: 0; }
+.st-name b { font-weight: 600; overflow-wrap: anywhere; }
+.st-rename { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.st-rename-line { display: flex; gap: 6px; flex-wrap: wrap; }
+.st-input { flex: 1 1 180px; min-width: 0; min-height: 36px; padding: 6px 10px; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; }
+.st-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.st-sec > .a-msg { padding: 8px 0; }
+.st-volume { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; min-width: 0; }
+.st-volume output { width: 3.2em; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .st-actions { display: flex; gap: 6px; }
 .st-actions label { cursor: pointer; }
 .st-switch { appearance: none; width: 44px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-2); position: relative; cursor: pointer; transition: background 0.12s cubic-bezier(0.16, 1, 0.3, 1); }
 .st-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1); }
 .st-switch:checked { background: var(--accent); }
 .st-switch:checked::after { transform: translateX(20px); background: var(--accent-ink); }
+.st-switch:disabled, .st-select:disabled, .st-range:disabled { opacity: 0.45; }
 .st-switch:focus-visible, .st-range:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-range { width: min(220px, 50%); accent-color: var(--yellow); }
+.st-range { width: min(220px, 100%); accent-color: var(--yellow); }
 
 /* ---- crear mesa ---- */
 .dl { width: min(460px, calc(100vw - 24px)); padding: 22px; border: 0; border-radius: 3px; background: var(--surface); color: var(--text); }
@@ -997,7 +1012,7 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .wh-pager button { width: 26px; height: 24px; border: 0; border-radius: 3px; background: var(--surface-2); color: var(--text); cursor: pointer; font-size: 16px; line-height: 1; }
 .wh-pager button:hover { background: var(--accent); color: var(--accent-ink); }
 
-.st-select { max-width: 50%; padding: 6px 8px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 6px; }
+.st-select { min-height: 36px; max-width: 170px; padding: 6px 8px; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 6px; }
 .st-select option { color: #111; }
 .st-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sh-credit { font-size: 11px; line-height: 1.2; text-align: center; color: inherit; opacity: .75; }

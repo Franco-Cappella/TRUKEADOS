@@ -5,7 +5,7 @@
 import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
 import { newRoomCode, json } from './util.js';
-import { requireUser, createProfile } from './auth.js';
+import { requireUser, createProfile, renameProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
 import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
@@ -80,6 +80,14 @@ async function handle(request, env) {
     const body = await request.json().catch(() => ({}));
     const r = await createProfile(env, auth.user.id, body.username, body.level);
     return r.error ? json({ error: r.error }, 400) : json({ user: auth.user, profile: r.profile });
+  }
+
+  if (path === '/api/me/username' && method === 'POST') {
+    const auth = await requireUser(env, request, { fresh: true });
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await renameProfile(env, auth.user.id, auth.profile, body.username);
+    return r.error ? json({ error: r.error }, 400) : json(r);
   }
 
   if (path === '/api/me/avatar' && method === 'POST') {

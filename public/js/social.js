@@ -138,8 +138,10 @@ export function initSocial(repaint, go) {
   });
 
   const msg = (t, bad = true) => {
-    $('#av-msg').textContent = t;
-    $('#av-msg').classList.toggle('bad', bad);
+    for (const id of ['#av-msg', '#set-av-msg']) {
+      $(id).textContent = t;
+      $(id).classList.toggle('bad', bad);
+    }
   };
   const save = async (avatar) => {
     await api(ROUTES.api.avatar, { avatar });

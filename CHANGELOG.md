@@ -1,5 +1,9 @@
 # Cambios
 
+## 1.14.5 — ajustes y nombre de usuario
+- El nombre de usuario se puede cambiar una vez cada 14 días, desde Ajustes.
+- Ajustes reordenado: cerrar sesión va al final, se puede probar la voz, y hay dos opciones nuevas (cartelito de las cartas y gráficos livianos).
+
 ## 1.14.4 — baraja pixel art, voz a elección y espectadores
 - En la tienda, la baraja pixel art de jcanabal (300 monedas): las cartas que tira quien la tiene se ven así para todos.
 - En Configuración, cada jugador elige si su voz es de hombre o de mujer.
