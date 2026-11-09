@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.12.1 — arreglos de mesa y voces
+- Un bot que miente en el envido ya no se delata solo tirando su última carta: se va al mazo y sale sin mostrar.
+- Lo que te toca contestar a vos no lo contesta nadie mientras estés conectado (antes, a los 3,5 s el servidor decidía en tu asiento). El compañero bot, cuando puede contestar él, espera 15 s.
+- "A ver esos tantos" aparece recién cuando el que ganó el envido se va sin mostrar o se queda sin tiempo.
+- En equipo, el bot que no es pie le avisa al pie: "Cantámelo que tengo" (con tantos, o faroleando).
+- "¿Pongo o voy?" en todas las frases. Después de un truco, el botón pasa a "¿Canto el re?" y "¿Canto el cuatro?".
+- Voces: se elige la mejor voz en español del dispositivo (primero argentina y neuronal), una distinta por asiento, y ya se escuchan tus propios mensajes.
+
 ## 1.12.0 — ELO, revisión de partidas y menú nuevo
 - **Nivel al registrarte**: elegís entre cinco niveles y arrancás en ese ELO (400 a 2000), con 200 monedas de regalo.
 - **ELO como en chess.com**: las primeras partidas mueven mucho (hasta 160 de K) y, cuando el sistema encontró tu nivel, poquito. Hay premio en monedas por cada escalón de 100 que alcanzás por primera vez.

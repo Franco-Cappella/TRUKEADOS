@@ -245,7 +245,8 @@ export function actionsFor(g, seat) {
   if (h.phase === 'show') {
     out.mostrar = seat === h.show.seat && !h.show.folded;
     out.nomostrar = out.mostrar;
-    out.reclamar = team(seat) !== team(h.show.seat);
+    // se reclama recién cuando se fue sin mostrar: antes todavía puede mostrar
+    out.reclamar = team(seat) !== team(h.show.seat) && !!h.show.folded;
     return out;
   }
   if (h.phase !== 'play' || !active(h, seat)) return out;
@@ -636,6 +637,7 @@ function actShow(g, seat, a) {
   }
   if (a?.t === 'reclamar') {
     if (team(seat) === team(s.seat)) return { error: 'No te podés reclamar a vos mismo' };
+    if (!s.folded) return { error: 'Todavía puede mostrar' };
     event(g, { type: 'reclamo', seat, target: s.seat });
     finishHand(g, 'no-mostro');
     return { ok: true };

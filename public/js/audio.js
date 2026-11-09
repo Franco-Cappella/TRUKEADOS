@@ -58,9 +58,30 @@ export function toggleVoice() {
   return voiceOn;
 }
 
-// Voz de cada asiento: el tono cambia para que cada uno suene distinto (y, si hay varias voces en
-// español, cada asiento usa otra).
-const PITCHES = [1, 0.8, 1.25, 0.9, 1.15, 0.7];
+// Voz de cada asiento: la mejor voz en español que tenga el dispositivo, una distinta por asiento. Si son pocas,
+// un retoque chico de tono (los tonos muy corridos son justamente lo que suena a robot).
+const PITCHES = [1, 0.95, 1.06, 0.92, 1.1, 0.98];
+const LANG_SCORE = { 'es-AR': 100, 'es-UY': 90, 'es-CL': 70, 'es-419': 60, 'es-MX': 55, 'es-US': 50, 'es-ES': 30 };
+
+// Puntaje de una voz: primero la región y después la calidad. Las neuronales (Edge y las de Chrome) suenan como una persona.
+function voiceScore(v) {
+  let s = LANG_SCORE[v.lang] ?? 20;
+  if (/natural|neural|online|premium|enhanced/i.test(v.name)) s += 200;
+  else if (/google/i.test(v.name)) s += 40;
+  return s;
+}
+
+let ranked = null;
+function bestVoices() {
+  if (ranked?.length || !window.speechSynthesis) return ranked || [];
+  ranked = speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('es')).sort((a, b) => voiceScore(b) - voiceScore(a));
+  // si hay voces buenas, se usan solo esas
+  const good = ranked.filter((v) => voiceScore(v) >= 200);
+  if (good.length) ranked = good;
+  return ranked;
+}
+if (typeof window !== 'undefined' && window.speechSynthesis) speechSynthesis.addEventListener?.('voiceschanged', () => (ranked = null));
+
 const CHAT_STALE_MS = 4000; // una frase de charla que no llegó a decirse en este tiempo ya no se dice
 
 // Cola propia: el navegador solo tiene la frase que está diciendo, así se puede descartar la charla vieja
@@ -103,14 +124,12 @@ export function say(text, seat = null, { chat = false } = {}) {
   if (!voiceOn || !window.speechSynthesis) return;
   try {
     const u = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices();
-    const es = voices.filter((v) => v.lang?.startsWith('es'));
-    const ar = es.filter((v) => v.lang === 'es-AR');
-    const pool = ar.length ? ar : es;
+    const pool = bestVoices();
     u.voice = (seat != null && pool.length ? pool[seat % pool.length] : pool[0]) || null;
     u.lang = u.voice?.lang || 'es-AR';
-    u.rate = 1.05;
-    if (seat != null) u.pitch = PITCHES[seat % PITCHES.length];
+    u.rate = 1;
+    // con una voz por cada uno no hace falta tocar el tono
+    if (seat != null && pool.length <= seat) u.pitch = PITCHES[seat % PITCHES.length];
     if (!chat) hush(); // un canto corta la charla
     queue.push({ u, chat, at: Date.now() });
     pump();

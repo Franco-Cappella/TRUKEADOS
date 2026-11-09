@@ -148,7 +148,8 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   un rival si justo lo miraban. Una seña de carta hace que casi siempre imaginen esa carta en esa mano
   (`sampleWorld`); una de tantos o "ciego" pesa los repartos (`senaWeight`). La del rival se cree un poco menos.
 - **Compañero bot**: si un canto (truco, envido, flor) lo puede contestar tu equipo y hay un bot en él, el bot
-  contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes; si el canto lo tenés que contestar vos (el envido lo contesta el pie), decide por vos (`partnerAt` en truco-room.js).
+  contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes. Si el canto lo tenés que contestar vos (el envido lo contesta el pie), nadie contesta por vos mientras estés conectado (`partnerAt` en truco-room.js).
+- **"Cantámelo que tengo"** (`botCallsTantos`, `tellTantos`): en equipo, el bot que no es pie le avisa al pie que tiene tantos, sin que le pregunten; a veces lo dice faroleando. El pie bot lo toma como una seña.
 - **Charla** (`talk.js`): los bots tiran frases en el chat al cantar y contestar (`talkFor`), reaccionan a lo que
   hacen los demás (`talkEvent`: cantos, cartas grandes, rondas, mazo, envido, fin de partida), apuran al que tarda
   (`TIMING.botIdle`) y a veces se contestan entre ellos. Las frases dependen de

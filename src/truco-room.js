@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie } from '../public/js/engine.js';
-import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
+import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
@@ -359,10 +359,16 @@ export class TrucoRoom extends DurableObject {
         if (changed && a.t === 'nomostrar') this.onFold(sh.seat);
       }
       // si el bot no pudo mostrar o reclamar, igual se cierra por tiempo (si no, la mesa queda trabada en el show)
-      if (!changed && r.botClaimAt && now >= r.botClaimAt) changed = this.botAct(r.botClaimer, { t: 'reclamar' });
+      if (!changed && sh.folded && r.botClaimAt && now >= r.botClaimAt) changed = this.botAct(r.botClaimer, { t: 'reclamar' });
       if (!changed && now - since >= TIMING.showWindow) {
-        changed = closeShow(g);
-        if (changed) this.rec.step('close');
+        if (sh.folded) {
+          changed = closeShow(g);
+          if (changed) this.rec.step('close');
+        } else if (this.botAct(sh.seat, { t: 'nomostrar' })) {
+          // se le acabó el tiempo sin mostrar: es como irse sin mostrar, y los rivales pueden reclamar
+          changed = true;
+          this.onFold(sh.seat);
+        }
       }
       if (changed) this.onGameChange();
     } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0) && now >= (r.botReadyAt || 0)) {
@@ -380,13 +386,19 @@ export class TrucoRoom extends DurableObject {
       }
       // un bot que tiene que decidir a veces primero le consulta al compañero ("¿tienen tantos?")
       const human = (s) => s != null && !r.seats[s]?.bot && !this.isAway(s, now);
-      const askKind = !mustAnswer && actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
+      // el que no es pie le avisa al pie que tiene tantos (o farolea), sin que le pregunten
+      const tells = !mustAnswer && actor != null && r.seats[actor]?.bot && before.kind === 'play' && this.mayTellTantos(actor) && botCallsTantos(g, actor, rng);
+      if (tells) {
+        this.tellTantos(actor);
+        changed = true;
+      }
+      const askKind = !tells && !mustAnswer && actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
         botAsks(g, actor, rng, this.partnersOf(actor).some(human), human(this.pieOf(team(actor))));
       const asked = !!askKind && this.canAsk(actor, askKind);
       if (asked) {
         this.startAsk(actor, askKind);
         changed = true;
-      } else if (actor != null && !mustAnswer) {
+      } else if (actor != null && !mustAnswer && !tells) {
         try {
           a = botAction(g, actor, rng, ctx);
         } catch (e) {
@@ -395,7 +407,7 @@ export class TrucoRoom extends DurableObject {
       }
       let ok = !!a && this.botAct(actor, a);
       // si el bot falló o eligió algo que no vale, juega lo primero que entre (nunca se traba la mesa)
-      if (!ok && !asked && !mustAnswer && actor != null && waitingFor(g).seats.includes(actor)) {
+      if (!ok && !asked && !mustAnswer && !tells && actor != null && waitingFor(g).seats.includes(actor)) {
         for (const f of fallbackActions(g, actor)) {
           if (this.botAct(actor, f)) {
             console.warn('bot fallback', JSON.stringify(a), '->', JSON.stringify(f));
@@ -595,6 +607,30 @@ export class TrucoRoom extends DurableObject {
     }
   }
 
+  // "Cantámelo que tengo": una vez por mano y por equipo, en primera, si el pie todavía puede cantar el envido.
+  mayTellTantos(seat) {
+    const r = this.room;
+    const g = r.game;
+    const h = g.h;
+    const T = team(seat);
+    const pie = this.pieOf(T);
+    if (g.n <= 2 || h.r !== 0 || h.envido.state !== 'none' || h.truco.level > 1 || pie == null || pie === seat || !envidoVoices(g, T).includes(pie)) return false;
+    if (h.rounds[0].plays.some((p) => p.seat === seat || p.seat === pie)) return false;
+    r.toldTantos ||= {};
+    const key = g.handNo + ':' + T;
+    if (r.toldTantos[key]) return false;
+    r.toldTantos[key] = true; // se decide una sola vez
+    return true;
+  }
+
+  tellTantos(seat) {
+    const r = this.room;
+    const pie = this.pieOf(team(seat));
+    this.teamSay(seat, talkTellTantos(rng));
+    // el pie bot lo toma como una seña de que tiene tantos
+    if (r.seats[pie]?.bot) ((r.senaSeen ||= {})[pie] ||= []).push({ seat, sena: 'envido_alto' });
+  }
+
   // ---- consulta al compañero
   // r.asks[equipo] = { seat, kind, hand, at, answers: { asiento: sí/no }, botDue }: la consulta abierta del equipo.
   // Cada equipo puede consultar una vez por mano cada cosa (r.asked). Todos la escuchan (es en voz alta).
@@ -661,7 +697,7 @@ export class TrucoRoom extends DurableObject {
     const bots = this.answerers(q).filter((s) => r.seats[s]?.bot);
     if (bots.length) q.botDue = now + TIMING.askBotAnswer + Math.floor(rng() * 900);
     r.asks[T] = q;
-    this.teamSay(seat, talkAsk(kind, rng));
+    this.teamSay(seat, talkAsk(kind, rng, g.h.truco.level));
     // si pregunta un bot, espera la respuesta antes de jugar (como mucho TIMING.askWait)
     if (r.seats[seat]?.bot) r.botReadyAt = Math.max(r.botReadyAt || 0, now + TIMING.askWait);
   }
@@ -928,11 +964,11 @@ export class TrucoRoom extends DurableObject {
     const now = Date.now();
     const bot = w.seats.find((s) => r.seats[s].bot);
     if (!w.seats.some((s) => !this.isAway(s, now))) return bot ?? w.seats[0];
-    // hay un humano conectado que puede contestar: si es un canto y tiene un compañero bot, el bot contesta
-    // por los dos después de un ratito (si el humano no lo hizo antes). Si el canto lo tiene que contestar el
-    // humano (en equipo el envido lo contesta el pie), el compañero bot decide por él.
+    // hay un humano conectado que puede contestar: si el canto también lo puede contestar un compañero bot, el bot
+    // contesta por los dos pasado un buen rato. Lo que tiene que contestar la persona lo contesta la persona: el
+    // servidor nunca juega en el asiento de alguien que está conectado.
     const at = this.partnerAt(w);
-    return at != null && now >= at ? bot ?? w.seats[0] : null;
+    return at != null && now >= at ? bot ?? null : null;
   }
 
   // Un compañero bot de `seat` que siga en la mano (null si no hay).
@@ -945,8 +981,7 @@ export class TrucoRoom extends DurableObject {
   // Cuándo contesta el compañero bot el canto pendiente (null si no corresponde).
   partnerAt(w = waitingFor(this.room.game)) {
     const r = this.room;
-    if (!['truco', 'envido', 'flor'].includes(w.kind) || !w.seats.length) return null;
-    if (!w.seats.some((s) => r.seats[s]?.bot) && this.teamBot(w.seats[0]) == null) return null;
+    if (!['truco', 'envido', 'flor'].includes(w.kind) || !w.seats.some((s) => r.seats[s]?.bot)) return null;
     return (r.callAt || 0) + TIMING.partnerAnswer;
   }
 
@@ -1053,7 +1088,7 @@ export class TrucoRoom extends DurableObject {
     else if (g.h.phase === 'show') {
       const since = r.showSince || now;
       at = Math.min(at, since + TIMING.showWindow, since + BOT_SHOW_DELAY + 100);
-      if (r.botClaimAt) at = Math.min(at, r.botClaimAt);
+      if (r.botClaimAt && g.h.show.folded) at = Math.min(at, r.botClaimAt);
     } else if (now < (r.dealUntil || 0)) at = Math.min(at, r.dealUntil + 50);
     else if (this.autoActor() != null) at = Math.min(at, Math.max(now + 100, r.botReadyAt || now + TIMING.botThinkMin));
     else if (this.partnerAt() != null) at = Math.min(at, Math.max(now + 100, this.partnerAt()));

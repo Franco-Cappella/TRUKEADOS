@@ -136,7 +136,8 @@ test('envido querido: se anota al final y hay que mostrar', () => {
   mazoAll(g, 1);
   assert.equal(g.h.phase, 'show');
   assert.ok(actionsFor(g, 0).mostrar);
-  assert.ok(actionsFor(g, 1).reclamar);
+  assert.equal(actionsFor(g, 1).reclamar, false); // todavía puede mostrar
+  assert.ok(act(g, 1, { t: 'reclamar' }).error);
   ok(act(g, 0, { t: 'mostrar' }));
   assert.equal(g.h.phase, 'ended');
   assert.deepEqual(g.score, [3, 0]); // 2 de envido + 1 del truco sin cantar
@@ -146,6 +147,8 @@ test('si no muestra y le reclaman, pierde solo el envido', () => {
   const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]);
   envidoQuerido(g);
   mazoAll(g, 1);
+  ok(act(g, 0, { t: 'nomostrar' }));
+  assert.ok(actionsFor(g, 1).reclamar);
   ok(act(g, 1, { t: 'reclamar' }));
   assert.equal(g.h.result.penalty, 'no-mostro');
   assert.deepEqual(g.score, [1, 2]); // el truco (1) sigue siendo suyo, el envido (2) pasa al rival
@@ -554,8 +557,8 @@ for (const mode of ['1v1', '2v2', '3v3']) {
         const w = waitingFor(g);
         if (w.kind === 'show') {
           const a = botAction(g, w.seats[0], rng);
-          if (!a) closeShow(g);
-          else if (rng() < 0.1) ok(act(g, (w.seats[0] + 1) % g.n, { t: 'reclamar' }));
+          if (g.h.show.folded && rng() < 0.5) ok(act(g, (w.seats[0] + 1) % g.n, { t: 'reclamar' }));
+          else if (!a) closeShow(g);
           else ok(act(g, w.seats[0], a));
           continue;
         }

@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer } from '../public/js/talk.js';
+import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
+import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer, talkAsk } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
 
@@ -26,6 +26,44 @@ function fixed(cards, opts = {}) {
   return g;
 }
 const ok = (r) => assert.ok(r.ok, r.error);
+
+test('el bot que mintió en el envido no tira la última carta que lo delata: se va', () => {
+  const rng = () => 0.5;
+  const g = newGame({ mode: '1v1', target: 30, trampas: true }, rng);
+  const h = g.h;
+  const seat = h.turn;
+  h.cards[seat] = ['4B', '5O', '12C'];
+  h.inHand[seat] = ['12C'];
+  h.envido = { ...h.envido, state: 'done', needsShow: true, shown: false, winnerSeat: seat, saidValue: 31 };
+  assert.deepEqual(botAction(g, seat, rng, {}), { t: 'mazo' });
+  // si dijo la verdad, juega normal
+  h.envido.saidValue = tanto(h.cards[seat], h.muestra).value;
+  assert.equal(botAction(g, seat, rng, {}).t === 'mazo', false);
+});
+
+test('"Cantámelo que tengo": con tantos casi siempre; sin nada, a veces; con tantos medianos, no', () => {
+  const g = newGame({ mode: '2v2', target: 30 }, Math.random);
+  const seat = 0;
+  const withTanto = (cards) => (g.h.cards[seat] = cards);
+  withTanto(['7E', '6E', '4C']);
+  assert.equal(botCallsTantos(g, seat, () => 0), true);
+  assert.equal(botCallsTantos(g, seat, () => 0.99), false);
+  withTanto(['12E', '11B', '10C']);
+  assert.equal(botCallsTantos(g, seat, () => 0), true); // farol
+  assert.equal(botCallsTantos(g, seat, () => 0.5), false);
+  withTanto(['7E', '1E', '4C']); // 28: tiene
+  assert.equal(botCallsTantos(g, seat, () => 0), true);
+  withTanto(['4E', '1E', '12C']); // 25: mediano
+  assert.equal(botCallsTantos(g, seat, () => 0), false);
+});
+
+test('consultas: "¿pongo o voy?" y lo que se pregunta del truco según lo que ya se cantó', () => {
+  assert.ok(ASK_TALK.primera.ask.every((t) => !/vengo/i.test(t)));
+  assert.ok(ASK_TALK.truco.ask.includes(talkAsk('truco', Math.random, 1)));
+  assert.ok(ASK_TALK.truco.askRe.includes(talkAsk('truco', Math.random, 2)));
+  assert.ok(ASK_TALK.truco.askCuatro.includes(talkAsk('truco', Math.random, 3)));
+  assert.ok(ASK_TALK.tantos.ask.includes(talkAsk('tantos', Math.random, 3)));
+});
 
 test('el cerebro aprende: alguien que canta truco con nada pasa a ser un mentiroso', () => {
   const b = newBrain();

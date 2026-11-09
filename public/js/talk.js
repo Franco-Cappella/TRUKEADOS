@@ -177,6 +177,9 @@ export const ASK_TALK = {
   },
   truco: {
     ask: ['¿Le canto el segundo?', '¿Cómo vienen? ¿Canto?', '¿El segundo o no?', '¿Canto, compañeros?'],
+    // ya se cantó: lo que se pregunta es subirlo
+    askRe: ['¿Canto el re?', '¿Le damos el re?', '¿Va el re, compañeros?'],
+    askCuatro: ['¿Canto el cuatro?', '¿Le mando el cuatro?', '¿Va el cuatro, compañeros?'],
     si: ['Dale, cantá.', 'Cantá, que vengo bien.', 'Cantale nomás.', 'Dale, que tengo con qué.'],
     callado: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'Vengo seco.', 'Con esto no gano ni una.'],
@@ -184,14 +187,22 @@ export const ASK_TALK = {
   // en primera, el compañero le pregunta al pie si "pone" (tira alta para ganar la ronda) o "va" (tira baja y
   // deja que mate el pie)
   primera: {
-    ask: ['¿Pongo o voy?', '¿Pongo o vengo?', '¿Mato o voy a vos?', '¿Qué hago, pongo?'],
+    ask: ['¿Pongo o voy?', '¿Pongo o voy, compañero?', '¿Mato o voy a vos?', '¿Qué hago, pongo o voy?'],
     poner: ['Poné.', 'Poné nomás.', 'Poné, que estoy flojo.', 'Matá vos.'],
     ir: ['Vení.', 'Vení, que mato yo.', 'Vení a mí.', 'Andá nomás, que la mato yo.'],
   },
 };
 // Respuestas válidas para cada consulta
 export const ASK_ANSWERS = { tantos: ['si', 'callado', 'nada'], truco: ['si', 'callado', 'nada'], primera: ['poner', 'ir'] };
-export const talkAsk = (kind, rng = Math.random) => sayFrom(ASK_TALK[kind].ask, rng);
+// level: el truco en juego (1 sin cantar, 2 querido, 3 retruco): se pregunta por lo que sigue.
+export function talkAsk(kind, rng = Math.random, level = 1) {
+  const t = ASK_TALK[kind];
+  return sayFrom(kind === 'truco' && level >= 3 ? t.askCuatro : kind === 'truco' && level === 2 ? t.askRe : t.ask, rng);
+}
+
+// El compañero que no es pie le avisa que tiene tantos (o farolea), sin que nadie le pregunte.
+export const TELL_TANTOS = ['Cantámelo que tengo.', 'Cantámelo que tengo, compañero.', 'Dale, cantámelo que tengo.', 'Cantámelo, que vengo cargado.'];
+export const talkTellTantos = (rng = Math.random) => sayFrom(TELL_TANTOS, rng);
 
 export const talkAnswer = (kind, ans, rng = Math.random) => sayFrom(ASK_TALK[kind][ans], rng);
 

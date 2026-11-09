@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { makeRoom } from './helpers/room-harness.mjs';
 import { newGame, waitingFor } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
-import { ASK_TALK } from '../public/js/talk.js';
+import { ASK_TALK, TELL_TANTOS } from '../public/js/talk.js';
 import { TIMING } from '../public/js/config.js';
 
 const answers = (kind) => [...ASK_TALK[kind].si, ...ASK_TALK[kind].callado, ...ASK_TALK[kind].nada];
@@ -63,6 +63,64 @@ test('sala: si le consultás al compañero bot cuando le toca, primero contesta 
   assert.ok(answeredAt != null, 'el compañero no contestó');
   // una sola consulta de tantos por mano
   assert.equal(h.state(ws[0]).ask.can.tantos, false);
+});
+
+test('sala: lo que tenés que contestar vos no lo contesta nadie por vos', async () => {
+  const { h, ws, r } = await table({ dealer: 1 });
+  r.game.h.envido = { ...r.game.h.envido, state: 'pending', calls: ['envido'], by: 1, bySeat: 1 };
+  r.callAt = h.now;
+  const w = waitingFor(r.game);
+  assert.equal(w.kind, 'envido');
+  assert.deepEqual(w.seats, [0]);
+  await h.room.scheduleAlarm();
+  await h.tick(90_000, 500);
+  assert.equal(r.game.h.envido.state, 'pending', 'se contestó solo');
+  await h.send(ws[0], { t: 'act', a: { t: 'quiero' } });
+  assert.notEqual(r.game.h.envido.state, 'pending');
+});
+
+test('sala: el truco pendiente de los dos lo contesta el bot recién pasado un buen rato', async () => {
+  const { h, r } = await table({ dealer: 1 });
+  r.game.h.truco.pending = { level: 2, byTeam: 1, bySeat: 1 };
+  r.callAt = h.now;
+  assert.deepEqual([...waitingFor(r.game).seats].sort(), [0, 2]);
+  await h.room.scheduleAlarm();
+  await h.tick(TIMING.partnerAnswer - 2000, 500);
+  assert.ok(r.game.h.truco.pending, 'contestó demasiado rápido');
+});
+
+test('sala: si el compañero bot tiene tantos, le avisa al pie "Cantámelo que tengo" sin que le pregunten', async () => {
+  let told = 0;
+  for (let i = 0; i < 12 && !told; i++) {
+    const { h, r } = await table({ dealer: 1, trucoDesdeSegunda: true });
+    const g = r.game;
+    g.h.cards = [['4B', '5O', '6C'], ['4O', '5C', '6B'], ['7E', '6E', '4C'], ['4E', '5B', '6O']];
+    g.h.inHand = g.h.cards.map((c) => c.slice());
+    for (let t = 0; t < 6000 && !g.h.rounds[0].plays.some((p) => p.seat === 2); t += 100) {
+      await h.tick(100);
+      if (h.room.chat.some((c) => c.seat === 2 && TELL_TANTOS.includes(c.text))) {
+        told++;
+        break;
+      }
+      if (g.h.envido.state !== 'none' || g.h.phase !== 'play') break;
+    }
+  }
+  assert.ok(told > 0, 'nunca avisó');
+});
+
+test('sala: si el ganador del envido se queda sin tiempo, recién ahí se le puede reclamar', async () => {
+  const { h, ws, r } = await table({ dealer: 1 });
+  const g = r.game;
+  g.h.phase = 'show';
+  g.h.show = { seat: 0, value: 30 };
+  g.h.envido = { ...g.h.envido, state: 'done', needsShow: true, winnerSeat: 0, saidValue: 30 };
+  r.showSince = h.now;
+  await h.room.scheduleAlarm();
+  await h.tick(TIMING.showWindow - 1000, 500);
+  assert.equal(g.h.show.folded, undefined);
+  await h.tick(1500, 500);
+  assert.equal(g.h.show.folded, true);
+  assert.ok(ws[0]);
 });
 
 test('sala: una jugada que llega mientras reparten se rechaza y se manda el estado (el cliente corrige la carta pintada)', async () => {

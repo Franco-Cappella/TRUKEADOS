@@ -612,6 +612,20 @@ export function fallbackActions(g, seat) {
   ];
 }
 
+// ¿Le avisa al pie que tiene tantos? Si los tiene casi siempre; sin tener nada, a veces, para farolear.
+export function botCallsTantos(g, seat, rng = Math.random) {
+  const v = tanto(g.h.cards[seat], g.h.muestra).value;
+  if (v >= BOT.tellTantos) return pick(rng, BOT.tellLoaded);
+  return v <= 23 && pick(rng, BOT.tellBluff);
+}
+
+// Mintió en el envido, lo ganó y le queda la última carta: tirarla deja sus tres cartas a la vista y se descubre.
+function wouldExpose(g, seat) {
+  const h = g.h;
+  const e = h.envido;
+  return e.state === 'done' && e.needsShow && !e.shown && e.winnerSeat === seat && h.inHand[seat].length === 1 && tanto(h.cards[seat], h.muestra).value !== e.saidValue;
+}
+
 export function botAction(g, seat, rng = Math.random, ctx = {}) {
   const h = g.h;
   if (!h || g.status !== 'playing') return null;
@@ -642,6 +656,8 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
   }
 
   if (w.kind === 'play') {
+    // el que mintió no se delata solo: se va al mazo (o tira tapada) y después se va sin mostrar
+    if (wouldExpose(g, seat)) return a.mazo ? { t: 'mazo' } : { t: 'play', card: h.inHand[seat][0], mode: 'down' };
     // si el compañero le dijo "callado", no lo canta él: sigue jugando y que lo canten los rivales
     if (envidoOpenFor(g, seat) && a.envido.length && !ctx.hush?.tantos) {
       const e = envidoOpen(g, seat, ctx, rng, a);

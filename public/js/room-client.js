@@ -587,8 +587,9 @@ export class RoomClient {
       // Si la frase de un bot ya dice su canto (msg.call), reemplaza a la voz del canto (el globo del canto sale igual).
       if (live && msg.seat != null) {
         this.bubble(msg.seat, msg.text, 'chat', Math.max(3500, Math.min(8000, 1500 + msg.text.length * 70)));
-        // la frase de un bot que dice su canto es un canto; lo demás es charla (se corta si pasa algo en la mesa)
-        if (msg.seat !== this.you) say(msg.text, msg.seat, { chat: !msg.call });
+        // la frase de un bot que dice su canto es un canto; lo demás es charla (se corta si pasa algo en la mesa).
+        // Lo tuyo también se escucha: si no, parece que tu personaje está mudo.
+        say(msg.text, msg.seat, { chat: !msg.call });
         if (msg.call) this.voiced = { seat: msg.seat, until: Date.now() + VOICED_MS };
       }
     }
@@ -807,14 +808,17 @@ export class RoomClient {
       add('equipo', lbl, 'Poné', 'good', () => this.send({ t: 'answer', ans: 'poner' }), 'Que tire alta y gane la primera');
       add('equipo', lbl, 'Vení', '', () => this.send({ t: 'answer', ans: 'ir' }), 'Que tire baja: matás vos');
     } else if (q && q.kind !== 'primera' && q.mineToAnswer && !q.answered) {
-      const what = q.kind === 'tantos' ? 'los tantos' : 'el truco';
+      const what = q.kind === 'tantos' ? 'los tantos' : { 2: 'el re', 3: 'el cuatro' }[g.h.truco.level] || 'el truco';
       const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
       add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
       add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
       add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
     } else if (!q) {
       if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
-      if (ask?.can.truco) add('equipo', 'Compañero', '¿Le canto truco?', '', () => this.send({ t: 'ask', kind: 'truco' }), 'Le preguntás a tu compañero si cantar truco');
+      if (ask?.can.truco) {
+        const next = { 1: ['¿Le canto truco?', 'cantar truco'], 2: ['¿Canto el re?', 'cantar el retruco'], 3: ['¿Canto el cuatro?', 'cantar vale cuatro'] }[g.h.truco.level] || ['¿Le canto truco?', 'cantar truco'];
+        add('equipo', 'Compañero', next[0], '', () => this.send({ t: 'ask', kind: 'truco' }), `Le preguntás a tu compañero si ${next[1]}`);
+      }
       if (ask?.can.primera) add('equipo', 'Compañero', '¿Pongo o voy?', '', () => this.send({ t: 'ask', kind: 'primera' }), 'Le preguntás al pie si tirás alta para ganar la primera (poner) o baja y mata él (ir)');
     }
     if (a.mazo) {

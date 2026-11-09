@@ -64,7 +64,7 @@ export const TIMING = {
   botHeartbeat: 2500, // latido para las miradas de los bots
   askWait: 7000, // consulta al compañero ("¿tienen tantos?"): lo que se espera la respuesta antes de seguir
   askBotAnswer: 1600, // + hasta 0,9 s: lo que tarda un bot en contestarle al compañero
-  partnerAnswer: 3500, // en equipo, lo que espera el compañero bot antes de contestar un canto por los dos
+  partnerAnswer: 15_000, // en equipo, lo que espera el compañero bot antes de contestar un canto que le toca a los dos
   botChatGap: 2200, // como mucho un mensaje de bot cada tanto
   botIdle: 9000, // si una persona tarda más que esto en jugar, algún bot la apura
 };
@@ -107,6 +107,9 @@ export const BOT = {
   double: 0.04, // tira dos cartas encimadas (con la de arriba quemada)
   doubleKill: 0.2, // si juega último y mata, a veces deja encimada la de la ronda siguiente (no se quema)
   behind: 1 / 6, // "va perdiendo por mucho": la diferencia supera esta parte de la partida
+  tellTantos: 27, // desde estos tantos, el compañero que no es pie le avisa al pie: "Cantámelo que tengo"
+  tellLoaded: 0.7, // ... cuántas veces lo avisa cuando los tiene
+  tellBluff: 0.12, // ... y cuántas lo dice sin tener nada (hasta 23 de tantos), para asustar a los rivales
 };
 
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
