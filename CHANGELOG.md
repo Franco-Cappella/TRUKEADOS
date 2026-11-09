@@ -1,5 +1,16 @@
 # Cambios
 
+## 1.11.0 — arte propio
+- **Personajes redibujados**: ilustración plana de tinta y sepia, con proporciones adultas, cara angulosa, párpado
+  pesado, sombras de borde duro y grano de papel. Arquetipos nuevos: chaleco con corbata y gaucho (poncho con guarda
+  pampa, pañuelo, rastra y sombrero), con las mangas arremangadas. Las 11 señas y la ropa de la tienda siguen igual.
+- **Las cejas van encima del pelo** para que "levantar las cejas" (ancho de espada) no la tape el flequillo.
+- **Bar nuevo**: habitación recta en penumbra con boiserie y molduras, estantería de botellas pintada y láminas
+  ilustradas en vez de los cuadros con texto.
+- **Mesa nueva**: paño más profundo en franjas planas, con costura, guarda escalonada y rombo con el nombre; sigue la
+  forma de la mesa (cuadrada o hexagonal). Madera, sillas y objetos con sombreado por escalones.
+- Manos en primera persona con el mismo estilo. Paño (`--pano`, `--pano-2`) actualizado en los tokens de marca.
+
 ## 1.10.3 — "¿Pongo o voy?"
 - En equipo (2v2 y 3v3), en primera, el que no es pie le puede preguntar al pie **¿Pongo o voy?** (poner: tirar alta y
   ganar la primera; ir: tirar baja y que mate el pie). El pie contesta con un clic: **Poné** o **Vení**. Contesta solo

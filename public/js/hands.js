@@ -58,16 +58,29 @@ export function drawHoldBack(skin, sleeve) {
     ctx.bezierCurveTo(330, 360, 270, 372, 238, 352);
     ctx.closePath();
     stroke(ctx, skin, 5);
-    ctx.fillStyle = 'rgba(80,40,30,0.18)';
+    // sombra plana de las cartas sobre la palma, con borde duro
+    ctx.save();
     ctx.beginPath();
-    ctx.ellipse(300, 300, 50, 26, -0.4, 0, Math.PI * 2);
+    ctx.moveTo(170, 340);
+    ctx.bezierCurveTo(170, 250, 220, 190, 300, 196);
+    ctx.bezierCurveTo(372, 202, 392, 270, 360, 320);
+    ctx.bezierCurveTo(330, 360, 270, 372, 238, 352);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = mix(skin, 0.74);
+    ctx.beginPath();
+    ctx.moveTo(250, 380);
+    ctx.quadraticCurveTo(300, 300, 400, 250);
+    ctx.lineTo(400, 400);
+    ctx.closePath();
     ctx.fill();
+    ctx.restore();
     // puntas de los dedos que asoman por el costado derecho de las cartas
     for (let i = 0; i < 4; i++) {
       ctx.beginPath();
       ctx.ellipse(388 + i * 6, 150 + i * 34, 26, 15, -0.5 + i * 0.1, 0, Math.PI * 2);
       stroke(ctx, skin, 4);
-      ctx.strokeStyle = 'rgba(80,40,30,0.4)';
+      ctx.strokeStyle = mix(skin, 0.6);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(398 + i * 6, 146 + i * 34);
@@ -92,7 +105,7 @@ export function drawHoldThumb(skin) {
     ctx.ellipse(176, 104, 18, 12, -0.5, 0, Math.PI * 2);
     ctx.fillStyle = mix(skin, 1.08);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(80,40,30,0.5)';
+    ctx.strokeStyle = mix(skin, 0.6);
     ctx.lineWidth = 2;
     ctx.stroke();
   });
@@ -130,9 +143,6 @@ export function drawReach(skin, sleeve) {
     ctx.closePath();
     stroke(ctx, mix(cloth, 1.18), 3);
     // dorso de la mano
-    const g = ctx.createLinearGradient(160, 180, 320, 320);
-    g.addColorStop(0, skin);
-    g.addColorStop(1, shade);
     ctx.beginPath();
     ctx.moveTo(176, 236);
     ctx.bezierCurveTo(186, 196, 236, 176, 276, 192);
@@ -140,9 +150,21 @@ export function drawReach(skin, sleeve) {
     ctx.bezierCurveTo(300, 324, 258, 332, 226, 316);
     ctx.bezierCurveTo(196, 300, 170, 270, 176, 236);
     ctx.closePath();
-    stroke(ctx, g, 4.5);
+    stroke(ctx, skin, 4.5);
+    // sombra dura del lado de la muñeca
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.moveTo(214, 340);
+    ctx.quadraticCurveTo(286, 286, 300, 180);
+    ctx.lineTo(360, 180);
+    ctx.lineTo(360, 340);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
     // nudillos
-    ctx.strokeStyle = 'rgba(90,50,35,0.35)';
+    ctx.strokeStyle = mix(skin, 0.6);
     ctx.lineWidth = 2;
     for (let k = 0; k < 4; k++) {
       ctx.beginPath();
@@ -173,7 +195,7 @@ export function drawReach(skin, sleeve) {
       ctx.ellipse(ex - Math.cos(f.a) * 6, ey - Math.sin(f.a) * 6, f.w * 0.3, f.w * 0.22, f.a, 0, Math.PI * 2);
       ctx.fillStyle = mix(skin, 1.08);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(90,50,35,0.4)';
+      ctx.strokeStyle = mix(skin, 0.6);
       ctx.lineWidth = 1.5;
       ctx.stroke();
       const mx = f.x + Math.cos(f.a) * f.len * 0.55;

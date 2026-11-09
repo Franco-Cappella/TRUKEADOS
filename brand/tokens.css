@@ -37,8 +37,8 @@
   --copa-tinta: #ef6a5c;   /* 6.1:1 — el --team1 del juego */
 
   /* ---------------------------------------------------------------- ambiente del bar (imágenes, 3D y campos de color en páginas; nunca controles) */
-  --pano: #2e7344;        /* paño, centro */
-  --pano-2: #225a35;
+  --pano: #27523e;        /* paño, centro */
+  --pano-2: #204534;
   --pano-3: #1a4529;      /* paño, borde: campo de color para secciones (texto blanco 10:1, oro 6.5:1) */
   --lampara: #ffd9a0;     /* luz de la lámpara (solo luz/imagen) */
   --bar: #1a120c;         /* fondo de la escena */

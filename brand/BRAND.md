@@ -110,7 +110,7 @@ Blanco sobre espada o copa solo en texto de 18 px o más en negrita (4,4:1 y 4,2
 ### Ambiente del bar
 | Token | Hex | Rol |
 |---|---|---|
-| `--pano` / `--pano-2` / `--pano-3` | `#2e7344` / `#225a35` / `#1a4529` | El paño. `--pano-3` es el único campo de color permitido para una sección entera de página (blanco 10:1, oro 6,5:1). |
+| `--pano` / `--pano-2` / `--pano-3` | `#27523e` / `#204534` / `#1a4529` | El paño. `--pano-3` es el único campo de color permitido para una sección entera de página (blanco 10:1, oro 6,5:1). |
 | `--lampara` | `#ffd9a0` | Luz cálida. Solo en imágenes y en la escena 3D. |
 | `--bar` / `--madera` / `--pared` | `#1a120c` / `#5b3418` / `#6b3b2a` | Escena 3D e imágenes. **Nunca en interfaz** (ni botones, ni textos, ni fondos de panel). |
 

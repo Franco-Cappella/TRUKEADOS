@@ -1,6 +1,6 @@
 // Escena 3D del truco: salón, mesa con paño, personajes 2D (recortes), cartas y cámara en primera persona.
 import * as THREE from 'three';
-import { drawCharacter, lookFor, dressed, biteAt, W as CW, H as CH } from './characters.js';
+import { drawCharacter, lookFor, dressed, sleeveOf, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
@@ -147,35 +147,210 @@ function noise(ctx, w, h, amount, alpha) {
   ctx.putImageData(img, 0, 0);
 }
 
-// Paño: del color dado (centro, medio, borde) con trama, costura alrededor y el nombre al centro.
-function feltTex(colors) {
-return canvasTex(1024, 1024, (ctx, w, h) => {
-    const grd = ctx.createRadialGradient(w / 2, h / 2, 60, w / 2, h / 2, w / 2);
-    grd.addColorStop(0, colors[0]);
-    grd.addColorStop(0.8, colors[1]);
-    grd.addColorStop(1, colors[2]);
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, w, h);
-    ctx.globalAlpha = 0.06;
-    ctx.strokeStyle = '#000';
-    for (let y = 0; y < h; y += 3) {
+// Azar con semilla: las texturas pintadas salen iguales en todas las máquinas.
+function seeded(seed) {
+  let s = seed;
+  return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+}
+
+// Sombreado por escalones (el de una ilustración): tres tonos con borde duro en lugar de un degradé.
+let toonRamp = null;
+function toon(color, extra = {}) {
+  if (!toonRamp) {
+    toonRamp = new THREE.DataTexture(new Uint8Array([120, 190, 255]), 3, 1, THREE.RedFormat);
+    toonRamp.minFilter = toonRamp.magFilter = THREE.NearestFilter;
+    toonRamp.needsUpdate = true;
+  }
+  return new THREE.MeshToonMaterial({ ...(color ? { color } : {}), gradientMap: toonRamp, ...extra });
+}
+
+// Paño: franjas planas del color dado, costura, guarda escalonada y el nombre al centro.
+// Sigue la forma de la mesa (la textura cubre el polígono entero: ver las UV en setLayout).
+function feltTex(colors, sides = 4) {
+  return canvasTex(1024, 1024, (ctx, w, h) => {
+    const poly = (scale) => {
+      const pts = [];
+      for (let k = 0; k < sides; k++) {
+        const a = (k * Math.PI * 2) / sides + Math.PI / sides;
+        pts.push([w * (0.5 + 0.5 * scale * Math.sin(a)), h * (0.5 + 0.5 * scale * Math.cos(a))]);
+      }
+      return pts;
+    };
+    const fillPoly = (scale, color) => {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
+      poly(scale).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+    ctx.fillStyle = colors[2];
+    ctx.fillRect(0, 0, w, h);
+    fillPoly(0.9, colors[1]);
+    fillPoly(0.62, colors[0]);
+    // trama del paño
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = '#000';
+    for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
     ctx.globalAlpha = 1;
-    noise(ctx, w, h, 14);
+    noise(ctx, w, h, 7);
     ctx.strokeStyle = SCENE.feltInk;
+    ctx.fillStyle = SCENE.feltInk;
+    // costura
+    ctx.lineWidth = 3;
+    ctx.setLineDash([14, 9]);
+    ctx.beginPath();
+    poly(0.965).forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // guarda escalonada en el centro de cada lado
+    const pts = poly(0.8);
+    const period = [0, 1, 2, 3, 4, 3, 2, 1];
+    const unit = 9;
+    ctx.lineWidth = 5;
+    ctx.lineJoin = 'miter';
+    pts.forEach(([x0, y0], k) => {
+      const [x1, y1] = pts[(k + 1) % sides];
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const ux = (x1 - x0) / len;
+      const uy = (y1 - y0) / len;
+      const nx = (w / 2 - (x0 + x1) / 2) / Math.hypot(w / 2 - (x0 + x1) / 2, h / 2 - (y0 + y1) / 2);
+      const ny = (h / 2 - (y0 + y1) / 2) / Math.hypot(w / 2 - (x0 + x1) / 2, h / 2 - (y0 + y1) / 2);
+      const margin = len * 0.24;
+      const steps = Math.floor((len - margin * 2) / unit);
+      const at = (t, o) => [x0 + ux * (margin + t * unit) + nx * o * unit, y0 + uy * (margin + t * unit) + ny * o * unit];
+      ctx.beginPath();
+      let prev = period[0];
+      ctx.moveTo(...at(0, prev));
+      for (let t = 1; t <= steps; t++) {
+        const cur = period[t % period.length];
+        ctx.lineTo(...at(t, prev));
+        ctx.lineTo(...at(t, cur));
+        prev = cur;
+      }
+      ctx.stroke();
+    });
+    // rombo con el nombre
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(w / 2, h / 2, w * 0.16, 0, Math.PI * 2);
+    ctx.moveTo(w / 2, h / 2 - 120);
+    ctx.lineTo(w / 2 + 196, h / 2);
+    ctx.lineTo(w / 2, h / 2 + 120);
+    ctx.lineTo(w / 2 - 196, h / 2);
+    ctx.closePath();
     ctx.stroke();
-    ctx.fillStyle = SCENE.feltInk;
-    ctx.font = `600 46px ${FONT}`;
+    ctx.font = `800 40px ${FONT}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '5px';
     ctx.textAlign = 'center';
-    ctx.fillText(SCENE.feltName, w / 2, h / 2 + 14);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(SCENE.feltName.toUpperCase(), w / 2, h / 2 + 2);
   });
+}
+
+// Una botella plana: cuerpo, hombros, cuello, sombra dura de un lado y, a veces, etiqueta.
+function drawBottle(ctx, x, base, w, h, color, label) {
+  const neck = w * 0.3;
+  const shoulder = base - h * 0.62;
+  const top = base - h;
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(x, base);
+    ctx.lineTo(x, shoulder);
+    ctx.quadraticCurveTo(x, shoulder - h * 0.12, x + w / 2 - neck / 2, shoulder - h * 0.16);
+    ctx.lineTo(x + w / 2 - neck / 2, top);
+    ctx.lineTo(x + w / 2 + neck / 2, top);
+    ctx.lineTo(x + w / 2 + neck / 2, shoulder - h * 0.16);
+    ctx.quadraticCurveTo(x + w, shoulder - h * 0.12, x + w, shoulder);
+    ctx.lineTo(x + w, base);
+    ctx.closePath();
+  };
+  path();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.save();
+  path();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.fillRect(x + w * 0.62, top, w, h);
+  ctx.fillStyle = 'rgba(240,220,180,0.22)';
+  ctx.fillRect(x + w * 0.14, shoulder - h * 0.04, w * 0.1, h * 0.46);
+  ctx.restore();
+  if (label) {
+    ctx.fillStyle = SCENE.bottleLabel;
+    ctx.fillRect(x + 2, base - h * 0.42, w - 4, h * 0.22);
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.fillRect(x + w * 0.62, base - h * 0.42, w * 0.38 - 2, h * 0.22);
+  }
+}
+
+// Los cuadros: láminas de dos tintas con marco de madera.
+function drawPicture(ctx, w, h, kind, bg, fg) {
+  ctx.fillStyle = SCENE.frame;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = SCENE.frameLight;
+  ctx.fillRect(0, 0, w, 6);
+  ctx.fillRect(0, 0, 6, h);
+  const m = 34;
+  ctx.fillStyle = bg;
+  ctx.fillRect(m, m, w - m * 2, h - m * 2);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(m, m, w - m * 2, h - m * 2);
+  ctx.clip();
+  ctx.fillStyle = fg;
+  ctx.strokeStyle = fg;
+  const cx = w / 2;
+  const cy = h / 2;
+  if (kind === 'sol') {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const long = i % 2 ? 150 : 112;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a - 0.14) * 58, cy + Math.sin(a - 0.14) * 58);
+      ctx.lineTo(cx + Math.cos(a) * long, cy + Math.sin(a) * long);
+      ctx.lineTo(cx + Math.cos(a + 0.14) * 58, cy + Math.sin(a + 0.14) * 58);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, 50, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind === 'guarda') {
+    const period = [0, 1, 2, 3, 4, 3, 2, 1];
+    for (const lx of [m + 26, w - m - 86]) {
+      for (let i = 0; i < 28; i++) ctx.fillRect(lx + period[i % 8] * 12, m + i * 16, 22, 16.5);
+    }
+    ctx.fillRect(cx - 5, m, 10, h - m * 2);
+  } else if (kind === 'espada') {
+    ctx.beginPath();
+    ctx.moveTo(cx, m + 34);
+    ctx.lineTo(cx + 19, cy + 70);
+    ctx.lineTo(cx - 19, cy + 70);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(cx - 62, cy + 70, 124, 15);
+    ctx.fillRect(cx - 9, cy + 85, 18, 58);
+    ctx.beginPath();
+    ctx.arc(cx, cy + 156, 16, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // pampa: luna, horizonte y un ombú
+    ctx.beginPath();
+    ctx.arc(w * 0.68, h * 0.3, 40, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = SCENE.feltInk.replace(/[\d.]+\)$/, '0.75)');
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = fg;
+    ctx.fillRect(0, h * 0.68, w, h);
+    ctx.fillRect(w * 0.31, h * 0.48, 22, h * 0.22);
+    for (const [dx, dy, r] of [[0, -56, 60], [-56, -24, 46], [62, -22, 48], [-8, -14, 52]]) {
+      ctx.beginPath();
+      ctx.arc(w * 0.335 + dx, h * 0.48 + dy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 // Dorso de las cartas de la tienda: fondo, borde y rombos del color de la tinta, con el nombre al medio.
@@ -228,7 +403,7 @@ function tableObject(id) {
   const col = COSMETIC_LOOK[id]?.colors;
   if (!col) return null;
   const g = new THREE.Group();
-  const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+  const std = (color, { transparent, opacity } = {}) => toon(color, transparent ? { transparent, opacity } : {});
   if (id === 'mate') {
     const cup = new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 16, 0, Math.PI * 2, 0.35, Math.PI * 0.7), std(col[0], { roughness: 0.7 }));
     cup.position.y = 0.04;
@@ -297,8 +472,7 @@ export class TableScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = LIGHT.exposure;
+    this.renderer.toneMapping = THREE.NoToneMapping;
     maxAniso = this.renderer.capabilities.getMaxAnisotropy();
     container.appendChild(this.renderer.domElement);
 
@@ -348,6 +522,8 @@ export class TableScene {
   // ------------------------------------------------------------ salón
   buildRoom() {
     const s = this.scene;
+    const ROOM = 5; // media pared: una habitación de verdad, con las molduras rectas
+    const WALL_H = 4.2;
     s.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, LIGHT.ambient));
     const lamp = new THREE.SpotLight(SCENE.lamp, LIGHT.lamp, 7, Math.PI / 3.2, LIGHT.lampSoftness, 1.6);
     lamp.position.set(0, 2.55, 0);
@@ -361,10 +537,7 @@ export class TableScene {
     s.add(fill);
 
     // lámpara colgante
-    const shade = new THREE.Mesh(
-      new THREE.ConeGeometry(0.34, 0.26, 32, 1, true),
-      new THREE.MeshStandardMaterial({ color: SCENE.lampShade, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.3 })
-    );
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.26, 32, 1, true), toon(SCENE.lampShade, { side: THREE.DoubleSide }));
     shade.position.set(0, 2.62, 0);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({ color: SCENE.bulb }));
     bulb.position.set(0, 2.55, 0);
@@ -372,61 +545,118 @@ export class TableScene {
     cord.position.set(0, 3.3, 0);
     s.add(shade, bulb, cord);
 
-    // piso de madera
-    const floorTex = canvasTex(512, 512, (ctx, w, h) => {
-      for (let i = 0; i < 8; i++) {
-        const tone = 70 + Math.random() * 30;
-        ctx.fillStyle = `rgb(${tone + 40},${tone + 10},${tone - 20})`;
-        ctx.fillRect(0, (i * h) / 8, w, h / 8);
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fillRect(0, (i * h) / 8, w, 2);
-        const off = Math.random() * w;
-        ctx.fillRect(off, (i * h) / 8, 2, h / 8);
+    // piso de tablones, en pocos tonos
+    const floorTex = canvasTex(1024, 1024, (ctx, w, h) => {
+      const r = seeded(11);
+      const rows = 10;
+      for (let i = 0; i < rows; i++) {
+        const y = (i * h) / rows;
+        let x = -r() * 200;
+        while (x < w) {
+          const len = 260 + r() * 320;
+          ctx.fillStyle = SCENE.floor[Math.floor(r() * SCENE.floor.length)];
+          ctx.fillRect(x, y, len, h / rows);
+          ctx.fillStyle = SCENE.floorSeam;
+          ctx.fillRect(x, y, 4, h / rows);
+          x += len;
+        }
+        ctx.fillStyle = SCENE.floorSeam;
+        ctx.fillRect(0, y, w, 4);
       }
-      noise(ctx, w, h, 22);
-    }, [6, 6]);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshLambertMaterial({ map: floorTex }));
+      noise(ctx, w, h, 8);
+    }, [4, 4]);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, ROOM * 2), toon(null, { map: floorTex }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     s.add(floor);
 
-    // paredes con zócalo
-    const wallTex = canvasTex(256, 512, (ctx, w, h) => {
-      ctx.fillStyle = SCENE.wall;
-      ctx.fillRect(0, 0, w, h);
-      for (let x = 0; x < w; x += 32) {
-        ctx.fillStyle = x % 64 ? 'rgba(255,220,180,0.05)' : 'rgba(0,0,0,0.05)';
-        ctx.fillRect(x, 0, 32, h * 0.7);
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, ROOM * 2), new THREE.MeshBasicMaterial({ color: SCENE.ceiling }));
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = WALL_H;
+    s.add(ceiling);
+
+    // boiserie oscura: paneles, dos molduras y zócalo. Sin luces: viene pintada.
+    const yAt = (m) => (1 - m / WALL_H) * 1024; // altura en metros -> píxel de la textura
+    const wallTex = canvasTex(1024, 1024, (ctx, w, h) => {
+      for (let x = 0; x < w; x += 128) {
+        ctx.fillStyle = (x / 128) % 2 ? SCENE.wallAlt : SCENE.wall;
+        ctx.fillRect(x, 0, 128, h);
+        ctx.fillStyle = SCENE.wallSeam;
+        ctx.fillRect(x, 0, 5, h);
       }
       ctx.fillStyle = SCENE.wallBase;
-      ctx.fillRect(0, h * 0.7, w, h * 0.3);
-      ctx.fillStyle = SCENE.wallTrim;
-      ctx.fillRect(0, h * 0.7, w, 6);
-      noise(ctx, w, h, 14);
-    }, [10, 1]);
-    const walls = new THREE.Mesh(
-      new THREE.CylinderGeometry(6, 6, 4.2, 48, 1, true),
-      new THREE.MeshLambertMaterial({ map: wallTex, side: THREE.BackSide })
-    );
-    walls.position.y = 2.1;
-    s.add(walls);
+      ctx.fillRect(0, yAt(0.92), w, h - yAt(0.92));
+      const rail = (m, thick) => {
+        const y = yAt(m);
+        ctx.fillStyle = SCENE.wallTrim;
+        ctx.fillRect(0, y, w, thick);
+        ctx.fillStyle = SCENE.wallTrimLight;
+        ctx.fillRect(0, y, w, 3);
+        ctx.fillStyle = SCENE.wallSeam;
+        ctx.fillRect(0, y + thick, w, thick * 0.9);
+      };
+      rail(2.96, 12);
+      rail(1.72, 14);
+      rail(0.92, 16);
+      // penumbra pintada arriba
+      for (const [from, to, a] of [[0, 180, 0.42], [180, 300, 0.2]]) {
+        ctx.fillStyle = `rgba(6,3,2,${a})`;
+        ctx.fillRect(0, from, w, to - from);
+      }
+      noise(ctx, w, h, 6);
+    }, [3, 1]);
+    const wallMat = new THREE.MeshBasicMaterial({ map: wallTex });
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 2;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, WALL_H), wallMat);
+      m.position.set(Math.sin(a) * ROOM, WALL_H / 2, Math.cos(a) * ROOM);
+      m.rotation.y = a + Math.PI;
+      s.add(m);
+    }
 
-    // cuadros en la pared
-    SCENE.pictures.forEach(([text, bg, fg], i) => {
-      const t = canvasTex(256, 192, (ctx, w, h) => {
-        ctx.fillStyle = SCENE.frame;
-        ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = bg;
-        ctx.fillRect(14, 14, w - 28, h - 28);
-        ctx.fillStyle = fg;
-        ctx.font = `700 28px ${FONT}`;
-        ctx.textAlign = 'center';
-        ctx.fillText(text, w / 2, h / 2 + 10);
-      });
-      const a = Math.PI * 0.25 + i * (Math.PI / 2);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.9), new THREE.MeshLambertMaterial({ map: t }));
-      m.position.set(Math.sin(a) * 5.9, 2.0, Math.cos(a) * 5.9);
-      m.lookAt(0, 2.0, 0);
+    // estantería de botellas en la pared de enfrente
+    const BAR_W = 6.4;
+    const BAR_H = 2.5;
+    const barTex = canvasTex(1536, 600, (ctx, w, h) => {
+      const r = seeded(37);
+      ctx.fillStyle = SCENE.shelfBack;
+      ctx.fillRect(0, 0, w, h);
+      const shelves = [190, 390, 584];
+      for (const base of shelves) {
+        let x = 24 + r() * 30;
+        while (x < w - 60) {
+          const bw = 30 + r() * 18;
+          const bh = 118 + r() * 46;
+          drawBottle(ctx, x, base, bw, bh, SCENE.bottles[Math.floor(r() * SCENE.bottles.length)], r() < 0.7);
+          x += bw + 12 + r() * (r() < 0.2 ? 90 : 26);
+        }
+        ctx.fillStyle = SCENE.shelf;
+        ctx.fillRect(0, base, w, 16);
+        ctx.fillStyle = SCENE.wallTrimLight;
+        ctx.fillRect(0, base, w, 2.5);
+      }
+      ctx.lineWidth = 16;
+      ctx.strokeStyle = SCENE.shelf;
+      ctx.strokeRect(8, 8, w - 16, h - 16);
+      for (const x of [w / 3, (2 * w) / 3]) {
+        ctx.fillStyle = SCENE.shelf;
+        ctx.fillRect(x - 8, 0, 16, h);
+      }
+      ctx.fillStyle = SCENE.barDim; // que no le gane a los personajes
+      ctx.fillRect(0, 0, w, h);
+      noise(ctx, w, h, 6);
+    });
+    const bar = new THREE.Mesh(new THREE.PlaneGeometry(BAR_W, BAR_H), new THREE.MeshBasicMaterial({ map: barTex }));
+    bar.position.set(0, 1.0 + BAR_H / 2, -ROOM + 0.04);
+    s.add(bar);
+
+    // cuadros ilustrados en las paredes de los costados
+    SCENE.pictures.forEach(([kind, bg, fg], i) => {
+      const t = canvasTex(384, 512, (ctx, w, h) => drawPicture(ctx, w, h, kind, bg, fg));
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.2), new THREE.MeshBasicMaterial({ map: t }));
+      const side = i < 2 ? -1 : 1;
+      m.position.set(side * (ROOM - 0.04), 2.3, i % 2 ? 1.9 : -1.9);
+      m.rotation.y = -side * (Math.PI / 2);
       s.add(m);
     });
   }
@@ -448,21 +678,24 @@ export class TableScene {
 
     const R = this.R;
     // paño: verde con trama, costura alrededor y el nombre al centro
-    const felt = feltTex(this.feltColors || SCENE.felt);
+    const felt = feltTex(this.feltColors || SCENE.felt, n === 6 ? 6 : 4);
     // madera con veta
     const woodTex = canvasTex(512, 128, (ctx, w, h) => {
+      const r = seeded(5);
       ctx.fillStyle = SCENE.wood;
       ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 46; i++) {
-        const y = Math.random() * h;
-        ctx.strokeStyle = Math.random() < 0.5 ? 'rgba(30,15,5,0.3)' : 'rgba(140,90,50,0.25)';
-        ctx.lineWidth = 1 + Math.random() * 2.5;
+      for (let i = 0; i < 14; i++) {
+        const y = r() * h;
+        const x = r() * w;
+        const len = 120 + r() * 260;
+        ctx.fillStyle = SCENE.woodStreak[i % 2];
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= w; x += 32) ctx.lineTo(x, y + Math.sin(x / 50 + i) * 4);
-        ctx.stroke();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + len / 2, y + 2.5, x + len, y);
+        ctx.quadraticCurveTo(x + len / 2, y - 2.5, x, y);
+        ctx.fill();
       }
-      noise(ctx, w, h, 10);
+      noise(ctx, w, h, 5);
     }, [6, 1]);
     // Mesa de bar: cuadrada para 2 y 4 (cada uno en un lado), hexagonal para 6.
     // Marco de madera con canto redondeado y paño adentro.
@@ -497,14 +730,14 @@ export class TableScene {
     const uv = feltGeo.attributes.uv;
     const span = (R / Math.cos(Math.PI / sides)) * 2;
     for (let k = 0; k < pos.count; k++) uv.setXY(k, pos.getX(k) / span + 0.5, pos.getY(k) / span + 0.5);
-    const top = new THREE.Mesh(feltGeo, new THREE.MeshLambertMaterial({ map: felt }));
+    const top = new THREE.Mesh(feltGeo, toon(null, { map: felt }));
     this.feltMesh = top;
     this.seatObjs = new Map(); // la mesa es nueva: los objetos de cada uno se vuelven a poner
     top.rotation.x = -Math.PI / 2;
     top.position.y = TABLE_Y;
     top.receiveShadow = true;
-    const wood = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.38, metalness: 0.03 });
-    const woodDark = new THREE.MeshStandardMaterial({ map: woodTex, color: SCENE.woodDark, roughness: 0.5 });
+    const wood = toon(null, { map: woodTex });
+    const woodDark = toon(SCENE.woodDark, { map: woodTex });
     // marco: forma de afuera con el agujero del paño, extruido con bisel
     const outer = polyShape(R + frameW, 0.18);
     outer.holes.push(polyShape(R - 0.002, 0.16));
@@ -536,14 +769,14 @@ export class TableScene {
     }
 
     // vaso de vino y botella para ambientar
-    const glassMat = new THREE.MeshStandardMaterial({ color: SCENE.glass, roughness: 0.05, transparent: true, opacity: 0.3 });
+    const glassMat = toon(SCENE.glass, { transparent: true, opacity: 0.3 });
     const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.026, 0.1, 20, 1, true), glassMat);
-    const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.025, 0.05, 20), new THREE.MeshStandardMaterial({ color: SCENE.wine, roughness: 0.2 }));
+    const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.025, 0.05, 20), toon(SCENE.wine));
     glass.position.set(-R * 0.55, TABLE_Y + 0.05, R * 0.5);
     wine.position.set(-R * 0.55, TABLE_Y + 0.026, R * 0.5);
     const bottle = new THREE.Mesh(
       new THREE.LatheGeometry([[0, 0], [0.04, 0], [0.04, 0.2], [0.015, 0.26], [0.014, 0.32], [0, 0.32]].map(([x, y]) => new THREE.Vector2(x, y)), 20),
-      new THREE.MeshStandardMaterial({ color: SCENE.bottle, roughness: 0.15, metalness: 0.1 })
+      toon(SCENE.bottle)
     );
     bottle.position.set(-R * 0.66, TABLE_Y, -R * 0.5);
     bottle.castShadow = glass.castShadow = true;
@@ -553,7 +786,7 @@ export class TableScene {
     this.deck = new THREE.Group();
     this.muestraId = undefined; // el mazo es nuevo: hay que volver a poner la muestra
     this.muestraCard = null;
-    const side = new THREE.MeshLambertMaterial({ color: SCENE.deckSide });
+    const side = toon(SCENE.deckSide);
     const half = () => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(CARD_W, 0.01, CARD_H), [side, side, new THREE.MeshLambertMaterial({ map: cardTex('back') }), side, side, side]);
       m.castShadow = true;
@@ -568,12 +801,12 @@ export class TableScene {
 
     // mate de decoración
     const mate = new THREE.Group();
-    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 16, 0, Math.PI * 2, 0.35, Math.PI * 0.7), new THREE.MeshStandardMaterial({ color: SCENE.mate, roughness: 0.7 }));
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.045, 20, 16, 0, Math.PI * 2, 0.35, Math.PI * 0.7), toon(SCENE.mate));
     cup.position.y = 0.04;
     const yerba = new THREE.Mesh(new THREE.CircleGeometry(0.038, 20), new THREE.MeshLambertMaterial({ color: SCENE.yerba }));
     yerba.rotation.x = -Math.PI / 2;
     yerba.position.y = 0.083;
-    const bomb = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16), new THREE.MeshStandardMaterial({ color: SCENE.bombilla, metalness: 0.9, roughness: 0.2 }));
+    const bomb = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.16), toon(SCENE.bombilla));
     bomb.position.set(0.012, 0.11, 0);
     bomb.rotation.z = -0.25;
     mate.add(cup, yerba, bomb);
@@ -609,14 +842,14 @@ export class TableScene {
     tex.anisotropy = maxAniso;
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(CHAR_W, CHAR_H),
-      new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })
     );
     const d = this.seatDir(seat);
     const r = this.R + 0.3;
     mesh.position.set(d.x * r, CHAR_H / 2, d.z * r);
     this.scene.add(mesh);
     // silla
-    const wood = new THREE.MeshStandardMaterial({ color: SCENE.chair, roughness: 0.6 });
+    const wood = toon(SCENE.chair);
     const chair = new THREE.Group();
     const seatM = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.05, 0.44), wood);
     seatM.position.y = 0.46;
@@ -681,7 +914,7 @@ export class TableScene {
       this.feltColors = felt;
       if (this.feltMesh) {
         this.feltMesh.material.map?.dispose();
-        this.feltMesh.material.map = feltTex(felt);
+        this.feltMesh.material.map = feltTex(felt, this.n === 6 ? 6 : 4);
         this.feltMesh.material.needsUpdate = true;
       }
     }
@@ -1001,7 +1234,7 @@ export class TableScene {
   // ------------------------------------------------------------ mis cartas (en la mano, pegadas a la cámara)
   // Colores de tu propia mano y manga (los de tu personaje).
   setMyLook(look) {
-    const sleeve = look.shirt === 'jacket' ? look.cloth2 : look.cloth;
+    const sleeve = sleeveOf(look);
     const key = look.skin[0] + sleeve;
     if (this.handKey === key) return;
     this.handKey = key;

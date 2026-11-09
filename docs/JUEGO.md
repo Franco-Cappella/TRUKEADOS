@@ -22,7 +22,7 @@ Esto es lo que tiene que contar la landing. Ordenado de más a menos diferencial
 | # | Diferencial | Por qué importa |
 |---|---|---|
 | 1 | **Señas con la cara de verdad** | 11 señas (cejas, guiño, boca torcida, boca abierta, un beso, cachetes inflados…). El servidor solo se la manda a **quien te está mirando en ese momento**. Si el rival te estaba mirando, la vio. Es el truco de verdad, no un menú de "enviar seña al compañero". |
-| 2 | **Primera persona en un bar** | Estás sentado. Mirás a los costados, bajás la vista a la mesa, hacés zoom a una cara. Lámpara colgante, paño verde, vino, mate, cuadros de "Boca vs. River" y "Gardel" en la pared. |
+| 2 | **Primera persona en un bar** | Estás sentado. Mirás a los costados, bajás la vista a la mesa, hacés zoom a una cara. Lámpara colgante, paño verde, vino, mate, estantería de botellas y láminas ilustradas en la pared. |
 | 3 | **Se puede hacer trampa** | "Dos encimadas": tirás una carta tapada con otra. La de abajo juega; la de arriba queda **quemada** (se ve carbonizada). Cualquier rival puede pedir "¡mostrá las dos!". La sala puede no permitir trampas. |
 | 4 | **Se puede mentir el envido** | Cantás el número que quieras. Si ganás tenés que mostrar; si no coincide o te reclaman, perdés los puntos (salvo en una sala sin trampas). |
 | 5 | **1 vs 1, 2 vs 2 y 3 vs 3** | Con "pie" de cada equipo, truco desde segunda en equipos, y las reglas del reglamento tradicional. La flor y la muestra son opciones de la sala. |
@@ -167,7 +167,7 @@ en español (prefiere es-AR) para los cantos. Se apaga con "Voz: no".
 - **Paleta**: grises neutros (`#121212` → `#f5f5f5`) + los **cuatro palos** de la baraja:
   espada `#2f6fd6`, basto `#2e9e57`, oro `#f2c12e` (único acento), copa `#d93b30`.
   Prohibido: marfil, latón, marrones en la interfaz.
-- **Escena** (solo 3D): bar cálido (paredes `#6b3b2a`, luz de lámpara `#ffd9a0`, paño `#2e7344`).
+- **Escena** (solo 3D): bar en penumbra (paredes `#1b120d`, luz de lámpara `#ffdcaa`, paño `#27523e`).
 - **Cartas**: "Naipes Libres" de Basquetteur (CC BY-SA 3.0) en WebP, 40 + dorso.
 - **Logo**: dos naipes cruzados con el ancho de espada + TRUKEADOS en Archivo Expanded Black ([../brand/logo/](../brand/logo/)). El nombre del juego sale de `APP_NAME` (`config.js`); el `favicon.svg` todavía es el viejo (ver [../brand/ALINEACION.md](../brand/ALINEACION.md)).
 - **Voz del copy**: español rioplatense ("tirá", "cantá", "vos").

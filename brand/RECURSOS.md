@@ -50,6 +50,12 @@ importarse, así que funcionan en cualquier bundler.
 
 Dibujados en 2D sobre canvas por `characters.js`. No son imágenes: se generan.
 
+**Estilo**: ilustración plana de tinta y sepia. Proporciones adultas (cabeza chica, hombros anchos, cuello
+largo), cara angulosa, ojos de párpado pesado, cejas afiladas. Cada superficie tiene dos tonos con sombra
+de borde duro; los pliegues y mechones son cuñas que terminan en punta. Grano de papel encima. **Sin
+degradados, sin brillos suaves, sin cabezas redondas.** Una pieza nueva sigue estas reglas o desentona.
+Arquetipos propios: chaleco con corbata y gaucho (poncho con guarda pampa, pañuelo, rastra, sombrero).
+
 - **Lienzo**: `W = 512`, `H = 1200` (cuerpo entero sentado, del piso a la cabeza).
 - **Dibujar**: `drawCharacter(ctx, look, state)`
   - `look`: aspecto, sale de `lookFor(nombre, asiento)`.
@@ -60,13 +66,14 @@ Dibujados en 2D sobre canvas por `characters.js`. No son imágenes: se generan.
   - `state.down`: 0 a 1, cuánto mira hacia la mesa.
   - `state.cards`: cuántas cartas sostiene (0–3).
 - **Aspecto determinístico**: `lookFor('Pocha', 2)` da **siempre la misma cara** para ese nombre en ese
-  asiento: piel (6 tonos), pelo (8 colores, canas en los mayores), peinado (`short`, `swept`, `long`,
-  `bun`, `receding`, `curly`, `boina`, `cap`, `buzz`), barba, barba de días, bigote, anteojos,
-  ancho y alto de cara, mandíbula, ropa (`button`, `sweater`, `tee`, `jacket`, `polo`) y pantalón.
+  asiento: piel (6 tonos), pelo (8 colores, canas en los mayores), peinado (`short`, `swept`, `wavy`, `long`,
+  `bun`, `receding`, `curly`, `boina`, `cap`, `buzz`, `sombrero`), barba, barba de días, bigote, anteojos,
+  ancho y alto de cara, mandíbula, gesto de las cejas, ropa (`button`, `vest`, `gaucho`, `sweater`, `tee`,
+  `jacket`, `polo`), color de acento y pantalón.
 - **Recorte de cara**: `{ x: 106, y: 100, size: 300 }` sobre el lienzo de 512 × 1200 (el que usa
   `drawFace` en `hud.js` para el menú de señas y el espejo). Fondo de la cara: `--face-bg` `#262626`.
-- **Contorno**: tinta `INK` `#2b2320`. Paletas en `PALETTE` de `theme.js`; colores de la boca (beso, dientes,
-  lengua) en `FACE`.
+- **Contorno**: tinta `INK` `#17100b`. Paletas en `PALETTE` de `theme.js`; colores de la boca y los ojos en
+  `FACE`; accesorios en `OUTFIT`.
 - **No parpadean solos**: los ojos cerrados son solo la seña "ciego". Una página nunca anima un
   parpadeo automático.
 - **Nitidez**: dibujar el canvas a `devicePixelRatio` (ancho y alto multiplicados, CSS al tamaño real).
@@ -113,10 +120,13 @@ otro). Para una página: copiar la función o reproducir sus medidas exactas (ve
 
 ## 7. La escena del bar (`scene.js`, colores en `SCENE` de `theme.js`)
 
-Lámpara colgante de pantalla verde (`#2f4f3a`) con luz `#ffd9a0`, paño verde (`#2e7344` → `#1a4529`)
-con el nombre del juego escrito (`SCENE.feltName`, que sale de `APP_NAME`), mesa de madera,
-paredes `#6b3b2a` con zócalo, piso de tablas, vaso de vino, botella, mate con bombilla y cuatro cuadros:
-"Boca vs. River", "Gardel", "Mate & Truco", "Mar del Plata".
+Un bar en penumbra, con el mismo lenguaje que los personajes: materiales de sombreado por escalones
+(`toon()` en `scene.js`) y paredes pintadas, sin mapeo de tonos para que la paleta quede exacta.
+Lámpara colgante de pantalla verde (`#27352b`) con luz `#ffdcaa`, paño verde en franjas planas (`#27523e` →
+`#1a4529`) con costura, guarda escalonada y el nombre del juego en un rombo (`SCENE.feltName`, que sale de
+`APP_NAME`), mesa de madera oscura, boiserie `#1b120d` con molduras, estantería de botellas en la pared de
+enfrente, piso de tablones, vaso de vino, botella, mate con bombilla y cuatro láminas de dos tintas en los
+costados: sol, guarda pampa, espada y pampa con ombú.
 
 Para usar la escena en una página: **capturas reales del juego** (ver abajo). Montar Three.js en una
 landing solo si la escena es lo principal de esa sección, y siempre cargándolo después del primer
