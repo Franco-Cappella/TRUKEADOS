@@ -493,11 +493,10 @@ export class TableScene {
     this.R = 0.9;
     this.chars = new Map(); // seat -> { mesh, canvas, ctx, tex, look, state }
     this.tableCards = new Map(); // "seat:idx" -> card
-    // cartelito con el nombre de cada carta de la mesa (de lejos no se distinguen): al pasar el mouse se va y se ve la carta
+    // cartelito con el nombre de cada carta de la mesa (de lejos no se distinguen): se va la primera vez que le pasás el mouse
     this.cardLabels = document.createElement('div');
     this.cardLabels.className = 'card-labels';
     this.cardLabelEls = new Map(); // "seat:idx" -> elemento
-    this.tipCard = null;
     this.handCards = [];
     this.selected = null;
     this.hover = null;
@@ -1151,7 +1150,6 @@ export class TableScene {
       down = null;
       this.dragging = null;
     });
-    el.addEventListener('pointerleave', () => this.showCardTip(null));
     el.addEventListener('dblclick', (e) => {
       this.setPointer(e);
       const card = this.pickHand();
@@ -1222,11 +1220,9 @@ export class TableScene {
     return o || null;
   }
 
-  // La carta que se está mirando pierde su cartelito para que se vea entera. ms: en el celular, por un rato.
-  showCardTip(card, ms = 0) {
-    clearTimeout(this.cardTipT);
-    this.tipCard = card || null;
-    if (card && ms) this.cardTipT = setTimeout(() => (this.tipCard = null), ms);
+  // La primera vez que pasás el mouse (o tocás) una carta, su cartelito se va para siempre.
+  showCardTip(card) {
+    if (card) card.userData.labelGone = true;
   }
 
   // Cartelitos de las cartas de la mesa: quedan sobre la parte de la carta que no tapa la siguiente.
@@ -1263,7 +1259,7 @@ export class TableScene {
       const text = name[0].toUpperCase() + name.slice(1) + (burned ? ' · quemada' : '');
       if (el.textContent !== text) el.textContent = text;
       p.copy(card.position).addScaledVector(this.seatDir(seat), CARD_H * TABLE_CARD_SCALE * 0.28).project(this.camera);
-      const visible = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1 && this.tipCard !== card;
+      const visible = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1 && !card.userData.labelGone;
       el.style.display = visible ? '' : 'none';
       if (visible) el.style.transform = `translate(calc(${((p.x + 1) / 2) * r.width}px - 50%), calc(${((1 - p.y) / 2) * r.height}px - 50%))`;
     }
@@ -1299,7 +1295,7 @@ export class TableScene {
     const card = this.pickHand();
     if (card && this.onCardClick) this.onCardClick(card.userData.id);
     // en el celular no hay hover: tocar una carta de la mesa muestra su nombre un momento
-    if (!card && e.pointerType !== 'mouse') this.showCardTip(this.pickTable(), 1800);
+    if (!card && e.pointerType !== 'mouse') this.showCardTip(this.pickTable());
   }
 
   // ------------------------------------------------------------ mis cartas (en la mano, pegadas a la cámara)

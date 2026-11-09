@@ -9,7 +9,7 @@ import { rosterAt } from '../src/roster.js';
 import { seeded } from '../public/js/analysis.js';
 import { PHRASE_WHEEL, ASK_TALK } from '../public/js/talk.js';
 import { newGame, act, actionsFor, viewFor } from '../public/js/engine.js';
-import { voiceKey, voiceText, voiceFor, VOICES } from '../public/js/voices.js';
+import { voiceKey, voiceText, voiceFor, womanVoice, VOICES } from '../public/js/voices.js';
 
 after(restoreClock);
 
@@ -119,10 +119,15 @@ test('GIF de perfil: acepta GIF de verdad y rechaza lo demás o lo que pesa much
   assert.equal(parseGif('no'), null);
 });
 
-test('voces: se alternan entre las dos por asiento', () => {
-  assert.notEqual(voiceFor(0), voiceFor(1));
-  assert.equal(voiceFor(0), voiceFor(2));
+test('voces: se alternan la grabada y la de mujer del dispositivo', () => {
+  assert.equal(voiceFor(0), 'davefx');
+  assert.equal(voiceFor(1), null);
+  assert.equal(voiceFor(2), 'davefx');
   assert.ok(VOICES.includes(voiceFor(null)));
+  const v = (name, lang = 'es-ES') => ({ name, lang });
+  assert.equal(womanVoice([v('Microsoft Pablo'), v('Microsoft Helena'), v('Microsoft Laura')]).name, 'Microsoft Helena');
+  assert.equal(womanVoice([v('Microsoft Pablo'), v('Google español')]).name, 'Google español');
+  assert.equal(womanVoice([v('Microsoft Zira', 'en-US')]), null);
 });
 
 test('ranking: los usuarios automáticos están, sin repetirse, y las mesas los usan', () => {

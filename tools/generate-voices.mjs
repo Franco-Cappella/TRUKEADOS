@@ -1,6 +1,6 @@
 // Genera los audios de public/voz con voces libres de Piper. Solo hace falta correrlo si cambian las frases.
 //   node tools/generate-voices.mjs <carpeta con sherpa-onnx-node y ffmpeg-static> <carpeta con los modelos>
-// Modelos: vits-piper-es_MX-ald-medium y -es_ES-davefx-medium, de
+// Modelo: vits-piper-es_ES-davefx-medium, de
 // https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models (licencias en public/voz/LICENCIAS.txt).
 // Lo que ya existe no se vuelve a generar.
 import fs from 'node:fs';
@@ -18,7 +18,7 @@ process.env.PATH = `${path.resolve(toolsDir, 'node_modules/sherpa-onnx-win-x64')
 const sherpa = require('sherpa-onnx-node');
 const ffmpeg = require('ffmpeg-static');
 
-const MODEL = { ald: 'es_MX-ald-medium', davefx: 'es_ES-davefx-medium' };
+const MODEL = { davefx: 'es_ES-davefx-medium' };
 const OUT = path.resolve('public/voz');
 
 // ---- todas las frases que el juego puede decir
@@ -47,7 +47,7 @@ function speakable(text) {
   return /^\S+( \S+){0,2}$/.test(t) && !/\d/.test(text) ? `¡${t}!` : `${t}.`;
 }
 
-const SPEED = { ald: 1.22, davefx: 1 }; // ald arrastra las palabras
+const SPEED = { davefx: 1 };
 const PAD_START = 0.12; // segundos de silencio: algunos reproductores se comen el principio
 const PAD_END = 0.16;
 const PEAK = 0.8; // todas las voces al mismo volumen y sin saturar
@@ -90,9 +90,8 @@ for (const voice of VOICES) {
   console.log(voice, 'listo', made);
 }
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ keys: [...byKey.keys()] }));
-fs.writeFileSync(path.join(OUT, 'LICENCIAS.txt'), `Voces generadas con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
+fs.writeFileSync(path.join(OUT, 'LICENCIAS.txt'), `Voz generada con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
 
-ald (es_MX): https://huggingface.co/datasets/rmcpantoja/Ald_Mexican_Spanish_speech_dataset - Unlicense.
 davefx (es_ES): https://github.com/OHF-Voice/voice-datasets - CC0.
 `);
 console.log('total listo');

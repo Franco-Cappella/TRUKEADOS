@@ -1,6 +1,6 @@
 // Sonidos sintetizados (sin archivos) y voz que canta los cantos.
 import { store, KEYS } from './dom.js';
-import { voiceFor, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
+import { voiceFor, womanVoice, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
 
 let actx = null;
 let sfxOn = store.get(KEYS.sfx, '1') === '1';
@@ -72,27 +72,13 @@ export function toggleVoice() {
   return voiceOn;
 }
 
-// Lo que no tiene audio grabado sale con la mejor voz en español del dispositivo, una distinta por asiento.
-const LANG_SCORE = { 'es-AR': 100, 'es-UY': 90, 'es-CL': 70, 'es-419': 60, 'es-MX': 55, 'es-US': 50, 'es-ES': 30 };
-
-// Puntaje de una voz: primero la región y después la calidad. Las neuronales (Edge y las de Chrome) suenan como una persona.
-function voiceScore(v) {
-  let s = LANG_SCORE[v.lang] ?? 20;
-  if (/natural|neural|online|premium|enhanced/i.test(v.name)) s += 200;
-  else if (/google/i.test(v.name)) s += 40;
-  return s;
+// Lo que no tiene audio grabado, y los asientos que no usan la voz grabada, salen con la voz de mujer del dispositivo.
+let woman = null;
+function deviceVoice() {
+  if (!woman && window.speechSynthesis) woman = womanVoice(speechSynthesis.getVoices());
+  return woman;
 }
-
-let ranked = null;
-function bestVoices() {
-  if (ranked?.length || !window.speechSynthesis) return ranked || [];
-  ranked = speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('es')).sort((a, b) => voiceScore(b) - voiceScore(a));
-  // si hay voces buenas, se usan solo esas
-  const good = ranked.filter((v) => voiceScore(v) >= 200);
-  if (good.length) ranked = good;
-  return ranked;
-}
-if (typeof window !== 'undefined' && window.speechSynthesis) speechSynthesis.addEventListener?.('voiceschanged', () => (ranked = null));
+if (typeof window !== 'undefined' && window.speechSynthesis) speechSynthesis.addEventListener?.('voiceschanged', () => (woman = null));
 
 const CHAT_STALE_MS = 4000; // una frase de charla que no llegó a decirse en este tiempo ya no se dice
 
@@ -137,8 +123,8 @@ function loadClips() {
 }
 loadClips();
 
-function clipItem(key, seat) {
-  const a = new Audio(VOICE_URL(voiceFor(seat), key));
+function clipItem(key, voice) {
+  const a = new Audio(VOICE_URL(voice, key));
   a.volume = volume;
   return {
     start(done) {
@@ -153,10 +139,9 @@ function clipItem(key, seat) {
   };
 }
 
-function speechItem(text, seat) {
+function speechItem(text) {
   const u = new SpeechSynthesisUtterance(text);
-  const pool = bestVoices();
-  u.voice = (seat != null && pool.length ? pool[seat % pool.length] : pool[0]) || null;
+  u.voice = deviceVoice();
   u.lang = u.voice?.lang || 'es-AR';
   u.rate = 1;
   u.volume = volume;
@@ -180,7 +165,8 @@ export function say(text, seat = null, { chat = false } = {}) {
   if (!voiceOn) return;
   try {
     const key = voiceKey(text);
-    const item = clips?.has(key) ? clipItem(key, seat) : window.speechSynthesis ? speechItem(text, seat) : null;
+    const voice = voiceFor(seat);
+    const item = voice && clips?.has(key) ? clipItem(key, voice) : window.speechSynthesis ? speechItem(text) : null;
     if (!item) return;
     if (!chat) hush(); // un canto corta la charla
     queue.push(Object.assign(item, { chat, at: Date.now() }));

@@ -197,7 +197,7 @@ Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y 
 - Partida rápida en equipo: `invite-team` guarda los lugares del equipo de quien busca (`heldSeats`). Entran con `invited` (enlace `?equipo=1` o invitación de un amigo por `/api/invites`).
 
 ## Voces
-Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voces libres de Piper; licencias en `public/voz/LICENCIAS.txt`). **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
+Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voz libre de Piper, `davefx`; licencia en `public/voz/LICENCIAS.txt`). Los asientos pares usan esa voz y los impares la voz de mujer del dispositivo (`voiceFor`). **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
 
 ## Mesas en juego
 `Lobby.showTables` mantiene entre 7 y 10 mesas. Mientras nadie las mira no corren: `scoreAt` calcula el tanteador según el tiempo. Al entrar a mirar, `ensureShow` arma la sala (`showUp`) con ese tanteador y se juega de verdad. Sus códigos empiezan con 9 (`newRoomCode` nunca los usa).

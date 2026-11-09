@@ -1,5 +1,9 @@
 # Cambios
 
+## 1.14.3 — voces y cartelitos
+- Quedan dos voces, alternadas por asiento: la grabada de hombre y la de mujer del dispositivo.
+- El cartelito de una carta se va la primera vez que le pasás el mouse.
+
 ## 1.14.2 — ¿queremos?
 - En equipo, cuando te cantan truco, envido o flor le podés preguntar a tu compañero "¿Queremos?". Te contesta "No tengo nada", "Te hablan a vos", "Algo tengo" o "Estoy cargado". Los bots también preguntan y contestan.
 

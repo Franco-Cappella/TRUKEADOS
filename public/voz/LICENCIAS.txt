@@ -1,4 +1,3 @@
-Voces generadas con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
+Voz generada con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
 
-ald (es_MX): https://huggingface.co/datasets/rmcpantoja/Ald_Mexican_Spanish_speech_dataset - Unlicense.
 davefx (es_ES): https://github.com/OHF-Voice/voice-datasets - CC0.
