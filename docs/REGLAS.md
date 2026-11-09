@@ -59,7 +59,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
   tantos se calculan siempre con las 3 cartas repartidas.
 - Se quema:
   1. la carta **tapada** (boca abajo; solo se puede desde segunda);
-  2. la carta tirada **fuera de turno**: es tu jugada de esa ronda (cuando te toca, se te saltea). No se puede
+  2. la carta tirada **fuera de turno** (solo en equipos: en 1 vs 1 hay que esperar al rival): es tu jugada de esa ronda (cuando te toca, se te saltea). No se puede
      con un canto sin contestar ni si ya jugaste en la ronda;
   3. la carta **de arriba de dos encimadas**, salvo que la de abajo haya matado (ver abajo).
 

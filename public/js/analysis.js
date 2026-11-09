@@ -4,8 +4,10 @@
 // La evaluación es la de los bots (bot.js), sin faroles ni ruido y con más manos imaginadas.
 // Compartido y sin DOM: corre en un Web Worker (analysis-worker.js) y en los tests.
 import { evaluateDecision, winChance } from './bot.js';
+import { team } from './engine.js';
 import { ANALYSIS, GRADES } from './config.js';
 import { handFrames } from './replay.js';
+import { TRUCO_NAMES, envidoAcceptedPoints } from './engine.js';
 
 const clone = (o) => (typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o)));
 
@@ -74,9 +76,27 @@ export function analyzeHand(hand, seats, seed = 1) {
     const folded = frames[i + 1]?.a?.t === 'noquiero';
     const strength = f.a.t === 'envido' ? ev.envidoWin : ev.handWin;
     const grade = classify({ a: f.a, best: best.a, loss, gap, strength, folded });
-    out.push({ frame: i, seat: f.seat, loss, points, grade, chosen, best, options: ev.options });
+    const before = frames[i - 1].g;
+    const tr = before.h.truco;
+    const ctx = { calls: before.h.envido.calls, trucoNext: TRUCO_NAMES[(tr.pending?.level ?? tr.level) + 1] };
+    // lo que tenía cada opción frente a la mejor, de mejor a peor
+    const ranked = ev.options.slice().sort((x, y) => y.ev - x.ev).map((o) => ({ a: o.a, cost: Math.max(0, (best.ev - o.ev) * ev.slope), mine: o === chosen }));
+    const falta = f.a.t === 'envido' && f.a.kind === 'falta' ? envidoAcceptedPoints(before, ['falta'], team(f.seat)) : null;
+    out.push({ frame: i, seat: f.seat, loss, points, grade, chosen, best, options: ev.options, ranked, ctx, kind: ev.kind, a: f.a, handWin: ev.handWin, envidoWin: ev.envidoWin, tanto: ev.tanto, falta });
   }
   return out;
+}
+
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+/** Por qué la jugada vale lo que vale, en una frase, con lo que el jugador podía saber en ese momento. */
+export function explain(r) {
+  const envido = r.a.t === 'envido' || r.kind === 'envido';
+  const parts = [];
+  if (envido) parts.push(`Con ${r.tanto} de tantos ganaba el envido ${pct(r.envidoWin)} de las veces.`);
+  else if (r.a.t === 'truco' || r.kind === 'truco') parts.push(`Con lo que veía ganaba la mano ${pct(r.handWin)} de las veces.`);
+  if (r.falta != null) parts.push(`La falta se jugaba ${r.falta} ${r.falta === 1 ? 'punto' : 'puntos'}: el rival solo la quiere si le conviene.`);
+  return parts.join(' ');
 }
 
 /**

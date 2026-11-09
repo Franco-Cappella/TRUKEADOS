@@ -15,7 +15,8 @@ export function json(data, status = 200) {
 
 // Código de sala: solo dígitos (ej. "4827"), para pasarlo de palabra o tipearlo con el teclado numérico.
 export function newRoomCode(len = ROOM_CODE_LEN) {
-  return Array.from(crypto.getRandomValues(new Uint32Array(len)), (n) => n % 10).join('');
+  // nunca empieza con 9: esos códigos son de las mesas en juego del lobby (SHOW_TABLES)
+  return Array.from(crypto.getRandomValues(new Uint32Array(len)), (n, i) => n % (i ? 10 : 9)).join('');
 }
 
 // Número al azar en [0, 1) con el generador seguro de la plataforma.

@@ -122,6 +122,15 @@ export const BOT_TALK = {
   reply: ['Jajaja.', 'Sí, claro...', 'Ya vas a ver.', 'Hablá menos y jugá más.', 'Mirá quién habla.', 'Eso decís siempre.', 'Ajá.', 'Jaja, dale.'],
 };
 
+// La ruleta de frases: las mismas que usan los bots, así todos parecen estar tirando frases del chat.
+export const PHRASE_WHEEL = [
+  { label: 'Cargar', phrases: ['Anotá, anotá.', 'Fácil.', 'Así se juega.', 'Andá contando los palitos, que te faltan.', 'Como robarle un caramelo a un nene.', 'Otra para el bolsillo.', 'Esto ya está.', 'Se achicó.'] },
+  { label: 'Apurar', phrases: ['Dale que se enfría el mate.', '¿Te dormiste?', 'Pensalo, pensalo, que no tenés nada.', 'Hoy, si es posible.', 'Ey, ¿seguís ahí?', 'Tirá algo, aunque sea un cuatro.', 'Tanto pensar te va a hacer mal.', 'Mientras tanto me tomo un mate.'] },
+  { label: 'Bronca', phrases: ['Me mataste.', 'Qué mano fea me tocó.', 'Ya va a venir la mía.', 'Suerte de principiante.', 'Uh, qué carta.', 'Me la ganaste de pedo.', 'Las cartas no me quieren hoy.', 'Todavía no terminó, eh.'] },
+  { label: 'Mesa', phrases: ['Bien jugado, eh.', '¿Quién trajo el mate?', 'Mezclá bien, eh.', 'Esta mano viene linda, lo presiento.', 'Jajaja.', 'Ajá.', 'Sí, claro...', 'Mirá quién habla.'] },
+  { label: 'Equipo', team: true, phrases: ['¡Eso, compañero!', '¡Bien ahí!', 'Uh, compañero...', 'Tranqui, la arreglo yo.', 'Atento a las señas, compañero.', 'Esta la ganamos, compañero.', 'Las viejas', 'Las perdedoras'] },
+];
+
 const pick = (rng, p) => rng() < p;
 export const sayFrom = (list, rng = Math.random) => list[Math.floor(rng() * list.length)];
 const say = (key, rng) => sayFrom(BOT_TALK[key], rng);

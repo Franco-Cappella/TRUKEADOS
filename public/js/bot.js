@@ -699,7 +699,7 @@ export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
   const win = (wo) => (winMemo.has(wo) ? winMemo.get(wo) : winMemo.set(wo, rollout(g, seat, wo, null)).get(wo));
   const handEv = (L) => wavg(samples, (wo) => win(wo) * u(L) + (1 - win(wo)) * u(-L));
   // para calificar la jugada: cuánto vale un punto y con qué chances entraba a lo que cantó
-  const info = () => ({ slope: u.slope, handWin: wavg(samples, win), envidoWin: wavg(samples, (wo) => (envidoWins(g, seat, wo) ? 1 : 0)) });
+  const info = () => ({ slope: u.slope, handWin: wavg(samples, win), envidoWin: wavg(samples, (wo) => (envidoWins(g, seat, wo) ? 1 : 0)), tanto: tanto(h.cards[seat], h.muestra).value });
   const raiseEv = (level, cur) =>
     wavg(samples, (wo) => {
       const p = win(wo);

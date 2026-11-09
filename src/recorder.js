@@ -42,7 +42,7 @@ export class MatchRecorder {
       target: room.cfg.target,
       options: { ...roomOptions(room.cfg), trucoDesdeSegunda: !!room.cfg.trucoDesdeSegunda },
       seats,
-      rated: seats.every((s) => !s.bot || s.disguised),
+      rated: room.cfg.rated !== false && seats.every((s) => !s.bot || s.disguised),
       startedAt: new Date().toISOString(),
       hands: 0,
     };

@@ -100,8 +100,11 @@ export function describe(frame, names) {
   return out;
 }
 
-/** Nombre corto de una acción (para "lo mejor era…"). */
-export function actionLabel(a) {
+/**
+ * Nombre corto de una acción (para "lo mejor era…"). ctx: { calls, trucoNext }, lo ya cantado, para decir
+ * "envido envido" o "retruco" en vez de un nombre genérico.
+ */
+export function actionLabel(a, ctx = {}) {
   if (!a) return '';
   switch (a.t) {
     case 'play':
@@ -109,8 +112,9 @@ export function actionLabel(a) {
     case 'play2':
       return `tirar el ${cardName(a.bottom)}`;
     case 'truco':
-      return 'cantar truco (o subir)';
+      return `cantar ${(ctx.trucoNext || 'truco').toLowerCase()}`;
     case 'envido':
+      if (a.kind === 'envido' && ctx.calls?.includes('envido')) return 'cantar envido envido';
       return { envido: 'cantar envido', real: 'cantar real envido', falta: 'cantar falta envido' }[a.kind];
     case 'quiero':
       return 'querer';

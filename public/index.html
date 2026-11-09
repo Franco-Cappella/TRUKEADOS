@@ -73,6 +73,7 @@
           <button type="button" data-tab="tienda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16l-1 13H5zM8 8V6a4 4 0 018 0v2"/></svg><span>Tienda</span></button>
           <button type="button" data-tab="taquilla"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 11h18M10 15h4"/></svg><span>Taquilla</span></button>
           <button type="button" data-tab="perfil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 4-8 8-8s8 3 8 8"/></svg><span>Perfil</span></button>
+          <button type="button" data-tab="ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Ajustes</span></button>
         </nav>
         <button class="ap-user" type="button" data-tab="perfil" title="Tu perfil">
           <span id="me-av"></span>
@@ -171,27 +172,80 @@
           <p class="a-msg" id="cu-msg" role="status"></p>
         </div>
 
-        <div class="m-card ap-panel h-panel hidden" data-panel="perfil">
-          <div class="p-head">
-            <span id="profile-av"></span>
-            <span class="h-uname"><b id="profile-name"></b><small id="profile-email"></small></span>
-          </div>
-          <div class="p-photo">
-            <label class="btn small">Cambiar foto<input type="file" id="av-file" accept="image/*" hidden></label>
-            <button class="btn small ghost" type="button" id="av-clear">Sacar foto</button>
-            <span class="a-msg" id="av-msg" role="status"></span>
-          </div>
-          <h3>ELO <small>con <i>?</i>, todavía en calibración: se mueve mucho hasta encontrar tu nivel</small></h3>
-          <div class="p-elo" id="profile-elo"></div>
-          <button class="btn ghost" type="button" id="logout">Cerrar sesión</button>
+        <div class="ap-panel h-panel hidden pf" data-panel="perfil">
+          <header class="pf-head">
+            <label class="pf-photo" title="Cambiar foto">
+              <span id="profile-av"></span>
+              <em>Cambiar</em>
+              <input type="file" id="av-file" accept="image/*" hidden>
+            </label>
+            <div class="pf-id">
+              <h2 id="profile-name"></h2>
+              <p id="profile-since"></p>
+              <p class="a-msg" id="av-msg" role="status"></p>
+            </div>
+            <div class="pf-coins"><b id="profile-coins">0</b><span>monedas</span></div>
+          </header>
+
+          <section class="pf-sec">
+            <h3>ELO</h3>
+            <div class="pf-ratings" id="profile-elo"></div>
+            <p class="pf-note">El signo <b>?</b> indica que todavía está en calibración: se mueve mucho hasta encontrar tu nivel.</p>
+          </section>
+
+          <section class="pf-sec">
+            <div class="pf-sechead">
+              <h3>Evolución</h3>
+              <small id="pf-record"></small>
+              <div class="pf-tabs" id="pf-modes"></div>
+            </div>
+            <div class="pf-chart" id="pf-chart"></div>
+          </section>
+
+          <section class="pf-sec">
+            <div class="pf-sechead"><h3>Últimas partidas</h3><button type="button" class="a-link" data-tab="partidas">Ver todas</button></div>
+            <div id="pf-recent" class="hi-list"></div>
+            <p class="pf-empty hidden" id="pf-recent-empty">Cuando termines una partida va a aparecer acá.</p>
+          </section>
+        </div>
+
+        <div class="ap-panel h-panel hidden st" data-panel="ajustes">
+          <h2 class="st-title">Ajustes</h2>
+          <section class="st-sec">
+            <h3>Cuenta</h3>
+            <div class="st-row"><span>Nombre de usuario</span><b id="set-name"></b></div>
+            <div class="st-row"><span>Mail</span><b id="profile-email"></b></div>
+            <div class="st-row"><span>Foto de perfil</span><div class="st-actions"><label class="btn small" for="av-file">Cambiar</label><button class="btn small ghost" type="button" id="av-clear">Sacar</button></div></div>
+            <div class="st-row"><span>Sesión</span><button class="btn small ghost" type="button" id="logout">Cerrar sesión</button></div>
+          </section>
+          <section class="st-sec">
+            <h3>Sonido</h3>
+            <label class="st-row"><span>Voces de la mesa</span><input class="st-switch" type="checkbox" role="switch" id="set-voice"></label>
+            <label class="st-row"><span>Volumen de las voces</span><input class="st-range" type="range" min="0" max="100" step="5" id="set-volume"></label>
+            <label class="st-row"><span>Efectos (cartas y turno)</span><input class="st-switch" type="checkbox" role="switch" id="set-sfx"></label>
+          </section>
         </div>
 
         <footer class="credits">
-          Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20.
+          Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20. Voces: <a href="/voz/LICENCIAS.txt" target="_blank" rel="noopener">Piper</a>; la voz argentina, “Daniela”, CC BY-SA 4.0.
         </footer>
       </main>
     </div>
   </section>
+
+  <dialog id="create-dialog" class="dl">
+    <form method="dialog" id="create-form">
+      <h2>Armar una mesa</h2>
+      <fieldset><legend>Puntuación</legend><div class="dl-seg"><label><input type="radio" name="rated" value="1"><span>Por ELO</span></label><label><input type="radio" name="rated" value="0" checked><span>Sin puntuar</span></label></div><p class="dl-hint">Por ELO solo cuenta si no hay bots en la mesa.</p></fieldset>
+      <fieldset><legend>Jugadores</legend><div class="dl-seg"><label><input type="radio" name="mode" value="1v1" checked><span>1 vs 1</span></label><label><input type="radio" name="mode" value="2v2"><span>2 vs 2</span></label><label><input type="radio" name="mode" value="3v3"><span>3 vs 3</span></label></div></fieldset>
+      <fieldset><legend>Puntos</legend><div class="dl-seg"><label><input type="radio" name="target" value="15"><span>A 15</span></label><label><input type="radio" name="target" value="30" checked><span>A 30</span></label></div></fieldset>
+      <fieldset><legend>Quién entra</legend><div class="dl-seg"><label><input type="radio" name="isPublic" value="0" checked><span>Con código</span></label><label><input type="radio" name="isPublic" value="1"><span>Pública</span></label></div></fieldset>
+      <p class="dl-hint">La flor, la muestra y las trampas se eligen adentro.</p>
+      <div class="dl-foot"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn primary" value="ok">Crear mesa</button></div>
+    </form>
+  </dialog>
+
+  <section id="gate" class="screen a-screen hidden" aria-label="Reglas de la mesa"></section>
 
   <!-- ============ REVISIÓN DE UNA PARTIDA ============ -->
   <section id="replay" class="screen hidden">
@@ -206,6 +260,7 @@
           <div id="replay-stage"></div>
           <div id="replay-labels"></div>
           <button class="btn small ghost rv-close" id="replay-back" type="button" title="Volver">✕</button>
+          <div class="rv-score" id="replay-score"></div>
           <div class="rv-caption" id="replay-caption" role="status"></div>
         </div>
       </div>
@@ -219,7 +274,10 @@
         <small class="rv-progress" id="replay-progress"></small>
         <div class="rv-coach" id="replay-coach"></div>
         <ol class="rv-log" id="replay-log"></ol>
-        <label class="rv-reveal"><input type="checkbox" id="replay-reveal" checked> Ver las cartas de todos</label>
+        <div class="rv-opts">
+          <label class="rv-reveal"><input type="checkbox" id="replay-reveal" checked> Ver las cartas de todos</label>
+          <label class="rv-reveal"><input type="checkbox" id="replay-voice"> Voces</label>
+        </div>
         <div class="rv-controls" id="replay-controls">
           <button class="btn small" type="button" data-step="first" title="Principio (Inicio)">⏮</button>
           <button class="btn small" type="button" data-step="prev" title="Atrás (←)">◀</button>
@@ -253,6 +311,7 @@
 
     <!-- abajo a la izquierda: señas y trampa -->
     <div id="tools">
+      <button class="btn" id="wheel-btn" type="button" title="Tirar una frase (F)">Frases</button>
       <div class="dropdown" id="senas-dd">
         <button class="btn" id="senas-btn">Señas</button>
         <div class="menu hidden" id="senas-menu"></div>
@@ -283,7 +342,6 @@
     <aside id="chat" class="hidden">
       <div class="chat-head"><b>Chat</b><button class="btn small ghost" id="chat-close">✕</button></div>
       <div id="chat-log"></div>
-      <div id="quick-phrases"></div>
       <form id="chat-form"><input id="chat-input" maxlength="280" placeholder="Escribí algo…" autocomplete="off"><button class="btn primary small">Enviar</button></form>
     </aside>
 
@@ -291,6 +349,7 @@
     <div id="toast-area"></div>
     <div id="result" class="hidden"></div>
     <div id="help" class="overlay hidden"></div>
+    <div id="wheel" class="hidden" role="dialog" aria-label="Frases"></div>
   </section>
 
   <script type="module" src="/js/main.js"></script>

@@ -5,10 +5,11 @@
 import { ROUTES, GRADES, modeLabel, roomOptionsText } from './config.js';
 import { cardName, team } from './engine.js';
 import { handFrames, describe, actionLabel } from './replay.js';
-import { accuracy, gradeCounts, winSeries } from './analysis.js';
+import { accuracy, gradeCounts, winSeries, explain } from './analysis.js';
 import { lookFor, dressed } from './characters.js';
 import { TableScene } from './scene.js';
 import { $, esc, api } from './dom.js';
+import { say, hush, isVoiceOn, toggleVoice } from './audio.js';
 
 // ------------------------------------------------------------------ lista
 
@@ -65,6 +66,10 @@ export function initHistory(openMatch, back) {
   });
   $('#replay-graph').addEventListener('click', (e) => viewer?.seekGraph(e));
   $('#replay-reveal').addEventListener('change', (e) => viewer?.setReveal(e.target.checked));
+  $('#replay-voice').checked = isVoiceOn();
+  $('#replay-voice').addEventListener('change', (e) => {
+    if (e.target.checked !== isVoiceOn()) toggleVoice();
+  });
   $('#replay-controls').addEventListener('click', (e) => {
     const b = e.target.closest('[data-step]');
     if (b) viewer?.step(b.dataset.step);
@@ -119,6 +124,13 @@ const icon = (key, cls = '') => (key ? `<i class="g-ic g-${key} ${cls}" title="$
 const pct = (x) => `${Math.round(x * 100)}%`;
 // La frase que se escucha en la mesa ("¡Truco!", "Quiero"): solo los cantos y los tantos van en globo.
 const spoken = (f) => f.events.filter((e) => e.type === 'call' || e.type === 'tanto').map((e) => (e.type === 'call' ? e.text : e.value ?? 'Son buenas')).join(' · ');
+// Todo lo que se dice en voz alta en este paso.
+const voiceLines = (f) => f.events.flatMap((e) => {
+  if (e.type === 'call') return [[e.text, e.seat]];
+  if (e.type === 'tanto') return [[String(e.value ?? 'Son buenas'), e.seat]];
+  if (e.type === 'show') return [[`${e.value} en mesa`, e.seat]];
+  return [];
+});
 
 class Viewer {
   constructor(match, scene) {
@@ -151,6 +163,7 @@ class Viewer {
     const opts = roomOptionsText(match.options || {});
     $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, match.rated ? 'por ELO' : '', opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
 
+    $('#replay-voice').checked = isVoiceOn();
     this.seats = match.seats.map((s, i) => ({ name: s.name, cos: s.cos || {}, seat: i }));
     scene.setLayout({ n: match.seats.length, me: this.me, spectator: false });
     scene.setTable({});
@@ -169,6 +182,7 @@ class Viewer {
     this.worker = null;
     clearInterval(this.timer);
     this.timer = null;
+    hush(true);
     this.scene.onFrame = null;
     $('#replay-labels').innerHTML = '';
     $('#replay-caption').textContent = '';
@@ -188,6 +202,11 @@ class Viewer {
     const animate = !!prev && prev.hand === hand && this.at === prev.at + 1;
     this.drawn = { hand, frame, at: this.at };
     this.paintScene(animate);
+    // se escucha lo que se dijo en este paso; al saltar o ir para atrás, también (uno solo y sin cola)
+    if (prev) {
+      hush(true);
+      for (const [text, seat] of voiceLines(this.frames[hand][frame])) say(text, seat);
+    }
     this.renderPosition();
   }
 
@@ -302,6 +321,11 @@ class Viewer {
     $('#replay-caption').innerHTML = `${r ? icon(r.grade) : ''}<span>${text.map(esc).join('<br>')}</span>`;
     $('#replay-pos').textContent = `Mano ${hand + 1} de ${this.hands.length} · ${this.at + 1}/${this.line.length}`;
 
+    const score = f.g.score;
+    const names = (t) => this.names.filter((_, i) => team(i) === t).join(' y ');
+    const mine = this.myTeam;
+    $('#replay-score').innerHTML = `<span class="t${mine}">${esc(names(mine))}</span><b>${score[mine]}</b><i>a ${f.g.target}</i><b>${score[1 - mine]}</b><span class="t${1 - mine}">${esc(names(1 - mine))}</span>`;
+
     const p = this.series[this.at];
     $('#replay-eval-fill').style.height = pct(p);
     $('#replay-eval-me').textContent = p >= 0.5 ? pct(p) : '';
@@ -321,11 +345,14 @@ class Viewer {
       box.innerHTML = this.analyzing ? '<p class="muted">Analizando la partida…</p>' : '<p class="muted">Esta jugada no tenía decisión para evaluar.</p>';
       return;
     }
-    const good = ['brillante', 'genial', 'mejor', 'excelente'].includes(r.grade);
-    const tip = good
-      ? 'Era de lo mejor que se podía hacer.'
-      : `Lo mejor era ${esc(actionLabel(r.best.a))}${r.loss >= 0.005 ? `: le costó ${(r.loss * 100).toFixed(1).replace('.', ',')}% de chance de ganar` : ''}.`;
-    box.innerHTML = `${icon(r.grade, 'big')}<div><b>${esc(this.names[r.seat])}: ${esc(GRADE[r.grade].label)}</b><small>${tip}</small></div>`;
+    const cost = (x) => (x < 0.0005 ? 'la mejor' : `−${(x * 100).toFixed(1).replace('.', ',')}%`);
+    const label = (a) => {
+      const t = actionLabel(a, r.ctx).replace(/^cantar /, '');
+      return t[0].toUpperCase() + t.slice(1);
+    };
+    const options = r.ranked.map((o) => `<li class="${o.mine ? 'mine' : ''}"><span>${esc(label(o.a))}</span><em>${cost(o.cost)}</em></li>`).join('');
+    box.innerHTML = `<div class="rv-coach-head">${icon(r.grade, 'big')}<div><b>${esc(this.names[r.seat])}: ${esc(GRADE[r.grade].label)}</b><small>${esc(explain(r))}</small></div></div>
+      <ol class="rv-options" aria-label="Chance de ganar que dejaba cada opción">${options}</ol>`;
   }
 
   renderLog() {

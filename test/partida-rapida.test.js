@@ -101,6 +101,26 @@ test('sala: si el que buscaba se va, no se sigue llenando', async () => {
   assert.ok(h.room.room.seats.every((s) => !s?.disguised));
 });
 
+test('mesa sin puntuar: no cuenta para el ELO aunque jueguen personas', async () => {
+  const h = await makeRoom({ mode: '1v1' });
+  h.room.room.cfg.rated = false;
+  const a = await h.join('u0');
+  await h.join('u1');
+  await h.send(a, { t: 'start', fillBots: false });
+  assert.equal(h.room.rec.meta.rated, false);
+});
+
+test('reglas antes de entrar: la sala las cuenta y el anfitrión puede cambiar la puntuación', async () => {
+  const h = await makeRoom({ mode: '2v2', options: { flor: true } });
+  const ws = await h.join('u0');
+  const info = await h.room.info();
+  assert.equal(info.cfg.flor, true);
+  assert.equal(info.cfg.rated, true);
+  assert.deepEqual(info.players.length, 1);
+  await h.send(ws, { t: 'config', cfg: { rated: false } });
+  assert.equal((await h.room.info()).cfg.rated, false);
+});
+
 test('los rivales automáticos no hacen trampa ni se pasan las cartas', async () => {
   const h = await makeRoom({ mode: '2v2' });
   const rng = seeded(9);

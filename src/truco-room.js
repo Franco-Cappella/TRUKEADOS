@@ -36,7 +36,7 @@ export class TrucoRoom extends DurableObject {
   }
 
   // ---- RPC desde el Worker ----
-  async create({ code, mode, target, options, isPublic, pid, name, quick = null }) {
+  async create({ code, mode, target, options, isPublic, pid, name, quick = null, rated = true }) {
     if (this.room && !this.reusable()) return { ok: false };
     // código reciclado: se arranca de cero (sin chat ni miradas de la sala anterior)
     this.chat = [];
@@ -45,7 +45,7 @@ export class TrucoRoom extends DurableObject {
     await this.ctx.storage.deleteAlarm();
     this.room = {
       code,
-      cfg: { mode, target, isPublic: !!isPublic, trucoDesdeSegunda: true, ...roomOptions(options) },
+      cfg: { mode, target, isPublic: !!isPublic, rated: !!rated, trucoDesdeSegunda: true, ...roomOptions(options) },
       seats: Array(MODES[mode]).fill(null),
       host: pid,
       status: 'lobby', // lobby | playing | ended
@@ -62,6 +62,40 @@ export class TrucoRoom extends DurableObject {
     return { ok: true };
   }
 
+  // Mesa en juego del lobby: todos son usuarios automáticos y corre solo mientras alguien la mira. score: cómo va ahora.
+  async showUp({ code, mode, target, seats, score }) {
+    const cur = this.room;
+    if (cur?.show && cur.status === 'playing') {
+      // ya estaba armada: si nadie la miraba, se pone al día con el tanteador del lobby
+      if (!this.online().size) cur.game.score = cur.game.score.map((v, i) => Math.max(v, Math.min(score[i], target - 1)));
+      await this.save();
+      return { ok: true };
+    }
+    if (cur && !cur.show && !this.reusable()) return { ok: false };
+    this.chat = [];
+    this.gaze = {};
+    await this.ctx.storage.put('chat', this.chat);
+    await this.ctx.storage.deleteAlarm();
+    this.room = {
+      code,
+      cfg: { mode, target, isPublic: true, trucoDesdeSegunda: true, ...roomOptions() },
+      seats: seats.map((s) => ({ ...s })),
+      host: null,
+      status: 'playing',
+      show: true,
+      quick: null,
+      game: newGame({ mode, target, trucoDesdeSegunda: true, ...roomOptions(), dealer: Math.floor(rng() * seats.length) }, rng),
+      handEndedAt: 0,
+      afkSince: {},
+      createdAt: Date.now(),
+    };
+    this.room.game.score = score.map((v) => Math.min(v, target - 1));
+    await this.loadBrains();
+    this.afterDeal();
+    await this.save();
+    return { ok: true };
+  }
+
   // Una sala vieja (nadie conectado y sin movimiento hace rato) presta su código a una nueva.
   reusable() {
     const r = this.room;
@@ -71,7 +105,17 @@ export class TrucoRoom extends DurableObject {
   async info() {
     if (!this.room) return { exists: false };
     const r = this.room;
-    return { exists: true, mode: r.cfg.mode, status: r.status, free: r.seats.filter((s) => !s).length, isPublic: r.cfg.isPublic };
+    return {
+      exists: true,
+      mode: r.cfg.mode,
+      status: r.status,
+      free: r.seats.filter((s) => !s).length,
+      isPublic: r.cfg.isPublic,
+      quick: !!r.quick,
+      cfg: r.cfg,
+      players: r.seats.filter(Boolean).map((s) => s.name),
+      host: r.seats.find((s) => s && !s.bot && s.pid === r.host)?.name || null,
+    };
   }
 
   async fetch() {
@@ -191,7 +235,7 @@ export class TrucoRoom extends DurableObject {
         if (!lobbyHost) return;
         const c = msg.cfg || {};
         if (TARGETS.includes(c.target)) r.cfg.target = c.target;
-        for (const k of ['isPublic', 'trucoDesdeSegunda', ...ROOM_OPTIONS.map((o) => o.key)]) if (typeof c[k] === 'boolean') r.cfg[k] = c[k];
+        for (const k of ['isPublic', 'rated', 'trucoDesdeSegunda', ...ROOM_OPTIONS.map((o) => o.key)]) if (typeof c[k] === 'boolean') r.cfg[k] = c[k];
         if (MODES[c.mode] && c.mode !== r.cfg.mode) {
           const people = r.seats.filter((s) => s && !s.bot);
           r.cfg.mode = c.mode;
@@ -1216,7 +1260,9 @@ export class TrucoRoom extends DurableObject {
         mode: r.cfg.mode,
         target: r.cfg.target,
         isPublic: r.cfg.isPublic,
+        rated: r.cfg.rated !== false,
         quick: !!r.quick,
+        show: !!r.show,
         elo: r.quick?.elo ?? null,
         status: r.status,
         players: r.seats.map((s) => s?.name ?? null),

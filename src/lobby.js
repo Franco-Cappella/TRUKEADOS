@@ -1,6 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newBrain, train, BRAIN_VERSION } from '../public/js/brain.js';
 import { MATCH } from '../public/js/config.js';
+import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from './show-tables.js';
+import { rng } from './util.js';
 
 const MIN = 60_000;
 const MAX_LISTED = 50;
@@ -59,7 +61,42 @@ export class Lobby extends DurableObject {
     return b;
   }
 
+  // Mesas en juego: saca las que terminaron y completa las que falten.
+  async showTables(now = Date.now()) {
+    const saved = (await this.ctx.storage.get('show')) || [];
+    const tables = saved.filter((t) => !isOver(t, now));
+    const want = wantedTables(now);
+    const taken = new Set(tables.map((t) => t.code));
+    while (tables.length < want) {
+      const t = newShowTable(rng, now, taken);
+      taken.add(t.code);
+      tables.push(t);
+    }
+    if (tables.length !== saved.length || tables.some((t, i) => t !== saved[i])) await this.ctx.storage.put('show', tables);
+    return tables;
+  }
+
+  // Alguien entra a mirar una mesa: se arma la sala con el tanteador de ahora.
+  async ensureShow(code, now = Date.now()) {
+    const t = (await this.showTables(now)).find((x) => x.code === code);
+    if (!t) return false;
+    const room = this.env.TRUCO_ROOM.get(this.env.TRUCO_ROOM.idFromName('truco:' + code));
+    await room.showUp({ code, mode: t.mode, target: t.target, seats: t.seats, score: scoreAt(t, now) });
+    return true;
+  }
+
+  // Lo que pasó de verdad en una mesa que estaban mirando: el tanteador sigue desde ahí.
+  async showProgress(summary, now = Date.now()) {
+    const tables = (await this.ctx.storage.get('show')) || [];
+    const t = tables.find((x) => x.code === summary.code);
+    if (!t) return;
+    if (summary.status === 'ended') tables.splice(tables.indexOf(t), 1);
+    else if (summary.score) Object.assign(t, { score: summary.score, at: now });
+    await this.ctx.storage.put('show', tables);
+  }
+
   async upsert(summary) {
+    if (summary.show) return this.showProgress(summary);
     await this.ctx.storage.put('t:' + summary.code, { ...summary, updatedAt: Date.now() });
   }
 
@@ -82,7 +119,8 @@ export class Lobby extends DurableObject {
     }
     for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
     const byRecent = (a, b) => b.updatedAt - a.updatedAt;
-    return { open: open.sort(byRecent).slice(0, MAX_LISTED), live: live.sort(byRecent).slice(0, MAX_LISTED) };
+    const shows = (await this.showTables(now)).map((t) => showSummary(t, now));
+    return { open: open.sort(byRecent).slice(0, MAX_LISTED), live: [...live.sort(byRecent), ...shows].slice(0, MAX_LISTED) };
   }
 
   // Partida rápida: la mesa de partida rápida de ese modo y de un ELO parecido a la que le falta menos gente.

@@ -26,6 +26,9 @@ export const store = {
 export const KEYS = {
   name: 'truco-name', // el nombre del perfil (lo pone auth.js al iniciar sesión)
   voice: 'truco-voice',
+  voiceVol: 'truco-voice-volume',
+  sfx: 'truco-sfx',
+  entered: 'truco-entered', // sessionStorage: la mesa cuyas reglas ya viste
   zoomTip: 'truco-zoom-tip',
   spectate: 'truco-spectate', // sessionStorage
   autostart: 'truco-autostart', // sessionStorage

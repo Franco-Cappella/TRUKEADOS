@@ -19,6 +19,7 @@ src/                      SERVIDOR (Cloudflare Worker)
   matches.js              partida terminada → Supabase (ELO, monedas, historial) y lectura del historial
   shop.js                 tienda: comprar (buy_item) y elegir lo que tenés puesto (profiles.equipped)
   social.js               amigos por nombre de usuario, foto de perfil y ranking
+  show-tables.js          mesas en juego del lobby: 7 a 10 partidas entre usuarios automáticos que se pueden mirar
   matchmaking.js          partida rápida: nombre, ELO y ropa de los rivales automáticos que completan la mesa
   truco-room.js           Durable Object: sala, bots, AFK, señas, chat, alarmas
   lobby.js                Durable Object "global": mesas públicas para el menú y los cerebros de los bots
@@ -38,7 +39,9 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   dom.js                  $, esc, store (localStorage seguro), KEYS, api() (manda el token de la sesión)
   auth.js                 Supabase Auth en el navegador: iniciar sesión, perfil (loadMe), cerrar sesión
   account.js              pantallas de entrada: iniciar sesión / crear cuenta y elegir el nombre
-  audio.js                sonidos sintetizados y voz de los cantos
+  audio.js                sonidos sintetizados y voces: audios de public/voz y, para lo escrito a mano, la voz del dispositivo
+  voices.js *             qué voz usa cada asiento y cómo se llama el audio de cada frase
+  wheel.js                ruleta de frases de la partida (botón Frases o tecla F)
   hud.js                  anotador de palitos, ayuda, caras de las señas, frases rápidas
   menu.js                 menú con barra lateral: jugar, mesas, partidas, amigos, ranking, tienda, taquilla y perfil
   social.js               pantallas de amigos y ranking, y subir la foto de perfil
@@ -183,6 +186,12 @@ ajedrez). Al separarlo se movió a la raíz, se partió `main.js` en módulos, s
 colores, y se arreglaron: botones chicos, mazo partido después del corte, parpadeo que se confundía con
 la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la carta de arriba de las dos
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
+
+## Voces
+Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voces libres de Piper; licencias en `public/voz/LICENCIAS.txt`). **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
+
+## Mesas en juego
+`Lobby.showTables` mantiene entre 7 y 10 mesas. Mientras nadie las mira no corren: `scoreAt` calcula el tanteador según el tiempo. Al entrar a mirar, `ensureShow` arma la sala (`showUp`) con ese tanteador y se juega de verdad. Sus códigos empiezan con 9 (`newRoomCode` nunca los usa).
 
 ## Partida rápida y ELO
 - `/api/quick` manda a una mesa abierta de ELO parecido (`Lobby.findOpen`) o crea una con `room.quick`. Esa mesa arranca sola al llenarse. Si no aparece gente, `quickTick` sienta rivales automáticos: el primero a los 6-22 s, los demás más seguido (`MATCH` en config.js).

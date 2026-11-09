@@ -9,7 +9,7 @@ import { requireUser, createProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
 import { setAvatar, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
-import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, roomOptions } from '../public/js/config.js';
+import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, SHOW_TABLES, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
 
@@ -112,6 +112,7 @@ async function handle(request, env) {
       target: TARGETS.includes(Number(body.target)) ? Number(body.target) : DEFAULT_TARGET,
       options: roomOptions(body.options),
       isPublic: !!body.isPublic,
+      rated: body.rated !== false,
       pid,
       name,
     });
@@ -172,6 +173,7 @@ async function handle(request, env) {
   const ws = path.match(/^\/api\/rooms\/(\d{4})\/ws$/);
   if (ws) {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('Se esperaba un WebSocket', { status: 426 });
+    if (ws[1].startsWith(SHOW_TABLES.codePrefix)) await lobbyStub(env).ensureShow(ws[1]);
     return roomStub(env, ws[1]).fetch(request);
   }
 

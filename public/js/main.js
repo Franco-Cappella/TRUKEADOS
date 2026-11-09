@@ -5,9 +5,11 @@ import { TableScene, preloadCards } from './scene.js';
 import { lookFor } from './characters.js';
 import { SENAS, ROUTES, APP_NAME } from './config.js';
 import { FONT } from './theme.js';
-import { $, $$, esc, savedName } from './dom.js';
+import { $, $$, esc, savedName, api, KEYS } from './dom.js';
+import { showGate } from './gate.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
-import { QUICK_PHRASES, helpHtml, drawFace, readOptionChecks } from './hud.js';
+import { helpHtml, drawFace, readOptionChecks } from './hud.js';
+import { initWheel } from './wheel.js';
 import { initMenu, showMenu, hideMenu } from './menu.js';
 import { initAuth, loadMe, currentMe, lastLoadError, onAuthChange, signOut } from './auth.js';
 import { initAccount, showEntry, showLoginError } from './account.js';
@@ -44,6 +46,7 @@ function route() {
     return;
   }
   showEntry(null);
+  $('#gate').classList.add('hidden');
   const m = location.pathname.match(ROUTES.roomRe);
   if (m) return hideReplay(), openRoom(m[1].toUpperCase());
   room?.close();
@@ -57,7 +60,22 @@ function route() {
   showMenu();
 }
 
-function openRoom(code) {
+// Antes de sentarte en una mesa ajena, sus reglas. Devuelve true si se quedó mostrándolas.
+async function gated(code) {
+  if (sessionStorage.getItem(KEYS.entered) === code || sessionStorage.getItem(KEYS.spectate) === code) return false;
+  const info = await api(ROUTES.api.room(code)).catch(() => null);
+  if (!info?.exists || info.status !== 'lobby' || info.quick) return false;
+  $('#menu').classList.add('hidden');
+  showGate(info, code, () => {
+    sessionStorage.setItem(KEYS.entered, code);
+    route();
+  }, goHome);
+  return true;
+}
+
+async function openRoom(code) {
+  if (await gated(code)) return;
+  $('#gate').classList.add('hidden');
   hideMenu();
   if (!scene) {
     scene = new TableScene($('#stage'));
@@ -79,6 +97,7 @@ function bindGameUI() {
   const vt = $('#voice-toggle');
   const paintVoice = () => (vt.textContent = isVoiceOn() ? 'Voz: sí' : 'Voz: no');
   paintVoice();
+  addEventListener('trukeados:voice', paintVoice);
   vt.onclick = () => {
     toggleVoice();
     paintVoice();
@@ -106,11 +125,7 @@ function bindGameUI() {
     room?.send({ t: 'chat', text: v });
     $('#chat-input').value = '';
   };
-  $('#quick-phrases').innerHTML = QUICK_PHRASES.map((q) => `<button type="button">${esc(q)}</button>`).join('');
-  $('#quick-phrases').onclick = (e) => {
-    const b = e.target.closest('button');
-    if (b) room?.send({ t: 'chat', text: b.textContent });
-  };
+  initWheel((text) => room?.send({ t: 'chat', text }), () => room?.st?.game?.n ?? 2);
 
   // carta elegida
   $('#card-actions').onclick = (e) => {
@@ -161,7 +176,7 @@ function bindGameUI() {
     else if (d.v !== undefined) {
       const name = b.closest('[data-cfg]')?.dataset.cfg;
       if (!name) return;
-      const v = name === 'target' ? Number(d.v) : name === 'isPublic' ? d.v === '1' : d.v;
+      const v = name === 'target' ? Number(d.v) : name === 'isPublic' || name === 'rated' ? d.v === '1' : d.v;
       room.send({ t: 'config', cfg: { [name]: v } });
     }
   });

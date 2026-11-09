@@ -967,11 +967,12 @@ export class RoomClient {
           <h3>Reglas de la mesa</h3>
           <div class="w-row">${seg('mode', Object.keys(MODES).map((m) => [m, modeLabel(m)]), cfg.mode)}</div>
           <div class="w-row two">${seg('target', [[15, 'A 15'], [30, 'A 30']], cfg.target)}${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
+          <div class="w-row">${seg('rated', [[1, 'Por ELO'], [0, 'Sin puntuar']], cfg.rated !== false ? 1 : 0)}</div>
           <div class="w-pills n${pills.length}">${pills.join('')}</div>
         </div>`
       : '';
 
-    const summary = [modeLabel(cfg.mode), `a ${cfg.target}`, cfg.isPublic ? 'pública' : 'privada', roomOptionsText(cfg)].filter(Boolean).join(' · ');
+    const summary = [modeLabel(cfg.mode), `a ${cfg.target}`, cfg.rated !== false ? 'por ELO' : 'sin puntuar', cfg.isPublic ? 'pública' : 'privada', roomOptionsText(cfg)].filter(Boolean).join(' · ');
     const startLabel = free ? `Empezar con ${free} bot${free > 1 ? 's' : ''}` : 'Empezar';
     const footer = host
       ? `<div class="w-actions">
@@ -1055,7 +1056,7 @@ export class RoomClient {
     // lo que te dejó la partida (llega un ratito después, cuando se guarda)
     const mine = this.match?.players.find((p) => p.seat === this.you);
     const gains = mine
-      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Con bots no se juega por ELO</small></span>'}<span>+${mine.coins} monedas${mine.milestone ? ` <small>(${mine.milestone} por tu récord de ELO)</small>` : ''}</span></div>`
+      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Partida sin puntuar</small></span>'}<span>+${mine.coins} monedas${mine.milestone ? ` <small>(${mine.milestone} por tu récord de ELO)</small>` : ''}</span></div>`
       : '';
     el.innerHTML = `<div class="card-box">
       <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron!' : 'Perdieron'}</h2>

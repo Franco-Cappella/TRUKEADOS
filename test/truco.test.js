@@ -407,25 +407,14 @@ test('la carta quemada vale como un 4 (empata con un 4, pierde con un 5)', () =>
   assert.deepEqual(g.score, [1, 0]);
 });
 
-test('tirar fuera de turno: la carta se quema y es tu jugada de esa ronda', () => {
-  const g = fixed([['7O', '4E', '5C'], ['3O', '6O', '12B']]);
-  assert.equal(actionsFor(g, 1).throwOut, true);
-  ok(act(g, 1, { t: 'play', card: '3O' })); // le tocaba al 0
-  assert.equal(g.h.turn, 0); // el turno sigue siendo del 0
-  assert.equal(viewFor(g, 0).h.table[1][0].burned, true); // se ve quemada para todos
-  assert.equal(actionsFor(g, 1).throwOut, false); // ya jugó en esta ronda
-  ok(act(g, 0, { t: 'play', card: '5C' })); // 5 le gana al 3 quemado (vale un 4)
-  assert.equal(g.h.rounds[0].result, 0);
-  assert.equal(g.h.r, 1);
-  assert.equal(g.h.turn, 0); // el que ganó primera empieza segunda
-});
-
 test('fuera de turno en 2 vs 2: al llegar su turno se lo saltea y no recupera la carta', () => {
   const g = newGame({ mode: '2v2', dealer: 3 }, seeded(9)); // mano 0, orden 0 1 2 3
   const h = g.h;
   const c = h.inHand[2][0];
   ok(act(g, 2, { t: 'play', card: c })); // el 2 tira fuera de turno (le toca al 0)
   assert.equal(h.inHand[2].length, 2);
+  assert.equal(viewFor(g, 0).h.table[2][0].burned, true); // se ve quemada para todos
+  assert.equal(actionsFor(g, 2).throwOut, false); // ya jugó en esta ronda
   ok(act(g, 0, { t: 'play', card: h.inHand[0][0] }));
   ok(act(g, 1, { t: 'play', card: h.inHand[1][0] }));
   assert.equal(h.turn, 3); // el 2 ya jugó: pasa directo al 3

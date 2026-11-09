@@ -1,7 +1,15 @@
 // Sonidos sintetizados (sin archivos) y voz que canta los cantos.
 import { store, KEYS } from './dom.js';
+import { VOICE_CAST, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
 
 let actx = null;
+let sfxOn = store.get(KEYS.sfx, '1') === '1';
+export const isSfxOn = () => sfxOn;
+export function toggleSfx() {
+  sfxOn = !sfxOn;
+  store.set(KEYS.sfx, sfxOn ? '1' : '0');
+  return sfxOn;
+}
 // El AudioContext se crea con el primer gesto del usuario (los navegadores lo exigen).
 export function audio() {
   if (!actx) {
@@ -15,7 +23,7 @@ export function audio() {
 // Ruido corto filtrado: una carta que cae en el paño.
 export function flick(vol = 0.25, dur = 0.07) {
   const a = audio();
-  if (!a) return;
+  if (!a || !sfxOn) return;
   const len = Math.floor(a.sampleRate * dur);
   const buf = a.createBuffer(1, len, a.sampleRate);
   const d = buf.getChannelData(0);
@@ -34,7 +42,7 @@ export function flick(vol = 0.25, dur = 0.07) {
 // "Te toca".
 export function ding() {
   const a = audio();
-  if (!a) return;
+  if (!a || !sfxOn) return;
   const o = a.createOscillator();
   const g = a.createGain();
   o.frequency.value = 880;
@@ -47,13 +55,19 @@ export function ding() {
 
 let voiceOn = store.get(KEYS.voice, '1') === '1';
 export const isVoiceOn = () => voiceOn;
+let volume = Math.max(0, Math.min(1, Number(store.get(KEYS.voiceVol, '1')) || 0));
+export const voiceVolume = () => volume;
+export function setVoiceVolume(v) {
+  volume = Math.max(0, Math.min(1, v));
+  store.set(KEYS.voiceVol, String(volume));
+}
 export function toggleVoice() {
   voiceOn = !voiceOn;
   store.set(KEYS.voice, voiceOn ? '1' : '0');
   if (!voiceOn) {
     queue.length = 0;
+    current?.stop();
     current = null;
-    window.speechSynthesis?.cancel();
   }
   return voiceOn;
 }
@@ -101,9 +115,7 @@ function pump() {
     current = null;
     pump();
   };
-  item.u.onend = done;
-  item.u.onerror = done;
-  speechSynthesis.speak(item.u);
+  item.start(done);
 }
 
 // Se calla la charla (lo que está diciendo y lo que esperaba): pasó algo en la mesa y ya no viene al caso.
@@ -111,27 +123,74 @@ function pump() {
 export function hush(all = false) {
   for (let i = queue.length - 1; i >= 0; i--) if (all || queue[i].chat) queue.splice(i, 1);
   if (current && (all || current.chat)) {
+    const was = current;
     current = null;
-    try {
-      speechSynthesis.cancel();
-    } catch {}
+    was.stop();
     pump();
   }
 }
 
+// Los audios que existen (public/voz): lo que no esté acá (lo que escribe cada uno) sale con la voz del dispositivo.
+let clips = null;
+function loadClips() {
+  if (clips) return;
+  clips = new Set();
+  fetch(VOICE_MANIFEST).then((r) => r.json()).then((m) => m.keys.forEach((k) => clips.add(k))).catch(() => {});
+}
+loadClips();
+
+function clipItem(key, seat) {
+  const [voice, rate] = VOICE_CAST[(seat ?? 0) % VOICE_CAST.length];
+  const a = new Audio(VOICE_URL(voice, key));
+  a.preservesPitch = false; // la velocidad cambia también el tono: suena a otra persona
+  a.playbackRate = rate;
+  a.volume = volume;
+  return {
+    start(done) {
+      a.onended = done;
+      a.onerror = done;
+      a.play().catch(done);
+    },
+    stop() {
+      a.onended = a.onerror = null;
+      a.pause();
+    },
+  };
+}
+
+function speechItem(text, seat) {
+  const u = new SpeechSynthesisUtterance(text);
+  const pool = bestVoices();
+  u.voice = (seat != null && pool.length ? pool[seat % pool.length] : pool[0]) || null;
+  u.lang = u.voice?.lang || 'es-AR';
+  u.rate = 1;
+  u.volume = volume;
+  // con una voz por cada uno no hace falta tocar el tono
+  if (seat != null && pool.length <= seat) u.pitch = PITCHES[seat % PITCHES.length];
+  return {
+    start(done) {
+      u.onend = done;
+      u.onerror = done;
+      speechSynthesis.speak(u);
+    },
+    stop() {
+      u.onend = u.onerror = null;
+      try {
+        speechSynthesis.cancel();
+      } catch {}
+    },
+  };
+}
+
 // chat: es charla (se descarta si pasa algo en la mesa antes de decirla); si no, es un canto.
 export function say(text, seat = null, { chat = false } = {}) {
-  if (!voiceOn || !window.speechSynthesis) return;
+  if (!voiceOn) return;
   try {
-    const u = new SpeechSynthesisUtterance(text);
-    const pool = bestVoices();
-    u.voice = (seat != null && pool.length ? pool[seat % pool.length] : pool[0]) || null;
-    u.lang = u.voice?.lang || 'es-AR';
-    u.rate = 1;
-    // con una voz por cada uno no hace falta tocar el tono
-    if (seat != null && pool.length <= seat) u.pitch = PITCHES[seat % PITCHES.length];
+    const key = voiceKey(text);
+    const item = clips?.has(key) ? clipItem(key, seat) : window.speechSynthesis ? speechItem(text, seat) : null;
+    if (!item) return;
     if (!chat) hush(); // un canto corta la charla
-    queue.push({ u, chat, at: Date.now() });
+    queue.push(Object.assign(item, { chat, at: Date.now() }));
     pump();
   } catch {}
 }

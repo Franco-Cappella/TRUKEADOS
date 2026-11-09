@@ -6,6 +6,7 @@ import { currentMe, loadMe } from './auth.js';
 import { loadHistory, rowHtml } from './history.js';
 import { initShop, loadShop } from './shop.js';
 import { initSocial, loadFriends, loadRanking } from './social.js';
+import { initProfile, loadProfile, loadSettings } from './profile.js';
 
 const LOBBY_REFRESH_MS = 7000;
 const PUBLIC_MAX = 5; // en la pantalla de inicio, como mucho
@@ -24,13 +25,26 @@ export function initMenu(go, logout) {
   };
   const lastMode = () => store.get(KEYS.lastMode) || '1v1';
   const create = (mode, practice) =>
-    api(ROUTES.api.rooms, { mode, isPublic: false, options: {} }).then((r) => {
+    api(ROUTES.api.rooms, { mode, isPublic: false, rated: false, options: {} }).then((r) => {
+      sessionStorage.setItem(KEYS.entered, r.code);
       if (practice) sessionStorage.setItem(KEYS.autostart, r.code);
       go(r.code);
     });
 
   // armar una mesa privada: se abre con el último modo que usaste y las reglas se tocan adentro
-  $('#create').addEventListener('click', tryGo(() => create(lastMode(), false)));
+  const dialog = $('#create-dialog');
+  $('#create').addEventListener('click', () => {
+    dialog.querySelector(`[name=mode][value="${lastMode()}"]`).checked = true;
+    dialog.showModal();
+  });
+  dialog.addEventListener('close', tryGo(async () => {
+    if (dialog.returnValue !== 'ok') return;
+    const f = new FormData($('#create-form'));
+    store.set(KEYS.lastMode, f.get('mode'));
+    const r = await api(ROUTES.api.rooms, { mode: f.get('mode'), target: Number(f.get('target')), rated: f.get('rated') === '1', isPublic: f.get('isPublic') === '1', options: {} });
+    sessionStorage.setItem(KEYS.entered, r.code); // las reglas las pusiste vos
+    go(r.code);
+  }));
 
   // filas de modos (partida rápida y práctica): recuerdan el modo para la próxima mesa
   const onMode = (el, fn) =>
@@ -71,6 +85,7 @@ export function initMenu(go, logout) {
   $('#logout').addEventListener('click', logout);
   initShop(paintMe);
   initSocial(paintMe);
+  initProfile();
 }
 
 function showTab(tab) {
@@ -90,6 +105,8 @@ function showTab(tab) {
   if (tab === 'ranking') loadRanking();
   if (tab === 'tienda') loadShop('tienda');
   if (tab === 'taquilla') loadShop('personalizar');
+  if (tab === 'perfil') loadProfile();
+  if (tab === 'ajustes') loadSettings();
 }
 
 // Las últimas partidas en la pantalla de inicio.
@@ -111,6 +128,9 @@ function paintMe() {
   for (const id of ['#me-av', '#profile-av']) $(id).innerHTML = avatarHtml(p);
   $('#me-name').textContent = p.username;
   $('#profile-name').textContent = p.username;
+  $('#set-name').textContent = p.username;
+  $('#profile-coins').textContent = p.coins;
+  $('#profile-since').textContent = p.created_at ? `Juega desde ${new Date(p.created_at).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}` : '';
   $('#me-sub').textContent = `${p.coins} monedas`;
   $('#profile-email').textContent = currentMe().user.email;
   $('#shop-coins').textContent = p.coins;
@@ -119,7 +139,7 @@ function paintMe() {
   $('#profile-elo').innerHTML = Object.keys(MODES)
     .map((m) => {
       const n = p[`games_${m}`] || 0;
-      return `<div class="p-stat"><small>${esc(modeLabel(m))}</small><b>${esc(eloText(m))}</b><span>${n === 1 ? '1 partida' : `${n} partidas`}</span></div>`;
+      return `<div class="pf-rating"><span>${esc(modeLabel(m))}</span><b>${esc(eloText(m))}</b><small>${n === 1 ? '1 partida' : `${n} partidas`}</small></div>`;
     })
     .join('');
   $('#profile-elo').title = games ? '' : 'Todavía no jugaste partidas por ELO';
@@ -129,7 +149,7 @@ const tableHtml = ([r, isLive]) => {
   const state = isLive ? (r.score ? `van ${r.score[0]} a ${r.score[1]}` : 'jugando') : `${r.free === 1 ? 'falta 1' : `faltan ${r.free}`}`;
   return `<div class="m-table">
     <span class="m-tmode">${esc(modeLabel(r.mode))}</span>
-    <span class="m-tinfo"><b>${esc(r.players.filter(Boolean).join(', ') || '—')}</b><small>a ${r.target} · ${esc(state)}${r.options ? ' · ' + esc(r.options) : ''}</small></span>
+    <span class="m-tinfo"><b>${esc(r.players.filter(Boolean).join(', ') || '—')}</b><small>a ${r.target} · ${r.rated === false ? 'sin puntuar' : 'por ELO'} · ${esc(state)}${r.options ? ' · ' + esc(r.options) : ''}</small></span>
     <button class="btn small ${isLive ? '' : 'primary'}" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? 'Mirar' : 'Sentarme'}</button>
   </div>`;
 };

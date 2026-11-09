@@ -153,6 +153,17 @@ export const MATCH = {
   joinRange: 400, // a qué mesas abiertas te manda
   cosmeticChance: 0.35,
 };
+// Mesas en juego del lobby: partidas entre usuarios automáticos que cualquiera puede mirar (ver src/show-tables.js).
+export const SHOW_TABLES = {
+  min: 7,
+  max: 10,
+  refreshMs: 8 * 60_000, // cada cuánto puede cambiar cuántas mesas hay
+  paceMin: 22_000, // cada cuánto se anotan puntos en una mesa que nadie mira
+  paceRand: 26_000,
+  share1v1: 0.5,
+  share2v2: 0.35,
+  codePrefix: '9', // los códigos que empiezan con 9 son solo de estas mesas
+};
 // Qué tan bien juega un rival automático según su ELO: cuántas manos imagina, cuánto ruido mete y qué tan
 // seguido se equivoca feo (en esa decisión casi no piensa).
 export function botSkill(elo) {
@@ -170,7 +181,7 @@ export const RANKING_SIZE = 50;
 // Análisis post-partida, como el de chess.com: cada jugada se califica por cuánta chance de ganar la partida
 // perdió frente a la mejor opción (0 a 1). `max` es hasta cuánto perdido corresponde esa calificación.
 export const ANALYSIS = {
-  samples: 60, // manos imaginadas por decisión (más que un bot: acá no hay apuro)
+  samples: 150, // manos imaginadas por decisión (más que un bot: acá no hay apuro)
   // de mejor a peor; glyph e icon los usa la revisión
   grades: [
     { key: 'mejor', max: 0.002, label: 'La mejor', glyph: '★' },

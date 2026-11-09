@@ -1,0 +1,6 @@
+Voces generadas con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
+
+daniela (es_AR): modelo de Piper entrenado con el corpus de habla argentina OpenSLR SLR61,
+  https://www.openslr.org/61/ - licencia CC BY-SA 4.0. Estos audios se distribuyen bajo la misma licencia.
+ald (es_MX): https://huggingface.co/datasets/rmcpantoja/Ald_Mexican_Spanish_speech_dataset - Unlicense.
+davefx (es_ES): https://github.com/OHF-Voice/voice-datasets - CC0.

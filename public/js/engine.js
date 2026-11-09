@@ -592,6 +592,7 @@ function checkPlayTurn(g, w, seat) {
 // Por qué no se puede tirar fuera de turno ahora (null = se puede, y la carta se quema).
 function outOfTurnBlock(g, seat) {
   const h = g.h;
+  if (g.n === 2) return 'Esperá que juegue tu rival'; // de a dos, tirar antes de tiempo es regalar la ronda
   if (h.phase !== 'play' || waitingFor(g).kind !== 'play') return 'Hay que contestar el canto primero';
   if (played(h, seat)) return 'Ya jugaste en esta ronda';
   if (h.pre[seat]) return 'Tu carta de esta ronda ya está en la mesa';

@@ -5,7 +5,6 @@ import { esc } from './dom.js';
 import { SCORE } from './theme.js';
 
 // Frases rápidas del chat.
-export const QUICK_PHRASES = ['¡Buenas!', 'Jugá, che', 'Uh, qué mano…', 'Las viejas', 'Las perdedoras', '¡Qué suerte tenés!', 'Bien jugado', 'Me voy a la parda', '¿Truco?', 'Uy, se me cayó'];
 
 // Recorte de la cara de un personaje con una expresión (para el menú de señas y el espejo).
 const FACE_CROP = { x: 106, y: 100, size: 300 };

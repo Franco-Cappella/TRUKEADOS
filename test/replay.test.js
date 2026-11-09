@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, nextHand, waitingFor, closeShow } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
-import { handFrames, describe } from '../public/js/replay.js';
+import { handFrames, describe, actionLabel } from '../public/js/replay.js';
 import { eloDeltas, milestoneCoins } from '../public/js/elo.js';
-import { analyzeHand, accuracy, gradeCounts, seeded, classify, winSeries } from '../public/js/analysis.js';
+import { analyzeHand, accuracy, gradeCounts, seeded, classify, winSeries, explain } from '../public/js/analysis.js';
 import { GRADES } from '../public/js/config.js';
 import { MatchRecorder } from '../src/recorder.js';
 
@@ -139,6 +139,25 @@ test('calificaciones, como en chess.com: por chance de ganar perdida', () => {
   assert.equal(classify({ ...base, best: truco, loss: 0.05, strength: 0.9 }), 'perdida');
   assert.equal(new Set(GRADES.map((g) => g.key)).size, GRADES.length);
   assert.ok(GRADES.every((g) => g.label && g.glyph));
+});
+
+test('análisis: compara todas las opciones y explica la jugada', async () => {
+  const { rec } = await recordedGame('1v1', 5);
+  const results = rec.log().hands.flatMap((h, i) => analyzeHand(h, [0, 1], i + 1));
+  assert.ok(results.length > 5);
+  for (const r of results) {
+    assert.equal(r.ranked[0].cost, 0);
+    assert.ok(r.ranked.every((o, i, l) => !i || l[i - 1].cost <= o.cost));
+    assert.equal(r.ranked.filter((o) => o.mine).length, 1);
+    assert.equal(typeof explain(r), 'string');
+  }
+  assert.equal(actionLabel({ t: 'envido', kind: 'envido' }, { calls: ['envido'] }), 'cantar envido envido');
+  assert.equal(actionLabel({ t: 'envido', kind: 'envido' }, { calls: [] }), 'cantar envido');
+  assert.equal(actionLabel({ t: 'truco' }, { trucoNext: 'Retruco' }), 'cantar retruco');
+  const r = { a: { t: 'envido', kind: 'falta' }, kind: 'envido', tanto: 27, envidoWin: 0.58, handWin: 0.5, falta: 30 };
+  assert.match(explain(r), /27 de tantos/);
+  assert.match(explain(r), /58%/);
+  assert.match(explain(r), /30 puntos/);
 });
 
 test('gráfico: la chance de ganar arranca pareja y termina en 0 o 1', async () => {

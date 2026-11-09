@@ -1,5 +1,12 @@
 # Cambios
 
+## 1.13.0 — mesas en juego, ruleta de frases y voces
+- **Mesas en juego**: el lobby siempre tiene entre 7 y 10 partidas entre usuarios, que se pueden mirar.
+- **Ruleta de frases** fuera del chat (botón Frases o tecla F), con las mismas frases que usan los bots.
+- **Voces nuevas** generadas con voces libres: argentina, mexicana y española, una distinta por asiento. Lo que se escribe a mano sale con la voz del dispositivo.
+- **Revisión**: ahora muestra cómo va el tanteador y se escuchan los cantos.
+- **1 vs 1**: ya no se puede tirar antes que el rival (la carta se quemaba y perdías la ronda).
+
 ## 1.12.1 — arreglos de mesa y voces
 - Un bot que miente en el envido ya no se delata solo tirando su última carta: se va al mazo y sale sin mostrar.
 - Lo que te toca contestar a vos no lo contesta nadie mientras estés conectado (antes, a los 3,5 s el servidor decidía en tu asiento). El compañero bot, cuando puede contestar él, espera 15 s.
