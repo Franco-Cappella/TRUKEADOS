@@ -163,3 +163,66 @@ test('después de tirar dos encimadas, si te cantan truco podés contestar', asy
   }
   assert.ok(cases > 0, 'nunca cantaron truco');
 });
+
+async function endedTable(humans = 2, disguised = false) {
+  const h = await makeRoom({ mode: '1v1' });
+  const a = await h.join('u0');
+  const b = humans > 1 ? await h.join('u1') : null;
+  if (disguised) h.room.room.seats[1] = rivalSeat(1200, seeded(1), new Set());
+  await h.send(a, { t: 'start', fillBots: humans < 2 && !disguised });
+  const r = h.room.room;
+  r.dealUntil = h.now;
+  await h.send(a, { t: 'act', a: { t: 'rendirse' } });
+  return { h, a, b, r };
+}
+
+test('rendirse: tu equipo pierde la partida al momento y se graba', async () => {
+  const { r } = await endedTable();
+  assert.equal(r.status, 'ended');
+  assert.equal(r.game.winner, 1);
+  assert.equal(r.game.score[1], r.game.target);
+});
+
+test('revancha: arranca recién cuando quieren todos', async () => {
+  const { h, a, b, r } = await endedTable();
+  await h.send(a, { t: 'rematch' });
+  assert.equal(r.status, 'ended', 'arrancó sin el otro');
+  assert.deepEqual(h.state(b).room.rematch, [0]);
+  await h.send(a, { t: 'rematch' }); // pedirla dos veces no cuenta doble
+  assert.equal(r.status, 'ended');
+  await h.send(b, { t: 'rematch' });
+  assert.equal(r.status, 'playing');
+  assert.deepEqual(h.state(a).room.rematch, []);
+});
+
+test('revancha: si el que faltaba se va, no se lo espera', async () => {
+  const { h, a, b, r } = await endedTable();
+  await h.send(a, { t: 'rematch' });
+  await h.disconnect(b);
+  assert.equal(r.status, 'playing');
+});
+
+test('revancha: los rivales automáticos aceptan un ratito después', async () => {
+  const { h, a, r } = await endedTable(1, true);
+  await h.send(a, { t: 'rematch' });
+  assert.equal(r.status, 'ended');
+  await h.tick(MATCH.rematchMin + MATCH.rematchRand + 500);
+  assert.equal(r.status, 'playing');
+});
+
+test('el análisis da lo mismo para todos los que lo abren', async () => {
+  const { newGame: ng, act: go, waitingFor: wf } = await import('../public/js/engine.js');
+  const { snapshot } = await import('../public/js/replay.js');
+  const { analyzeHand } = await import('../public/js/analysis.js');
+  const rng = seeded(11);
+  const g = ng({ mode: '1v1', target: 15 }, rng);
+  const hand = { start: snapshot(g), steps: [] };
+  for (let i = 0; i < 12 && g.h.phase === 'play'; i++) {
+    const s = wf(g).seats[0];
+    const a = botAction(g, s, rng, {});
+    if (!a || !go(g, s, a, rng).ok) break;
+    hand.steps.push([s, a]);
+  }
+  const of = () => analyzeHand(JSON.parse(JSON.stringify(hand)), [0, 1], 1).map((r) => [r.frame, r.grade, r.loss]);
+  assert.deepEqual(of(), of());
+});

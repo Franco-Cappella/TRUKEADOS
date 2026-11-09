@@ -239,9 +239,10 @@ export function actionsFor(g, seat) {
   const out = {
     play: false, canDouble: false, canDown: false, truco: null, envido: [], flor: [], quiero: false, noquiero: false,
     cantar: false, buenas: false, minTanto: 0, lie: false, mazo: false, denunciar: [], mostrar: false, nomostrar: false,
-    reclamar: false, throwOut: false,
+    reclamar: false, throwOut: false, rendirse: false,
   };
   if (!h || g.status !== 'playing' || seat == null) return out;
+  out.rendirse = true;
   if (h.phase === 'show') {
     out.mostrar = seat === h.show.seat && !h.show.folded;
     out.nomostrar = out.mostrar;
@@ -342,6 +343,7 @@ function actInner(g, seat, a) {
   if (g.status !== 'playing') return { error: 'La partida terminó' };
   if (!h) return { error: 'Esperá la próxima mano' };
   if (seat == null || seat < 0 || seat >= g.n) return { error: 'No estás sentado' };
+  if (a?.t === 'rendirse') return surrender(g, seat);
   if (h.phase === 'show') return actShow(g, seat, a);
   if (h.phase !== 'play') return { error: 'Esperá la próxima mano' };
   if (!active(h, seat)) return { error: 'Te fuiste al mazo' };
@@ -609,6 +611,21 @@ function envidoClosedReason(g, seat) {
   if (g.n > 2 && !isPie(g, seat)) return 'En equipo el envido lo canta el pie';
   if (h.turn !== seat) return 'El envido se canta en tu turno, antes de tirar';
   return 'Ahora no se puede cantar envido';
+}
+
+// Rendirse: el equipo pierde la partida en ese momento.
+function surrender(g, seat) {
+  const h = g.h;
+  const win = otherTeam(team(seat));
+  h.truco.pending = null;
+  h.phase = 'ended';
+  h.result = { winner: win, pts: 0, reason: 'rendicion', penalty: null, envido: null, envidoShow: null, flor: null };
+  g.score[win] = g.target;
+  g.status = 'ended';
+  g.winner = win;
+  event(g, { type: 'rendicion', seat, team: team(seat) });
+  event(g, { type: 'game-end', team: win });
+  return { ok: true };
 }
 
 // Después de la mano: mostrar los tantos o reclamar que no se mostraron.

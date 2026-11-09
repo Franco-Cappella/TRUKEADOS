@@ -375,6 +375,9 @@ export class RoomClient {
         say(txt, e.seat);
         break;
       }
+      case 'rendicion':
+        this.toast(`${esc(name(e.seat))} se rindió`, 'bad', 4000);
+        break;
       case 'mazo':
         if (!shown) this.bubble(e.seat, g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', '', 2400);
         flick(0.15, 0.2);
@@ -921,6 +924,7 @@ export class RoomClient {
   renderWaiting() {
     const st = this.st;
     const el = $('#waiting');
+    $('#surrender-btn').classList.toggle('hidden', !(st.game?.actions?.rendirse && st.room.status === 'playing' && !this.dealing));
     if (st.room.status !== 'lobby') {
       clearInterval(this.searchT);
       return el.classList.add('hidden');
@@ -1068,10 +1072,21 @@ export class RoomClient {
       ${gains}
       ${mine ? `<p><button class="btn" data-replay="${esc(this.match.id)}">Ver la partida y el análisis</button></p>` : ''}
       <div class="row center">
-        ${this.you != null ? '<button class="btn primary big" data-rematch="1">Revancha</button>' : ''}
+        ${this.rematchButton()}
         ${st.isHost && !st.room.quick ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}
         <button class="btn big" data-exit="1">Salir</button>
       </div></div>`;
+  }
+
+  // La revancha se juega si quieren todos: lo que falta se ve en el botón.
+  rematchButton() {
+    const st = this.st;
+    if (this.you == null) return '';
+    const votes = st.room.rematch || [];
+    const people = st.room.seats.map((p, i) => (p && !p.bot && p.online ? i : -1)).filter((i) => i >= 0);
+    const yes = people.filter((i) => votes.includes(i)).length;
+    if (votes.includes(this.you)) return `<button class="btn big" disabled>Esperando a los demás · ${yes}/${people.length}</button>`;
+    return `<button class="btn primary big" data-rematch="1">${yes ? `Revancha · ${yes}/${people.length} quieren` : 'Pedir revancha'}</button>`;
   }
 
   // html: el que llama escapa lo que venga de otros jugadores.

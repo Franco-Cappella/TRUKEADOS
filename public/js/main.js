@@ -103,6 +103,24 @@ function bindGameUI() {
     paintVoice();
   };
 
+  // rendirse: dos toques, como irse al mazo
+  const sb = $('#surrender-btn');
+  let surrenderT = null;
+  const disarm = () => {
+    clearTimeout(surrenderT);
+    surrenderT = null;
+    sb.textContent = 'Rendirse';
+  };
+  sb.onclick = () => {
+    if (!surrenderT) {
+      sb.textContent = '¿Seguro?';
+      surrenderT = setTimeout(disarm, 3000);
+      return;
+    }
+    disarm();
+    room?.act({ t: 'rendirse' });
+  };
+
   const zb = $('#zoom-btn');
   zb.addEventListener('pointerdown', (e) => {
     e.preventDefault();

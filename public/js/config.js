@@ -152,6 +152,8 @@ export const MATCH = {
   eloSpread: 150, // qué tan lejos de tu ELO aparecen
   joinRange: 400, // a qué mesas abiertas te manda
   cosmeticChance: 0.35,
+  rematchMin: 1500, // lo que tardan en aceptar la revancha
+  rematchRand: 3000,
 };
 // Mesas en juego del lobby: partidas entre usuarios automáticos que cualquiera puede mirar (ver src/show-tables.js).
 export const SHOW_TABLES = {

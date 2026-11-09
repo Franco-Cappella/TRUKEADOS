@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -317,17 +317,16 @@ export class TrucoRoom extends DurableObject {
 
       case 'rematch': {
         if (seat == null || r.status !== 'ended') return;
-        rematch(r.game, rng);
-        r.lastMatch = null;
-        await this.rec.start(r);
-        r.status = 'playing';
-        this.addSystemChat('¡Revancha!');
-        this.afterDeal();
-        return this.commit();
+        (r.rematch ||= {})[seat] = true;
+        // los rivales automáticos la aceptan como cualquiera: un ratito después
+        if (r.seats.some((s) => s?.disguised) && !r.rematchBotAt) r.rematchBotAt = Date.now() + MATCH.rematchMin + Math.floor(rng() * MATCH.rematchRand);
+        return this.tryRematch();
       }
 
       case 'to-lobby': {
         if (!isHost || r.status !== 'ended' || r.quick) return;
+        r.rematch = null;
+        r.rematchBotAt = 0;
         r.status = 'lobby';
         r.game = null;
         r.lastMatch = null;
@@ -360,6 +359,8 @@ export class TrucoRoom extends DurableObject {
     this.broadcastState(ws);
     await this.scheduleAlarm();
     await this.updateLobby(ws);
+    // si se fue el único que faltaba, la revancha ya no lo espera
+    if (r?.status === 'ended' && r.rematch) await this.tryRematch(ws);
   }
 
   async webSocketError(ws) {
@@ -382,6 +383,13 @@ export class TrucoRoom extends DurableObject {
   async tick() {
     const r = this.room;
     if (r?.status === 'lobby' && r.quick) return this.quickTick();
+    if (r?.status === 'ended' && r.rematchBotAt && Date.now() >= r.rematchBotAt) {
+      r.seats.forEach((s, i) => {
+        if (s?.disguised) r.rematch[i] = true;
+      });
+      r.rematchBotAt = 0;
+      return this.tryRematch();
+    }
     if (!r || r.status !== 'playing') return;
     const g = r.game;
     const now = Date.now();
@@ -485,6 +493,23 @@ export class TrucoRoom extends DurableObject {
     this.botChatter(now);
     if (changed) await this.commit();
     else await this.scheduleAlarm();
+  }
+
+  // La revancha arranca cuando quieren todos los que siguen en la mesa (los bots elegidos por el anfitrión no opinan).
+  async tryRematch(exclude) {
+    const r = this.room;
+    const online = this.online(exclude);
+    const agreed = (s, i) => r.rematch?.[i] || (s.bot && !s.disguised) || (!s.bot && !online.has(s.pid));
+    if (!online.size || !Object.keys(r.rematch || {}).length || !r.seats.every(agreed)) return this.commit();
+    r.rematch = null;
+    r.rematchBotAt = 0;
+    rematch(r.game, rng);
+    r.lastMatch = null;
+    await this.rec.start(r);
+    r.status = 'playing';
+    this.addSystemChat('¡Revancha!');
+    this.afterDeal();
+    return this.commit();
   }
 
   // ---- partida rápida ----
@@ -1124,6 +1149,7 @@ export class TrucoRoom extends DurableObject {
   async scheduleAlarm() {
     const r = this.room;
     if (r?.status === 'lobby' && r.quick && this.online().size) return this.ctx.storage.setAlarm(Math.max(Date.now() + 100, r.quick.nextAt));
+    if (r?.status === 'ended' && r.rematchBotAt && this.online().size) return this.ctx.storage.setAlarm(Math.max(Date.now() + 100, r.rematchBotAt));
     if (!r || r.status !== 'playing' || !this.online().size) return this.ctx.storage.deleteAlarm(); // nadie mirando: se duerme
     const now = Date.now();
     const g = r.game;
@@ -1182,6 +1208,7 @@ export class TrucoRoom extends DurableObject {
       cfg: r.cfg,
       status: r.status,
       quick: r.quick ? { elo: r.quick.elo, startedAt: r.quick.startedAt } : null,
+      rematch: r.status === 'ended' && r.rematch ? Object.keys(r.rematch).map(Number) : [],
       seats: r.seats.map((s, i) => {
         if (!s) return null;
         const on = s.bot || online.has(s.pid);

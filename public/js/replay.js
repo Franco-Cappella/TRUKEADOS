@@ -92,6 +92,9 @@ export function describe(frame, names) {
         break;
       case 'hand-end':
         break;
+      case 'rendicion':
+        out.push(`${n(e.seat)} se rindió`);
+        break;
       case 'game-end':
         out.push('Fin de la partida');
         break;
