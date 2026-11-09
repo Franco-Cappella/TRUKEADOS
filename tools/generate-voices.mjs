@@ -37,6 +37,32 @@ for (const p of phrases) {
 }
 console.log(`${byKey.size} frases`);
 
+// Cómo se le pasa el texto a la voz. Una palabra sola sin signos sale estirada o cortada: los cantos van con exclamación
+// y los números, escritos.
+const UNITS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve', 'treinta'];
+const numberWords = (n) => (n <= 30 ? UNITS[n] : `treinta y ${UNITS[n - 30]}`);
+function speakable(text) {
+  const t = text.replace(/\d+/g, (d) => numberWords(Number(d))).trim();
+  if (/[.!?…]$/.test(t)) return t;
+  return /^\S+( \S+){0,2}$/.test(t) && !/\d/.test(text) ? `¡${t}!` : `${t}.`;
+}
+
+const SPEED = { ald: 1.22, davefx: 1 }; // ald arrastra las palabras
+const PAD_START = 0.12; // segundos de silencio: algunos reproductores se comen el principio
+const PAD_END = 0.16;
+const PEAK = 0.8; // todas las voces al mismo volumen y sin saturar
+
+// Mismo volumen para todos los audios, con un margen de silencio a cada lado.
+function master(samples, rate) {
+  let peak = 1e-6;
+  for (const x of samples) peak = Math.max(peak, Math.abs(x));
+  const gain = PEAK / peak;
+  const start = Math.round(PAD_START * rate);
+  const out = new Float32Array(start + samples.length + Math.round(PAD_END * rate));
+  samples.forEach((x, i) => (out[start + i] = x * gain));
+  return out;
+}
+
 function engine(voice) {
   const dir = path.resolve(modelsDir, `vits-piper-${MODEL[voice]}`);
   return new sherpa.OfflineTts({
@@ -52,8 +78,9 @@ for (const voice of VOICES) {
   for (const [key, text] of byKey) {
     const file = path.join(OUT, voice, `${key}.mp3`);
     if (fs.existsSync(file)) continue;
-    const audio = tts.generate({ text, sid: 0, speed: 1 });
-    const pcm = Buffer.from(audio.samples.buffer, audio.samples.byteOffset, audio.samples.byteLength);
+    const audio = tts.generate({ text: speakable(text), sid: 0, speed: SPEED[voice] });
+    const clean = master(audio.samples, audio.sampleRate);
+    const pcm = Buffer.from(clean.buffer, clean.byteOffset, clean.byteLength);
     const r = spawnSync(ffmpeg, ['-y', '-loglevel', 'error', '-f', 'f32le', '-ar', String(audio.sampleRate), '-ac', '1', '-i', 'pipe:0', '-ar', '22050', '-ac', '1', '-b:a', '32k', file], { input: pcm, maxBuffer: 1 << 26 });
     if (r.status !== 0) throw new Error(`ffmpeg: ${r.stderr}`);
     if (++made % 50 === 0) console.log(voice, made);

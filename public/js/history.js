@@ -202,11 +202,10 @@ class Viewer {
     const animate = !!prev && prev.hand === hand && this.at === prev.at + 1;
     this.drawn = { hand, frame, at: this.at };
     this.paintScene(animate);
-    // se escucha lo que se dijo en este paso; al saltar o ir para atrás, también (uno solo y sin cola)
-    if (prev) {
-      hush(true);
-      for (const [text, seat] of voiceLines(this.frames[hand][frame])) say(text, seat);
-    }
+    // se escucha solo al avanzar de a un paso; al saltar o ir para atrás, silencio. En la reproducción automática
+    // no se corta lo que se está diciendo: cada frase termina.
+    if (!auto) hush(true);
+    if (prev && this.at === prev.at + 1) for (const [text, seat] of voiceLines(this.frames[hand][frame])) say(text, seat);
     this.renderPosition();
   }
 
