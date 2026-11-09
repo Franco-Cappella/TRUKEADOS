@@ -356,6 +356,40 @@ test('con truco pendiente, quien lo cantó no puede irse al mazo: act lo rechaza
   assert.deepEqual(g.score, [0, 0]);
 });
 
+test('mostrar los tantos después de irse al mazo: las cartas del tanto quedan boca arriba en la mesa', () => {
+  const g = fixed([['7B', '12C', '4B'], ['1B', '1E', '1C']], { dealer: 0 });
+  ok(act(g, 1, { t: 'play', card: '1E', mode: 'normal' }));
+  ok(act(g, 0, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 1, { t: 'quiero' }));
+  ok(act(g, 1, { t: 'cantar', value: 32 })); // miente (hay trampas) y gana el envido
+  ok(act(g, 0, { t: 'buenas' }));
+  ok(act(g, 1, { t: 'mazo' }));
+  ok(act(g, 1, { t: 'mostrar' }));
+  const show = g.ev.filter((e) => e.type === 'show').at(-1);
+  assert.ok(show.cards.length > 0);
+  for (const c of show.cards) assert.ok(g.h.table[1].some((p) => p.c === c), `${c} no quedó en la mesa al mostrar`);
+});
+
+test('con trampas, si ya cantaron 33 (el máximo sin muestra) no se ofrece cantar: no hay número más alto', () => {
+  const g = fixed([['1B', '1C', '4B'], ['7E', '6E', '5E']], { dealer: 0 });
+  ok(act(g, 1, { t: 'play', card: '5E', mode: 'normal' }));
+  ok(act(g, 0, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 1, { t: 'quiero' }));
+  ok(act(g, 1, { t: 'cantar', value: 33 }));
+  assert.equal(actionsFor(g, 0).cantar, false);
+  assert.ok(act(g, 0, { t: 'cantar', value: 34 }).error);
+});
+
+test('encimada en la última ronda: si la mano termina ahí, la de arriba no queda quemada si la de abajo mató', () => {
+  const g = fixed([['7E', '5C', '4E'], ['4O', '4B', '6O']]);
+  ok(act(g, 0, { t: 'play', card: '7E', mode: 'normal' })); // primera: gana el 0
+  ok(act(g, 1, { t: 'play', card: '4O', mode: 'normal' }));
+  ok(act(g, 0, { t: 'play2', bottom: '5C', top: '4E' })); // segunda: mata con la de abajo y deja la 4E encimada
+  ok(act(g, 1, { t: 'play', card: '4B', mode: 'normal' })); // gana el 0 la segunda: termina la mano
+  assert.equal(g.h.phase, 'ended');
+  assert.equal(g.h.table[0].find((p) => p.over).burned, false);
+});
+
 test('la carta quemada vale como un 4 (empata con un 4, pierde con un 5)', () => {
   assert.equal(BURNED_VALUE, rank('4C'));
   assert.equal(playValue({ c: '1E', burned: true }), rank('4O'));

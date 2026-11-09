@@ -6,7 +6,7 @@
 // Reparte `dealer`, corta el de su izquierda (dealer - 1) y se reparte empezando por la mano
 // (dealer + 1). En la mano siguiente reparte el que fue mano.
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS } from './config.js';
-import { newDeck, shuffle, rank, tanto, flor as florOf, validTanto, LOWEST_RANK } from './cards.js';
+import { newDeck, shuffle, rank, tanto, flor as florOf, validTanto, maxTanto, LOWEST_RANK } from './cards.js';
 
 // Lo de cards.js que usan otros módulos se reexporta para tener una sola puerta de entrada.
 export { SUITS, NUMS, SUIT_NAME, cardNum, cardSuit, cardName, newDeck, shuffle, rank, tanto, validTanto, piezaOf } from './cards.js';
@@ -262,7 +262,7 @@ export function actionsFor(g, seat) {
     if (mine) {
       const best = e.declare.best;
       out.lie = g.trampas; // mentir en el envido: solo si la mesa permite trampas
-      out.cantar = g.trampas || !best || myTanto(g, seat).value > best.value;
+      out.cantar = (g.trampas || !best || myTanto(g, seat).value > best.value) && (!best || best.value < maxTanto(h.muestra));
       out.buenas = !!best;
       out.minTanto = best ? best.value + 1 : 0;
     }
@@ -329,7 +329,7 @@ function revealTanto(g, seat, cards) {
   for (const c of cards) {
     const p = h.table[seat].find((x) => x.c === c);
     if (p) p.revealed = true;
-    else if (h.inHand[seat].includes(c)) {
+    else if (h.cards[seat].includes(c)) { // la carta puede estar ya fuera de la mano (si se fue al mazo): se busca en la repartida
       h.inHand[seat] = h.inHand[seat].filter((x) => x !== c);
       h.table[seat].push({ c, faceDown: false, round: null, shown: true });
     }
@@ -734,6 +734,14 @@ function resolveRound(g) {
   R.winnerSeat = teams.size === 1 ? tops[0].seat : null;
   event(g, { type: 'round', round: h.r, result: R.result, seat: R.winnerSeat });
 
+  // la de arriba de dos encimadas solo vale si el que la tiró MATÓ esta ronda con la de abajo (entonces arranca
+  // él la siguiente: es su turno). Si perdió, si mató el compañero o si fue parda, se quema. Se marca al cerrar la
+  // ronda, también si la mano termina acá: así queda bien al cerrar la mano.
+  h.table.forEach((list, s) => {
+    if (!h.pre[s]) return;
+    const top = list.find((p) => p.over && p.c === h.pre[s]);
+    if (top) top.burned = R.winnerSeat !== s;
+  });
   const winner = handWinner(h.rounds, team(h.mano));
   if (winner !== null) return endHand(g, winner, h.truco.level, 'cartas');
   h.r++;
@@ -743,13 +751,6 @@ function resolveRound(g) {
     for (let k = 0; k < g.n && !active(h, starter); k++) starter = (h.mano + k) % g.n;
   }
   // la ronda siguiente la empieza el que ganó la anterior (en parda, la mano) — [R] glosario, "Mano"
-  // la de arriba de dos encimadas solo vale si el que la tiró MATÓ esta ronda con la de abajo (entonces arranca
-  // él la siguiente: es su turno). Si perdió, si mató el compañero o si fue parda, se quema.
-  h.table.forEach((list, s) => {
-    if (!h.pre[s]) return;
-    const top = list.find((p) => p.over && p.c === h.pre[s]);
-    if (top) top.burned = R.winnerSeat !== s;
-  });
   h.rounds.push({ plays: [], result: null, starter });
   h.turn = starter;
   autoPre(g);

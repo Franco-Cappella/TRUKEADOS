@@ -89,7 +89,9 @@ export function tanto(cards, muestra = null) {
 }
 
 // Números que existen en el envido (con muestra se llega hasta 39: 20 + 10 + 9).
-export const validTanto = (v, muestra = null) => Number.isInteger(v) && ((v >= 0 && v <= 7) || (v >= 20 && v <= (muestra ? 39 : 33)));
+// el envido más alto que se puede cantar (con trampas se miente hasta ahí): 33, o 39 con muestra
+export const maxTanto = (muestra = null) => (muestra ? 39 : 33);
+export const validTanto = (v, muestra = null) => Number.isInteger(v) && ((v >= 0 && v <= 7) || (v >= 20 && v <= maxTanto(muestra)));
 
 // Flor: tres cartas del mismo palo (las piezas cuentan como de cualquier palo; dos piezas ya son flor).
 // Devuelve { value, cards } o null. Valor: 20 + la suma de las tres (piezas con su valor de pieza).
