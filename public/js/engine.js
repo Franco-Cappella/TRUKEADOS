@@ -36,6 +36,10 @@ export const BURNED_VALUE = LOWEST_RANK;
 // Valor de una jugada en su ronda (con la muestra de la mano, si hay).
 export const playValue = (p, g = null) => (p.burned ? BURNED_VALUE : rank(p.c, g?.h?.muestra));
 
+// ¿Ya se sabe que esta carta está quemada? La de arriba de dos encimadas se decide al cerrar la ronda en que se tiró:
+// hasta entonces nadie lo sabe, y si la mano termina antes, no se quemó.
+export const burnVisible = (h, p) => !!p.burned && (p.thrownIn === undefined || h.r > p.thrownIn || h.rounds[p.thrownIn]?.result != null);
+
 export const cutter = (g) => (g.dealer - 1 + g.n) % g.n;
 // "Pies" (los últimos de cada equipo): el que reparte y el que corta.
 export const pies = (g) => (g.n === 2 ? [0, 1] : [g.dealer, cutter(g)]);
@@ -870,7 +874,7 @@ export function viewFor(g, seat) {
         const hidden = !mine && !done && !p.revealed && (p.faceDown || p.under);
         // la de arriba de dos encimadas recién se ve quemada (para todos, también el que la tiró)
         // cuando termina la ronda en que se tiró
-        const burned = !!p.burned && (done || thrownIn === undefined || h.r > thrownIn);
+        const burned = burnVisible(h, { ...p, thrownIn });
         return { ...p, c: hidden ? null : p.c, hidden, burned, faceDown: !!p.faceDown && !p.revealed };
       })
     ),

@@ -51,7 +51,7 @@ export function describe(frame, names) {
   for (const e of frame.events) {
     switch (e.type) {
       case 'play':
-        if (e.double) out.push(`${n(e.seat)} tiró dos encimadas (arriba, quemado, el ${cardName(e.c)})`);
+        if (e.double) out.push(`${n(e.seat)} tiró dos encimadas (arriba, el ${cardName(e.c)})`);
         else out.push(`${n(e.seat)} tiró ${e.faceDown ? 'una carta tapada' : `el ${cardName(e.c)}`}${e.burned ? ' (quemada)' : ''}`);
         break;
       case 'call':

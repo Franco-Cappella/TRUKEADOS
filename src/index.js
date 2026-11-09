@@ -8,7 +8,7 @@ import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
-import { setAvatar, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
+import { setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, SHOW_TABLES, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -56,6 +56,14 @@ async function handle(request, env) {
   // lo público del proyecto de Supabase, para que el navegador pueda iniciar sesión
   if (path === '/api/config' && method === 'GET') {
     return json({ supabaseUrl: env.SUPABASE_URL || '', supabaseKey: env.SUPABASE_PUBLISHABLE_KEY || '' });
+  }
+
+  // los GIF de perfil: públicos, como cualquier foto de perfil
+  const gif = path.match(/^\/api\/avatars\/([0-9a-f-]{36})$/);
+  if (gif && method === 'GET') {
+    const bytes = await avatarGif(env, gif[1]);
+    if (!bytes) return new Response('No encontrado', { status: 404 });
+    return new Response(bytes, { headers: { 'content-type': 'image/gif', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
   }
 
   if (path === '/api/me' && method === 'GET') {

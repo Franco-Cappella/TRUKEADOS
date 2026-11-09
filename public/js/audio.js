@@ -1,6 +1,6 @@
 // Sonidos sintetizados (sin archivos) y voz que canta los cantos.
 import { store, KEYS } from './dom.js';
-import { VOICE_CAST, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
+import { voiceFor, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
 
 let actx = null;
 let sfxOn = store.get(KEYS.sfx, '1') === '1';
@@ -72,9 +72,7 @@ export function toggleVoice() {
   return voiceOn;
 }
 
-// Voz de cada asiento: la mejor voz en español que tenga el dispositivo, una distinta por asiento. Si son pocas,
-// un retoque chico de tono (los tonos muy corridos son justamente lo que suena a robot).
-const PITCHES = [1, 0.95, 1.06, 0.92, 1.1, 0.98];
+// Lo que no tiene audio grabado sale con la mejor voz en español del dispositivo, una distinta por asiento.
 const LANG_SCORE = { 'es-AR': 100, 'es-UY': 90, 'es-CL': 70, 'es-419': 60, 'es-MX': 55, 'es-US': 50, 'es-ES': 30 };
 
 // Puntaje de una voz: primero la región y después la calidad. Las neuronales (Edge y las de Chrome) suenan como una persona.
@@ -140,10 +138,7 @@ function loadClips() {
 loadClips();
 
 function clipItem(key, seat) {
-  const [voice, rate] = VOICE_CAST[(seat ?? 0) % VOICE_CAST.length];
-  const a = new Audio(VOICE_URL(voice, key));
-  a.preservesPitch = false; // la velocidad cambia también el tono: suena a otra persona
-  a.playbackRate = rate;
+  const a = new Audio(VOICE_URL(voiceFor(seat), key));
   a.volume = volume;
   return {
     start(done) {
@@ -165,8 +160,6 @@ function speechItem(text, seat) {
   u.lang = u.voice?.lang || 'es-AR';
   u.rate = 1;
   u.volume = volume;
-  // con una voz por cada uno no hace falta tocar el tono
-  if (seat != null && pool.length <= seat) u.pitch = PITCHES[seat % PITCHES.length];
   return {
     start(done) {
       u.onend = done;

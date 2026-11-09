@@ -3,7 +3,7 @@
 // mala que fue cada jugada, la barra y el gráfico de quién la tenía ganada, y la precisión de cada equipo.
 // La evaluación corre en un Web Worker (analysis-worker.js) y empieza sola al abrir la partida.
 import { ROUTES, GRADES, modeLabel, roomOptionsText } from './config.js';
-import { cardName, team } from './engine.js';
+import { cardName, team, burnVisible } from './engine.js';
 import { handFrames, describe, actionLabel } from './replay.js';
 import { accuracy, gradeCounts, winSeries, explain } from './analysis.js';
 import { lookFor, dressed } from './characters.js';
@@ -262,7 +262,8 @@ class Viewer {
       s.syncTable([], { animate: false });
     }
     s.setMyCards(h.inHand[this.me], null);
-    s.syncTable(h.table, { animate });
+    // como en la mesa: la de arriba de dos encimadas se ve quemada recién cuando se decide
+    s.syncTable(h.table.map((list) => list.map((p) => ({ ...p, burned: burnVisible(h, p) }))), { animate });
     s.setDealer(g.dealer);
     s.setMuestra(h.muestra);
     const fold = f.events.find((e) => e.type === 'mazo');
@@ -406,7 +407,7 @@ class Viewer {
     const a = gradeCounts(of(this.myTeam));
     const b = gradeCounts(of(1 - this.myTeam));
     $('#replay-summary').innerHTML = `<div class="rv-accs">${side(this.myTeam)}${side(1 - this.myTeam)}</div>
-      ${all.length ? `<table class="rv-counts"><tbody>${GRADES.filter((g) => a[g.key] || b[g.key]).map((g) => `<tr><td>${a[g.key]}</td><td>${icon(g.key)}<span>${esc(g.label)}</span></td><td>${b[g.key]}</td></tr>`).join('')}</tbody></table>` : ''}`;
+      ${all.length ? `<div class="rv-counts">${GRADES.filter((g) => a[g.key] || b[g.key]).map((g) => `<div><b>${a[g.key]}</b>${icon(g.key)}<span title="${esc(g.label)}">${esc(g.label)}</span><b>${b[g.key]}</b></div>`).join('')}</div>` : ''}`;
   }
 
   // Analiza las decisiones de todos, mano por mano, en un Web Worker (no traba la pantalla).

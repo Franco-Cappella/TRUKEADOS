@@ -3,11 +3,12 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRoom, restoreClock } from './helpers/room-harness.mjs';
 import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from '../src/show-tables.js';
-import { SHOW_TABLES, AUTH, MODES } from '../public/js/config.js';
+import { SHOW_TABLES, AUTH, MODES, AVATAR } from '../public/js/config.js';
+import { parseGif } from '../src/social.js';
 import { seeded } from '../public/js/analysis.js';
 import { PHRASE_WHEEL, BOT_TALK } from '../public/js/talk.js';
-import { newGame, act, actionsFor } from '../public/js/engine.js';
-import { voiceKey, voiceText } from '../public/js/voices.js';
+import { newGame, act, actionsFor, viewFor } from '../public/js/engine.js';
+import { voiceKey, voiceText, voiceFor, VOICES } from '../public/js/voices.js';
 
 after(restoreClock);
 
@@ -82,4 +83,45 @@ test('voces: la misma frase con otros signos usa el mismo audio', () => {
   assert.equal(voiceKey('¡Truco!'), voiceKey('truco'));
   assert.equal(voiceText('¿Pongo o voy?'), 'pongo o voy');
   assert.notEqual(voiceKey('Quiero'), voiceKey('No quiero'));
+});
+
+test('encimadas: la de arriba no se quema si la de abajo mató, y si la mano termina antes tampoco se ve quemada', () => {
+  const setup = (cards) => {
+    const g = newGame({ mode: '1v1', target: 30, trampas: true, dealer: 1 }, seeded(1));
+    g.h.cards = cards.map((c) => c.slice());
+    g.h.inHand = cards.map((c) => c.slice());
+    g.h.muestra = null;
+    return g;
+  };
+  const top = (g) => viewFor(g, 0).h.table[0].find((p) => p.over);
+  let g = setup([['1E', '4C', '5O'], ['4B', '6O', '7C']]);
+  assert.ok(act(g, 0, { t: 'play2', bottom: '1E', top: '4C' }).ok);
+  assert.equal(top(g).burned, false);
+  assert.ok(act(g, 1, { t: 'play', card: '4B', mode: 'normal' }).ok);
+  assert.equal(top(g).burned, false, 'mató y se quemó');
+  // el rival se va antes de contestar: la ronda no se cerró
+  g = setup([['1E', '4C', '5O'], ['4B', '6O', '7C']]);
+  assert.ok(act(g, 0, { t: 'play2', bottom: '1E', top: '4C' }).ok);
+  assert.ok(act(g, 1, { t: 'mazo' }).ok);
+  assert.equal(top(g).burned, false);
+  // si no mató, se quema al cerrar la ronda
+  g = setup([['4B', '4C', '5O'], ['1E', '6O', '7C']]);
+  assert.ok(act(g, 0, { t: 'play2', bottom: '4B', top: '4C' }).ok);
+  assert.ok(act(g, 1, { t: 'play', card: '1E', mode: 'normal' }).ok);
+  assert.equal(top(g).burned, true);
+});
+
+test('GIF de perfil: acepta GIF de verdad y rechaza lo demás o lo que pesa mucho', () => {
+  const gif = (bytes) => 'data:image/gif;base64,' + Buffer.from(bytes).toString('base64');
+  assert.ok(parseGif(gif('GIF89a' + 'x'.repeat(50))));
+  assert.equal(parseGif(gif('<script>alert(1)</script>')), null);
+  assert.equal(parseGif(gif('GIF89a' + 'x'.repeat(AVATAR.gifMaxBytes))), null);
+  assert.equal(parseGif('data:image/png;base64,AAAA'), null);
+  assert.equal(parseGif('no'), null);
+});
+
+test('voces: se alternan entre las dos por asiento', () => {
+  assert.notEqual(voiceFor(0), voiceFor(1));
+  assert.equal(voiceFor(0), voiceFor(2));
+  assert.ok(VOICES.includes(voiceFor(null)));
 });

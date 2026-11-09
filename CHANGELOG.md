@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.13.1 — voces de hombre, GIF de perfil y revisión más compacta
+- Voces: dos voces de hombre que se alternan por asiento, sin efectos de tono.
+- GIF como foto de perfil (hasta 800 KB).
+- La revisión entra entera en pantalla y las cosas ya no se pisan.
+- La carta de arriba de dos encimadas ya no se ve quemada si mató o si la mano terminó antes de cerrar la ronda.
+
 ## 1.13.0 — mesas en juego, ruleta de frases y voces
 - **Mesas en juego**: el lobby siempre tiene entre 7 y 10 partidas entre usuarios, que se pueden mirar.
 - **Ruleta de frases** fuera del chat (botón Frases o tecla F), con las mismas frases que usan los bots.

@@ -48,8 +48,19 @@ export async function loadRanking() {
   }
 }
 
-// Recorta la foto al centro, la achica y la comprime hasta que entre.
+const readDataUrl = (file) => new Promise((ok, fail) => {
+  const r = new FileReader();
+  r.onload = () => ok(r.result);
+  r.onerror = () => fail(new Error('No se pudo leer el archivo'));
+  r.readAsDataURL(file);
+});
+
+// Recorta la foto al centro, la achica y la comprime hasta que entre. Los GIF van tal cual, para que sigan moviéndose.
 async function shrink(file) {
+  if (file.type === 'image/gif') {
+    if (file.size > AVATAR.gifMaxBytes) throw new Error('Ese GIF pesa más de 800 KB');
+    return readDataUrl(file);
+  }
   const bmp = await createImageBitmap(file);
   const c = document.createElement('canvas');
   c.width = c.height = AVATAR.size;

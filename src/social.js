@@ -17,13 +17,52 @@ export function publicCard(p) {
   return out;
 }
 
+/** Los bytes de un GIF válido en base64, o null si no lo es o pesa demasiado. */
+export function parseGif(dataUrl) {
+  if (typeof dataUrl !== 'string' || dataUrl.length > AVATAR.gifMaxBytes * 1.4 || !AVATAR.gifRe.test(dataUrl)) return null;
+  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  let bin;
+  try {
+    bin = atob(b64);
+  } catch {
+    return null;
+  }
+  if (bin.length > AVATAR.gifMaxBytes || !/^GIF8[79]a/.test(bin.slice(0, 6))) return null;
+  return b64;
+}
+
+const dropGif = (env, uid) => rest(env, `avatar_gifs?user_id=eq.${uid}`, { method: 'DELETE' }).catch(() => null);
+
+/** El GIF de alguien, para servirlo. null si no tiene. */
+export async function avatarGif(env, uid) {
+  const res = await rest(env, `avatar_gifs?user_id=eq.${uid}&select=data`);
+  if (!res.ok) return null;
+  const row = (await res.json())[0];
+  return row ? Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0)) : null;
+}
+
+async function setGif(env, uid, dataUrl) {
+  const data = parseGif(dataUrl);
+  if (!data) return { error: 'Ese GIF no sirve o pesa más de 800 KB' };
+  const up = await rest(env, 'avatar_gifs?on_conflict=user_id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ user_id: uid, data, updated_at: new Date().toISOString() }) });
+  if (!up.ok) return { error: NOT_READY };
+  // la foto del perfil pasa a ser la dirección del GIF: así todas las pantallas lo muestran sin cargar el archivo
+  const avatar = `/api/avatars/${uid}?v=${Date.now()}`;
+  const res = await rest(env, `profiles?id=eq.${uid}`, { method: 'PATCH', body: JSON.stringify({ avatar }) });
+  if (!res.ok) return { error: NOT_READY };
+  forgetProfile(uid);
+  return { avatar };
+}
+
 /** { avatar } o { error }. avatar null borra la foto. */
 export async function setAvatar(env, uid, avatar) {
+  if (typeof avatar === 'string' && avatar.startsWith('data:image/gif')) return setGif(env, uid, avatar);
   if (avatar !== null && (typeof avatar !== 'string' || avatar.length > AVATAR.maxChars || !AVATAR.re.test(avatar))) {
     return { error: 'Esa imagen no sirve: probá con otra' };
   }
   const res = await rest(env, `profiles?id=eq.${uid}`, { method: 'PATCH', body: JSON.stringify({ avatar }) });
   if (!res.ok) return { error: NOT_READY };
+  await dropGif(env, uid);
   forgetProfile(uid);
   return { avatar };
 }

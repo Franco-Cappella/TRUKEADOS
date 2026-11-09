@@ -177,6 +177,8 @@ export const COINS = { signup: 200, game: 10, win: 10, botFactor: 0.5, milestone
 export const AVATAR = {
   size: 128, // lado en píxeles de la foto guardada
   maxChars: 24000,
+  gifMaxBytes: 800 * 1024, // los GIF se guardan aparte y se sirven desde /api/avatars/ID
+  gifRe: /^data:image\/gif;base64,[A-Za-z0-9+/=]+$/,
   re: /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/,
 };
 export const RANKING_SIZE = 50;

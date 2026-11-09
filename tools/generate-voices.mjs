@@ -1,6 +1,6 @@
 // Genera los audios de public/voz con voces libres de Piper. Solo hace falta correrlo si cambian las frases.
 //   node tools/generate-voices.mjs <carpeta con sherpa-onnx-node y ffmpeg-static> <carpeta con los modelos>
-// Modelos: vits-piper-es_AR-daniela-high, -es_MX-ald-medium y -es_ES-davefx-medium, de
+// Modelos: vits-piper-es_MX-ald-medium y -es_ES-davefx-medium, de
 // https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models (licencias en public/voz/LICENCIAS.txt).
 // Lo que ya existe no se vuelve a generar.
 import fs from 'node:fs';
@@ -18,7 +18,7 @@ process.env.PATH = `${path.resolve(toolsDir, 'node_modules/sherpa-onnx-win-x64')
 const sherpa = require('sherpa-onnx-node');
 const ffmpeg = require('ffmpeg-static');
 
-const MODEL = { daniela: 'es_AR-daniela-high', ald: 'es_MX-ald-medium', davefx: 'es_ES-davefx-medium' };
+const MODEL = { ald: 'es_MX-ald-medium', davefx: 'es_ES-davefx-medium' };
 const OUT = path.resolve('public/voz');
 
 // ---- todas las frases que el juego puede decir
@@ -70,8 +70,6 @@ for (const voice of VOICES) {
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ keys: [...byKey.keys()] }));
 fs.writeFileSync(path.join(OUT, 'LICENCIAS.txt'), `Voces generadas con Piper (https://github.com/rhasspy/piper) y sherpa-onnx.
 
-daniela (es_AR): modelo de Piper entrenado con el corpus de habla argentina OpenSLR SLR61,
-  https://www.openslr.org/61/ - licencia CC BY-SA 4.0. Estos audios se distribuyen bajo la misma licencia.
 ald (es_MX): https://huggingface.co/datasets/rmcpantoja/Ald_Mexican_Spanish_speech_dataset - Unlicense.
 davefx (es_ES): https://github.com/OHF-Voice/voice-datasets - CC0.
 `);
