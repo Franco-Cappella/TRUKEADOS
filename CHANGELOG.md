@@ -1,5 +1,8 @@
 # Cambios
 
+## 1.14.2 — ¿queremos?
+- En equipo, cuando te cantan truco, envido o flor le podés preguntar a tu compañero "¿Queremos?". Te contesta "No tengo nada", "Te hablan a vos", "Algo tengo" o "Estoy cargado". Los bots también preguntan y contestan.
+
 ## 1.14.1 — mismas frases para todos
 - La ruleta tiene todas las frases que pueden decir los bots, por tema y con páginas, y ellos no dicen ninguna otra.
 - Los bots cantan a secas, como una persona con el botón.

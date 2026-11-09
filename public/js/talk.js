@@ -142,6 +142,14 @@ export const ASK_TALK = {
     callado: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'Vengo seco.', 'Con esto no gano ni una.'],
   },
+  // te cantaron algo (truco, envido o flor): "¿queremos?" y lo que tiene el compañero
+  canto: {
+    ask: ['¿Queremos?', '¿Queremos, compañero?', '¿Le damos, compañero?', '¿Lo subimos?'],
+    nada: ['No tengo nada.', 'Nada, compañero.'],
+    vos: ['Te hablan a vos.', 'Te hablan a vos, compañero.'],
+    algo: ['Algo tengo.', 'Algo tengo, compañero.'],
+    cargado: ['Estoy cargado.', 'Estoy cargado, compañero.'],
+  },
   // en primera, el compañero le pregunta al pie si "pone" (tira alta para ganar la ronda) o "va" (tira baja y
   // deja que mate el pie)
   primera: {
@@ -151,7 +159,7 @@ export const ASK_TALK = {
   },
 };
 // Respuestas válidas para cada consulta
-export const ASK_ANSWERS = { tantos: ['si', 'callado', 'nada'], truco: ['si', 'callado', 'nada'], primera: ['poner', 'ir'] };
+export const ASK_ANSWERS = { tantos: ['si', 'callado', 'nada'], truco: ['si', 'callado', 'nada'], primera: ['poner', 'ir'], canto: ['nada', 'vos', 'algo', 'cargado'] };
 // level: el truco en juego (1 sin cantar, 2 querido, 3 retruco): se pregunta por lo que sigue.
 export function talkAsk(kind, rng = Math.random, level = 1) {
   const t = ASK_TALK[kind];

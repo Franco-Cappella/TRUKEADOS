@@ -851,6 +851,12 @@ export class RoomClient {
       const lbl = `${esc(this.nameOf(q.seat))}: ¿pone o va?`;
       add('equipo', lbl, 'Poné', 'good', () => this.send({ t: 'answer', ans: 'poner' }), 'Que tire alta y gane la primera');
       add('equipo', lbl, 'Vení', '', () => this.send({ t: 'answer', ans: 'ir' }), 'Que tire baja: matás vos');
+    } else if (q && q.kind === 'canto' && q.mineToAnswer && !q.answered) {
+      const lbl = `${esc(this.nameOf(q.seat))}: ¿queremos?`;
+      add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }));
+      add('equipo', lbl, 'Te hablan a vos', '', () => this.send({ t: 'answer', ans: 'vos' }), 'Que decida él');
+      add('equipo', lbl, 'Algo tengo', 'good', () => this.send({ t: 'answer', ans: 'algo' }));
+      add('equipo', lbl, 'Estoy cargado', 'good', () => this.send({ t: 'answer', ans: 'cargado' }));
     } else if (q && q.kind !== 'primera' && q.mineToAnswer && !q.answered) {
       const what = q.kind === 'tantos' ? 'los tantos' : { 2: 'el re', 3: 'el cuatro' }[g.h.truco.level] || 'el truco';
       const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
@@ -858,6 +864,7 @@ export class RoomClient {
       add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
       add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
     } else if (!q) {
+      if (ask?.can.canto) add('equipo', 'Compañero', '¿Queremos?', '', () => this.send({ t: 'ask', kind: 'canto' }), 'Le preguntás a tu compañero cómo viene antes de contestar');
       if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tenés tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
       if (ask?.can.truco) {
         const next = { 1: ['¿Le canto truco?', 'cantar truco'], 2: ['¿Canto el re?', 'cantar el retruco'], 3: ['¿Canto el cuatro?', 'cantar vale cuatro'] }[g.h.truco.level] || ['¿Le canto truco?', 'cantar truco'];

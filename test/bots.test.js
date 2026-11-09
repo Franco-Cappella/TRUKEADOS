@@ -452,3 +452,32 @@ test('consulta: el bot pie a veces pregunta por los tantos antes de cantar (más
   const bot = Array.from({ length: 200 }, () => botAsks(g, 3, rng, false)).filter((k) => k === 'tantos').length;
   assert.ok(human > bot && bot > 0);
 });
+
+test('"¿queremos?": el bot contesta según lo que tiene', () => {
+  const g = newGame({ mode: '2v2', target: 30 }, () => 0.3);
+  const h = g.h;
+  const seat = 0;
+  h.muestra = null;
+  // envido
+  h.envido = { ...h.envido, state: 'pending', calls: ['envido'], by: 1, bySeat: 1 };
+  const withCards = (c) => {
+    h.cards[seat] = c;
+    h.inHand[seat] = c.slice();
+  };
+  withCards(['7E', '6E', '4C']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'cargado');
+  withCards(['7E', '1E', '4C']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'algo');
+  withCards(['12E', '11B', '10C']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'nada');
+  assert.equal(botAnswer(g, seat, 'canto', () => 0.99), 'vos');
+  // truco
+  h.envido = { ...h.envido, state: 'done', calls: [] };
+  h.truco.pending = { level: 2, byTeam: 1, bySeat: 1 };
+  withCards(['1E', '4C', '5O']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'cargado');
+  withCards(['3B', '4C', '5O']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'algo');
+  withCards(['12B', '4C', '5O']);
+  assert.equal(botAnswer(g, seat, 'canto', () => 0), 'nada');
+});

@@ -56,6 +56,21 @@ const SENA_FITS = {
 // rivales y después se sube). Con poco, casi siempre avisa que no tiene nada (a veces solo "callado").
 export function botAnswer(g, seat, kind, rng = Math.random) {
   const h = g.h;
+  // "¿queremos?": cuánto tiene para lo que cantaron
+  if (kind === 'canto') {
+    if (waitingFor(g).kind === 'truco') {
+      const R = (c) => rank(c, h.muestra);
+      const cards = h.inHand[seat].map(R);
+      const best = Math.max(...cards, -1);
+      if (best >= R('1B') || cards.filter((r) => r >= R('7O')).length >= 2) return 'cargado';
+      if (best >= R('3E')) return 'algo';
+      return best < R('2E') && pick(rng, 0.8) ? 'nada' : 'vos';
+    }
+    const v = tanto(h.cards[seat], h.muestra).value;
+    if (v >= 30) return 'cargado';
+    if (v >= 27) return 'algo';
+    return v <= 23 && pick(rng, 0.8) ? 'nada' : 'vos';
+  }
   // "¿pongo o voy?": si el pie tiene con qué matar la primera, "vení"; si no, "poné"
   if (kind === 'primera') {
     const R = (c) => rank(c, h.muestra);
@@ -90,6 +105,9 @@ export function botAsks(g, seat, rng, humanPartner, humanPie = false) {
   if (a.truco && h.r <= 1 && !h.truco.pending) return pick(rng, humanPartner ? 0.3 : 0.08) ? 'truco' : null;
   return null;
 }
+// Le tienen que contestar un canto: ¿le pregunta al compañero? A una persona, seguido; a otro bot, poco.
+export const botAsksCall = (rng, humanPartner) => pick(rng, humanPartner ? 0.5 : 0.1);
+
 // cuánto le cree a una seña: la del compañero casi siempre es verdad; la de un rival puede ser para despistar
 const senaTrust = (seat, s) => (team(s) === team(seat) ? 0.95 : 0.8);
 

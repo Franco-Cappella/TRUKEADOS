@@ -331,3 +331,58 @@ test('sala: en 3v3 "¿pongo o voy?" lo contesta solo el pie (no el otro compañe
   assert.deepEqual(said.map((c) => c.seat), [2]);
   assert.equal(r.asks[0].done, true);
 });
+
+const CANTO = ['nada', 'vos', 'algo', 'cargado'].flatMap((k) => ASK_TALK.canto[k]);
+
+test('sala: te cantan envido y le preguntás al compañero bot "¿queremos?": contesta y no te contesta el canto', async () => {
+  const { h, ws, r } = await table({ dealer: 1 });
+  r.game.h.envido = { ...r.game.h.envido, state: 'pending', calls: ['envido'], by: 1, bySeat: 1 };
+  r.callAt = h.now;
+  h.room.broadcastState();
+  assert.equal(h.state(ws[0]).ask.can.canto, true);
+  await h.send(ws[0], { t: 'ask', kind: 'canto' });
+  assert.ok(ASK_TALK.canto.ask.includes(h.room.chat.at(-1).text));
+  assert.equal(h.state(ws[0]).ask.can.canto, false);
+  await h.tick(4000);
+  assert.ok(h.room.chat.some((c) => c.seat === 2 && CANTO.includes(c.text)), 'el compañero no contestó');
+  assert.equal(r.game.h.envido.state, 'pending', 'sigue siendo tuyo contestar');
+});
+
+test('sala: con el truco, si lo suben se puede volver a preguntar', async () => {
+  const { h, ws, r } = await table({ dealer: 1 });
+  const tr = r.game.h.truco;
+  tr.pending = { level: 2, byTeam: 1, bySeat: 1 };
+  r.callAt = h.now;
+  h.room.broadcastState();
+  await h.send(ws[0], { t: 'ask', kind: 'canto' });
+  await h.tick(TIMING.askWait + 500);
+  assert.equal(h.room.canAsk(0, 'canto'), false, 'dos veces por el mismo canto');
+  tr.pending = { level: 3, byTeam: 1, bySeat: 1 };
+  assert.equal(h.room.canAsk(0, 'canto'), true);
+});
+
+test('sala: entre personas, el compañero contesta con un toque y no se puede preguntar si no te cantaron nada', async () => {
+  const { h, ws, r } = await table({ dealer: 1, humans: ['u0', 'u1'] });
+  [r.seats[1], r.seats[2]] = [r.seats[2], r.seats[1]];
+  assert.equal(h.room.canAsk(0, 'canto'), false);
+  r.game.h.truco.pending = { level: 2, byTeam: 1, bySeat: 1 };
+  r.callAt = h.now;
+  await h.send(ws[0], { t: 'ask', kind: 'canto' });
+  const q = h.state(ws[1]).ask.open;
+  assert.ok(q.mineToAnswer && q.kind === 'canto');
+  await h.send(ws[1], { t: 'answer', ans: 'cargado' });
+  assert.ok(ASK_TALK.canto.cargado.includes(h.room.chat.at(-1).text));
+});
+
+test('sala: las respuestas al "¿queremos?" le sirven al bot que preguntó', async () => {
+  const { h, r } = await table({ dealer: 1 });
+  const T = 1;
+  r.game.h.truco.pending = { level: 2, byTeam: 0, bySeat: 0 };
+  r.asks = { [T]: { seat: 1, kind: 'canto', on: 'truco', hand: r.game.handNo, at: h.now, answers: { 3: 'cargado' }, botDue: 0 } };
+  assert.deepEqual(h.room.askSenas(1), [{ seat: 3, sena: 'truco_si' }]);
+  r.asks[T].on = 'envido';
+  r.asks[T].answers = { 3: 'nada' };
+  assert.deepEqual(h.room.askSenas(1), [{ seat: 3, sena: 'nada_envido' }]);
+  r.asks[T].answers = { 3: 'vos' };
+  assert.deepEqual(h.room.askSenas(1), []);
+});

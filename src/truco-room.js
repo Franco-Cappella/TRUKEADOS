@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie, tanto } from '../public/js/engine.js';
-import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
+import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH } from '../public/js/config.js';
@@ -481,8 +481,10 @@ export class TrucoRoom extends DurableObject {
         this.tellTantos(actor);
         changed = true;
       }
-      const askKind = !tells && !mustAnswer && actor != null && r.seats[actor]?.bot && before.kind === 'play' && g.n > 2 &&
-        botAsks(g, actor, rng, this.partnersOf(actor).some(human), human(this.pieOf(team(actor))));
+      // si le cantaron algo, puede preguntarle al compañero "¿queremos?"
+      const answering = ['truco', 'envido'].includes(before.kind);
+      const askKind = !tells && !mustAnswer && actor != null && r.seats[actor]?.bot && g.n > 2 && (before.kind === 'play' || answering) &&
+        (answering ? botAsksCall(rng, this.partnersOf(actor).some(human)) && 'canto' : botAsks(g, actor, rng, this.partnersOf(actor).some(human), human(this.pieOf(team(actor)))));
       const asked = !!askKind && this.canAsk(actor, askKind);
       if (asked) {
         this.startAsk(actor, askKind);
@@ -756,7 +758,12 @@ export class TrucoRoom extends DurableObject {
     const g = r.game;
     if (seat == null || r.status !== 'playing' || !g?.h || g.h.phase !== 'play' || g.n <= 2 || g.h.mazo[seat]) return false;
     const T = team(seat);
-    if (this.openAsk(T) || (r.asked?.[T] || []).includes(g.handNo + ':' + kind) || !this.partnersOf(seat).length) return false;
+    if (this.openAsk(T) || (r.asked?.[T] || []).includes(this.askKey(kind)) || !this.partnersOf(seat).length) return false;
+    // te cantaron algo: lo pregunta el que tiene que contestar
+    if (kind === 'canto') {
+      const w = waitingFor(g);
+      return ['truco', 'envido', 'flor'].includes(w.kind) && w.seats.includes(seat);
+    }
     // los tantos los pregunta el que canta el envido del equipo (el pie), mientras todavía lo puede cantar
     if (kind === 'tantos') {
       const h = g.h;
@@ -772,6 +779,14 @@ export class TrucoRoom extends DurableObject {
       return h.r === 0 && pie != null && pie !== seat && !played(seat) && !played(pie);
     }
     return false;
+  }
+
+  // Cada consulta se puede hacer una vez por mano; "¿queremos?", una vez por cada canto (si lo suben, otra vez).
+  askKey(kind) {
+    const g = this.room.game;
+    if (kind !== 'canto') return g.handNo + ':' + kind;
+    const h = g.h;
+    return `${g.handNo}:canto:${h.truco.pending?.level || 0}:${h.envido.calls.length}:${h.flor.level || ''}`;
   }
 
   // El pie del equipo que sigue en la mano (null si se fue al mazo).
@@ -797,8 +812,8 @@ export class TrucoRoom extends DurableObject {
     const T = team(seat);
     r.asks ||= {};
     r.asked ||= {};
-    (r.asked[T] ||= []).push(g.handNo + ':' + kind);
-    const q = { seat, kind, hand: g.handNo, at: now, answers: {}, botDue: 0 };
+    (r.asked[T] ||= []).push(this.askKey(kind));
+    const q = { seat, kind, on: kind === 'canto' ? waitingFor(g).kind : null, hand: g.handNo, at: now, answers: {}, botDue: 0 };
     const bots = this.answerers(q).filter((s) => r.seats[s]?.bot);
     if (bots.length) q.botDue = now + TIMING.askBotAnswer + Math.floor(rng() * 900);
     r.asks[T] = q;
@@ -845,7 +860,8 @@ export class TrucoRoom extends DurableObject {
   askSenas(seat) {
     const q = this.myAsk(seat);
     if (!q) return [];
-    const map = { tantos: { si: 'envido_alto', nada: 'nada_envido' }, truco: { si: 'truco_si', nada: 'truco_no' } }[q.kind];
+    const canto = q.on === 'truco' ? { algo: 'truco_si', cargado: 'truco_si', nada: 'truco_no' } : { algo: 'envido_alto', cargado: 'treinta', nada: 'nada_envido' };
+    const map = { tantos: { si: 'envido_alto', nada: 'nada_envido' }, truco: { si: 'truco_si', nada: 'truco_no' }, canto }[q.kind];
     if (!map) return [];
     return Object.entries(q.answers).filter(([, ans]) => map[ans]).map(([s, ans]) => ({ seat: Number(s), sena: map[ans] }));
   }
@@ -1324,7 +1340,7 @@ export class TrucoRoom extends DurableObject {
   askView(seat) {
     const q = this.openAsk(team(seat));
     return {
-      can: { tantos: this.canAsk(seat, 'tantos'), truco: this.canAsk(seat, 'truco'), primera: this.canAsk(seat, 'primera') },
+      can: { tantos: this.canAsk(seat, 'tantos'), truco: this.canAsk(seat, 'truco'), primera: this.canAsk(seat, 'primera'), canto: this.canAsk(seat, 'canto') },
       open: q ? { seat: q.seat, kind: q.kind, answered: q.answers[seat] != null, mine: q.seat === seat, mineToAnswer: this.answerers(q).includes(seat) } : null,
     };
   }
