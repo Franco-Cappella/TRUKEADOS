@@ -822,7 +822,7 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .rv-opts { display: flex; justify-content: space-between; gap: 10px; }
 
 /* ---- ruleta de frases ---- */
-#wheel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, 94vw); aspect-ratio: 1; z-index: 8; }
+#wheel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 96vw, 88vh); aspect-ratio: 1; z-index: 8; }
 .wh-disc { position: absolute; inset: 7%; border-radius: 50%; background: var(--panel-soft); border: 1px solid var(--line-2); }
 .wh-phrase { position: absolute; transform: translate(-50%, -50%); width: 124px; padding: 7px 6px; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 3px; font-size: 13px; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer; }
 .wh-phrase:hover, .wh-phrase:focus-visible { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: 0; }
@@ -992,3 +992,7 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .rj-list { width: min(960px, 100%); flex: none; display: flex; flex-direction: column; gap: 8px; }
 .rj-list:empty { display: none; }
 .rj-actions { display: flex; flex: none; gap: 6px; }
+
+.wh-pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px; color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.wh-pager button { width: 26px; height: 24px; border: 0; border-radius: 3px; background: var(--surface-2); color: var(--text); cursor: pointer; font-size: 16px; line-height: 1; }
+.wh-pager button:hover { background: var(--accent); color: var(--accent-ink); }

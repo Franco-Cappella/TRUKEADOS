@@ -23,14 +23,7 @@ const OUT = path.resolve('public/voz');
 
 // ---- todas las frases que el juego puede decir
 const flat = (x) => (typeof x === 'string' ? [x] : Array.isArray(x) ? x.flatMap(flat) : x && typeof x === 'object' ? Object.values(x).flatMap(flat) : []);
-const CANTOS = { strongCall: ['Truco', 'Retruco', 'Vale cuatro'], humbleCall: ['Truco', 'Retruco', 'Vale cuatro'], raise: ['Retruco', 'Vale cuatro'], envidoStrong: ['Envido', 'Real envido'], envidoHumble: ['Envido', 'Real envido'] };
-const phrases = [];
-for (const [key, list] of Object.entries(BOT_TALK)) {
-  for (const t of flat(list)) {
-    if (t.includes('{')) for (const c of CANTOS[key] || []) phrases.push(t.replace(/{C}/g, c).replace(/{c}/g, c.toLowerCase()));
-    else phrases.push(t);
-  }
-}
+const phrases = flat(BOT_TALK);
 phrases.push(...PHRASE_WHEEL.flatMap((c) => c.phrases), ...flat(ASK_TALK), ...TELL_TANTOS, ...flat(TRUCO_NAMES), ...flat(ENVIDO_NAMES), ...flat(FLOR_NAMES));
 phrases.push('Quiero', 'No quiero', 'Son buenas', 'A ver, mostrá las dos', '¡No mostraste!', 'Truco', 'Envido', 'Real envido', 'Falta envido', 'Flor');
 for (let n = 0; n <= 39; n++) phrases.push(String(n), `${n} en mesa`, `¡Cantaste ${n}!`);
@@ -65,6 +58,8 @@ for (const voice of VOICES) {
     if (r.status !== 0) throw new Error(`ffmpeg: ${r.stderr}`);
     if (++made % 50 === 0) console.log(voice, made);
   }
+  // lo que ya no se usa, se borra
+  for (const f of fs.readdirSync(path.join(OUT, voice))) if (!byKey.has(f.replace('.mp3', ''))) fs.rmSync(path.join(OUT, voice, f));
   console.log(voice, 'listo', made);
 }
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ keys: [...byKey.keys()] }));

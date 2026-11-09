@@ -153,7 +153,7 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
 - **Compañero bot**: si un canto (truco, envido, flor) lo puede contestar tu equipo y hay un bot en él, el bot
   contesta por los dos a los `TIMING.partnerAnswer` ms si vos no contestaste antes. Si el canto lo tenés que contestar vos (el envido lo contesta el pie), nadie contesta por vos mientras estés conectado (`partnerAt` en truco-room.js).
 - **"Cantámelo que tengo"** (`botCallsTantos`, `tellTantos`): en equipo, el bot que no es pie le avisa al pie que tiene tantos, sin que le pregunten; a veces lo dice faroleando. El pie bot lo toma como una seña.
-- **Charla** (`talk.js`): los bots tiran frases en el chat al cantar y contestar (`talkFor`), reaccionan a lo que
+- **Charla** (`talk.js`): los bots cantan a secas, como una persona, y solo dicen frases de `BOT_TALK`, que son las mismas de la ruleta (`PHRASE_WHEEL`; test/bots.test.js lo verifica). Reaccionan a lo que
   hacen los demás (`talkEvent`: cantos, cartas grandes, rondas, mazo, envido, fin de partida), apuran al que tarda
   (`TIMING.botIdle`) y a veces se contestan entre ellos. Las frases dependen de
   la chance de ganar que calcularon, sin delatarse: con mano buena a veces se hacen los humildes y cuando

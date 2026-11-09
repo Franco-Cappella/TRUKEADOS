@@ -7,7 +7,7 @@ import { SHOW_TABLES, AUTH, MODES, AVATAR, MATCH } from '../public/js/config.js'
 import { parseGif, mergeRanking } from '../src/social.js';
 import { rosterAt } from '../src/roster.js';
 import { seeded } from '../public/js/analysis.js';
-import { PHRASE_WHEEL, BOT_TALK, ASK_TALK } from '../public/js/talk.js';
+import { PHRASE_WHEEL, ASK_TALK } from '../public/js/talk.js';
 import { newGame, act, actionsFor, viewFor } from '../public/js/engine.js';
 import { voiceKey, voiceText, voiceFor, VOICES } from '../public/js/voices.js';
 
@@ -69,14 +69,12 @@ test('1v1: no se puede tirar antes que el rival', () => {
   assert.ok(act(g, other, { t: 'play', card: g.h.inHand[other][0] }).error);
 });
 
-test('ruleta: son frases de los bots y ninguna canta nada sin querer', () => {
-  const all = new Set(Object.values(BOT_TALK).flat(3).filter((x) => typeof x === 'string'));
+test('ruleta: ninguna frase canta nada sin querer y hay de todo', () => {
+  assert.ok(PHRASE_WHEEL.length >= 5);
   for (const c of PHRASE_WHEEL) {
-    assert.equal(c.phrases.length, 8, c.label);
-    for (const p of c.phrases) {
-      assert.ok(!/truco|envido|retruco|vale cuatro/i.test(p), p);
-      if (c.label !== 'Equipo') assert.ok(all.has(p), p);
-    }
+    assert.ok(c.phrases.length >= 4, c.label);
+    assert.equal(new Set(c.phrases).size, c.phrases.length, c.label);
+    for (const p of c.phrases) assert.ok(!/truco|envido|retruco|vale cuatro/i.test(p), p);
   }
 });
 

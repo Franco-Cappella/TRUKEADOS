@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
 import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
-import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer, talkAsk } from '../public/js/talk.js';
+import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer, talkAsk, PHRASE_WHEEL, TELL_TANTOS, TANTO_NAMES, talkTellTantos } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
 
@@ -173,17 +173,11 @@ test('el que reparte se acomoda una carta buena sin romper el mazo (y no en mesa
   assert.equal(stackDeck(clean, clean.dealer), false);
 });
 
-test('los bots hablan con frases de la lista y a veces se hacen los guapos con nada', () => {
-  const all = new Set(Object.values(BOT_TALK).flat());
-  let proud = 0;
-  for (let i = 0; i < 200; i++) {
-    const t = talkFor({ t: 'truco' }, 'play', { p: 0.1 }, seeded(i), false, 'Retruco');
-    if (!t) continue;
-    assert.ok(t.call && t.text.includes('etruco'), 'la frase dice el canto de verdad: ' + t.text);
-    assert.ok(!/truco/i.test(t.text.replace(/retruco/gi, '')), 'no dice truco en un retruco: ' + t.text);
-    if (BOT_TALK.strongCall.some((x) => x.replace(/{C}/g, 'Retruco').replace(/{c}/g, 'retruco') === t.text)) proud++;
+test('los bots cantan a secas y charlan con frases de la lista', () => {
+  for (let i = 0; i < 100; i++) {
+    assert.equal(talkFor({ t: 'truco' }, 'play', { p: 0.1 }, seeded(i)), null);
+    assert.equal(talkFor({ t: 'quiero' }, 'envido', { p: 0.9 }, seeded(i)), null);
   }
-  assert.ok(proud > 30, 'cuando farolea casi siempre se hace el guapo');
   assert.ok(BOT_TALK.partner.includes(talkFor({ t: 'quiero' }, 'truco', { p: 0.5 }, () => 0, true).text));
   const g = fixed([['1E', '1B', '7E'], ['4C', '5O', '6B']]);
   ok(act(g, 0, { t: 'truco' }));
@@ -191,27 +185,25 @@ test('los bots hablan con frases de la lista y a veces se hacen los guapos con n
   assert.ok(BOT_TALK.bluffWon.includes(talkHandEnd(g, 0, true, () => 0)));
 });
 
-test('la charla no dice envido ni truco salvo al cantarlos: dice "el segundo", "el primero", "los tantos"', () => {
-  // las frases de canto nombran el canto (ahí decirlo es cantarlo); el resto de la charla usa los sustitutos
-  const CANTOS = new Set(['strongCall', 'humbleCall', 'raise', 'envidoStrong', 'envidoHumble', 'falta']);
+test('la ruleta tiene todo lo que pueden decir los bots, y nada más', () => {
+  const textos = (v) => (typeof v === 'string' ? [v] : Object.values(v).flatMap(textos));
+  const ruleta = new Set(PHRASE_WHEEL.flatMap((c) => c.phrases));
+  const bots = new Set([...textos(BOT_TALK), ...TELL_TANTOS, ...Object.values(TANTO_NAMES)]);
+  for (const t of bots) assert.ok(ruleta.has(t), 'falta en la ruleta: ' + t);
+  for (const t of ruleta) assert.ok(bots.has(t), 'la ruleta tiene de más: ' + t);
+  assert.equal(talkTellTantos(() => 0, 27), 'Las viejas');
+  assert.equal(talkTellTantos(() => 0, 29), 'Las perdedoras');
+  assert.ok(TELL_TANTOS.includes(talkTellTantos(() => 0, 30)));
+});
+
+test('la charla no dice envido ni truco: dice "el segundo", "el primero", "los tantos"', () => {
   const textos = (v) => (typeof v === 'string' ? [v] : Object.values(v).flatMap(textos));
   for (const [clave, v] of Object.entries(BOT_TALK)) {
-    if (!CANTOS.has(clave)) for (const t of textos(v)) assert.doesNotMatch(t, /envido|truco/i, `BOT_TALK.${clave}: ${t}`);
+    for (const t of textos(v)) assert.doesNotMatch(t, /envido|truco/i, `BOT_TALK.${clave}: ${t}`);
   }
   for (const [clave, v] of Object.entries(ASK_TALK)) {
     for (const t of textos(v)) assert.doesNotMatch(t, /envido|truco/i, `ASK_TALK.${clave}: ${t}`);
   }
-  // al no querer el envido (y al contestarlo), la frase no lo nombra; lo mismo con el truco
-  let dijo = 0;
-  for (let i = 0; i < 300; i++) {
-    for (const [a, kind] of [[{ t: 'noquiero' }, 'envido'], [{ t: 'quiero' }, 'envido'], [{ t: 'noquiero' }, 'truco']]) {
-      const t = talkFor(a, kind, { p: 0.3 }, seeded(i));
-      if (!t) continue;
-      dijo++;
-      assert.doesNotMatch(t.text, /envido|truco/i, `${a.t} a ${kind}: ${t.text}`);
-    }
-  }
-  assert.ok(dijo > 200, 'contesta bastante; si no, el test no prueba nada');
 });
 
 test('los bots reaccionan a lo que hacen los demás, no a lo suyo', () => {

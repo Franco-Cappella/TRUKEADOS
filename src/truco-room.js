@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie } from '../public/js/engine.js';
+import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie, tanto } from '../public/js/engine.js';
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
@@ -465,7 +465,6 @@ export class TrucoRoom extends DurableObject {
       const actor = this.autoActor();
       const ctx = actor != null && this.botCtx(actor);
       const before = waitingFor(g);
-      const ev0 = g.evId;
       let a = null;
       // si a este bot le acaban de consultar y todavía no contestó, primero contesta (y juega después)
       const pending = actor != null && r.seats[actor]?.bot ? this.openAsk(team(actor), now) : null;
@@ -511,9 +510,7 @@ export class TrucoRoom extends DurableObject {
         // contestó por el equipo sin esperar al compañero humano
         const partner = before.seats.some((s) => !r.seats[s].bot && !this.isAway(s, now));
         const speaker = r.seats[actor].bot ? actor : partner ? this.teamBot(actor) : null;
-        // la frase dice el canto que hizo de verdad (truco, retruco, real envido...)
-        const canto = g.ev.find((e) => e.id > ev0 && e.type === 'call' && e.seat === actor)?.text || '';
-        const t = talkFor(a, before.kind, ctx.out, rng, partner, canto);
+        const t = talkFor(a, before.kind, ctx.out, rng, partner);
         // si contesta por el compañero, el "quiero" es del compañero: el bot solo avisa que contesta él
         if (t && !(t.call && speaker !== actor)) this.botSay(speaker, t.text, { call: t.call });
         if (a.t === 'truco' && (ctx.out?.p ?? 1) < 0.4) r.bluff = { seat: actor, hand: g.handNo };
@@ -734,7 +731,7 @@ export class TrucoRoom extends DurableObject {
   tellTantos(seat) {
     const r = this.room;
     const pie = this.pieOf(team(seat));
-    this.teamSay(seat, talkTellTantos(rng));
+    this.teamSay(seat, talkTellTantos(rng, tanto(r.game.h.cards[seat], r.game.h.muestra).value));
     // el pie bot lo toma como una seña de que tiene tantos
     if (r.seats[pie]?.bot) ((r.senaSeen ||= {})[pie] ||= []).push({ seat, sena: 'envido_alto' });
   }

@@ -3,54 +3,13 @@
 // se hacen los guapos. Reaccionan a lo que pasa en la mesa, chicanean, se calientan y charlan entre ellos.
 import { team, rank } from './engine.js';
 
+// Los bots charlan con las mismas frases que tienen las personas en la ruleta (PHRASE_WHEEL sale de esta lista), así
+// parece gente tirando frases del chat. Cantan como cualquiera: el canto a secas, sin adornos.
 // Regla de la charla: decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo.
-// Por eso solo las frases de canto nombran el canto (strongCall, humbleCall, raise, envidoStrong, envidoHumble, falta).
-// Las demás, cuando hablan del tema, dicen "el segundo" (truco) o "el primero", "los tantos", "los puntos" (envido),
-// y al no querer el envido no lo nombran. test/bots.test.js lo verifica.
+// Por eso ninguna los nombra: dicen "el segundo" (truco) o "el primero", "los tantos", "los puntos" (envido).
+// test/bots.test.js lo verifica.
 export const BOT_TALK = {
-  // ---- cantos: {C} / {c} es el canto de verdad ("Truco", "Retruco", "Vale cuatro", "Real envido"...).
-  // Cada frase dice el canto o la respuesta: reemplaza al "¡Truco!" o al "Quiero" de siempre, no se le suma.
-  strongCall: [
-    '{C}, y no me hagas perder tiempo.', 'Dale que va: {c}.', 'Esta mano es mía: {c}.', '{C}. Preparate que viene fuerte.',
-    '{C}. ¿Querés? Pensalo bien...', 'A esto vine: {c}.', '{C}, y andá llamando a tu abogado.', 'Con esta gano hasta dormido. {C}.',
-    '{C}. Y no me mires así.', '{C}. Si no querés, no te culpo.', '{C}, que hace frío.', 'Esto es pan comido. {C}.',
-    'Agarrate Catalina: {c}.', '{C}, y que Dios reparta suerte.', 'Te canto {c} con una mano atada.',
-    '{C}. Ya sé lo que tenés, eh.', 'Mirá que te conozco: {c}.',
-  ],
-  humbleCall: [
-    'Bueno... probemos: {c}.', 'Uh, no sé, pero {c}.', '{C}, y vamos a ver qué pasa.', 'Me la juego, che: {c}.',
-    'El que no arriesga no gana. {C}.', 'Y bueno, {c}... qué sé yo.', '{C}, y que sea lo que sea.',
-    'A la que te criaste: {c}.', '{C}, pero despacito.', 'Sin miedo al éxito: {c}.',
-  ],
-  // subir cuando el otro cantó (retruco o vale cuatro)
-  raise: [
-    '¿Ah, sí? {C}, y no me tiembla el pulso.', '¡{C}! ¿Qué te pensabas?', '{C}. A ver quién es más guapo.',
-    '¡{C}! Y ahora llorá.', '{C}, y te espero sentado.', '¿Me cantás a mí? {C}.', '{C}, y que se arme.',
-  ],
-  // ---- contestar truco (todas dicen "quiero" o "no quiero")
-  strongAccept: [
-    'Quiero, y andá contando los porotos.', 'Quiero. Gracias por avisar.', '¡Pero obvio que quiero!', 'Quiero, tirá nomás.',
-    'Quiero, y traé el mate que esto va para largo.', 'Quiero. Te veo flojito.', '¡Quiero! Me hiciste el día.',
-    'Quiero, y sin pestañear.', '¿Eso es todo? Quiero.',
-  ],
-  humbleAccept: [
-    'Bueno, quiero... a ver.', 'Quiero, total ya fue.', 'Quiero, que sea lo que Dios quiera.', 'Quiero, pero me estás asustando.',
-    'Ufa... quiero.', 'Y bueno, quiero. Si pierdo, no me mires.', 'Quiero, por orgullo nomás.',
-  ],
-  decline: [
-    'No quiero, llevátelo.', 'Andá, andá... no quiero.', 'Hoy no, che: no quiero.', 'No quiero. Me achico, pero ya vas a ver.',
-    'Ni en pedo te quiero eso.', 'No quiero. Disfrutalo, que es el último.', 'No quiero, llevátelo de regalo.',
-    'No quiero, guardo las balas para después.', 'No quiero. Se te nota en la cara.', 'Uh, no quiero. Esta te la debo.',
-  ],
-  // ---- envido
-  envidoStrong: [
-    '{C}, y contá bien los tuyos.', '{C}. Tengo para cantar, eh.', '{C}. Ojo.', '{C}, y no me mientas.',
-    '{C}. Andá preparando el "son buenas".', '{C}, que me pica la mano.', '{C}, y mirá que vengo con todo.',
-  ],
-  envidoHumble: ['{C}... por las dudas.', 'Tiro un {c}, a ver.', '{C}, total es gratis.', '{C}, y que sea lo que Dios quiera.'],
-  falta: ['¡Falta envido, y que se termine acá!', 'Falta envido. Todo o nada.', 'Falta envido, y que tiemble la mesa.'],
-  envidoAccept: ['Quiero los tantos. Cantá.', 'Quiero, a ver esos tantos.', 'Dale, quiero. Contá despacito.'],
-  envidoDecline: ['No quiero los tantos, llevate el poroto.', 'No quiero. Tomá tu punto y callate.', 'No quiero, para qué.'],
+  // ---- cuando contesta por el equipo
   partner: [
     'Este lo contesto yo, compañero.', 'Tranqui, lo manejo yo.', 'Dejámelo a mí.', 'Tranqui, que de este me encargo.',
     'Compañero, esta va por mí.', 'Vos tomate el mate, yo contesto.',
@@ -122,42 +81,32 @@ export const BOT_TALK = {
   reply: ['Jajaja.', 'Sí, claro...', 'Ya vas a ver.', 'Hablá menos y jugá más.', 'Mirá quién habla.', 'Eso decís siempre.', 'Ajá.', 'Jaja, dale.'],
 };
 
-// La ruleta de frases: las mismas que usan los bots, así todos parecen estar tirando frases del chat.
+// El compañero que no es pie le avisa que tiene tantos (o farolea), sin que nadie le pregunte.
+export const TELL_TANTOS = ['Cantámelo que tengo.', 'Cantámelo que tengo, compañero.', 'Dale, cantámelo que tengo.', 'Cantámelo, que vengo cargado.'];
+// De palabra: 27 y 29 tienen nombre.
+export const TANTO_NAMES = { 27: 'Las viejas', 29: 'Las perdedoras' };
+
+const textsOf = (v) => (typeof v === 'string' ? [v] : Object.values(v).flatMap(textsOf));
+const phrasesOf = (...keys) => [...new Set(keys.flatMap((k) => textsOf(BOT_TALK[k])))];
+
+// La ruleta de frases: todo lo que pueden decir los bots, por tema.
 export const PHRASE_WHEEL = [
-  { label: 'Cargar', phrases: ['Anotá, anotá.', 'Fácil.', 'Así se juega.', 'Andá contando los palitos, que te faltan.', 'Como robarle un caramelo a un nene.', 'Otra para el bolsillo.', 'Esto ya está.', 'Se achicó.'] },
-  { label: 'Apurar', phrases: ['Dale que se enfría el mate.', '¿Te dormiste?', 'Pensalo, pensalo, que no tenés nada.', 'Hoy, si es posible.', 'Ey, ¿seguís ahí?', 'Tirá algo, aunque sea un cuatro.', 'Tanto pensar te va a hacer mal.', 'Mientras tanto me tomo un mate.'] },
-  { label: 'Bronca', phrases: ['Me mataste.', 'Qué mano fea me tocó.', 'Ya va a venir la mía.', 'Suerte de principiante.', 'Uh, qué carta.', 'Me la ganaste de pedo.', 'Las cartas no me quieren hoy.', 'Todavía no terminó, eh.'] },
-  { label: 'Mesa', phrases: ['Bien jugado, eh.', '¿Quién trajo el mate?', 'Mezclá bien, eh.', 'Esta mano viene linda, lo presiento.', 'Jajaja.', 'Ajá.', 'Sí, claro...', 'Mirá quién habla.'] },
-  { label: 'Equipo', team: true, phrases: ['¡Eso, compañero!', '¡Bien ahí!', 'Uh, compañero...', 'Tranqui, la arreglo yo.', 'Atento a las señas, compañero.', 'Esta la ganamos, compañero.', 'Las viejas', 'Las perdedoras'] },
+  { label: 'Cargar', phrases: phrasesOf('winHand', 'winTruco', 'ahead', 'bluffWon', 'roundWon', 'roundWonNth', 'envidoWon', 'gameWon', 'rivalNoQuiero', 'rivalMazo', 'myBigCard') },
+  { label: 'Apurar', phrases: phrasesOf('idle') },
+  { label: 'Bronca', phrases: phrasesOf('loseHand', 'behind', 'roundLost', 'envidoLost', 'gameLost', 'caught', 'denounced') },
+  { label: 'Reacción', phrases: phrasesOf('rivalTruco', 'rivalEnvido', 'rivalFalta', 'rivalQuiero', 'rivalHighTanto', 'rivalBigCard', 'rivalBigCardOf') },
+  { label: 'Mesa', phrases: phrasesOf('handStart', 'reply') },
+  { label: 'Equipo', team: true, phrases: [...phrasesOf('partner', 'partnerCheer', 'partnerBlame', 'partnerMazo', 'handStartTeam'), ...TELL_TANTOS, ...Object.values(TANTO_NAMES)] },
 ];
 
 const pick = (rng, p) => rng() < p;
 export const sayFrom = (list, rng = Math.random) => list[Math.floor(rng() * list.length)];
 const say = (key, rng) => sayFrom(BOT_TALK[key], rng);
 
-// Qué dice un bot al cantar o contestar. out.p: la chance que calculó de ganar (truco o envido).
-// canto: el nombre del canto que acaba de hacer ("Retruco", "Real envido"...), para que la frase lo diga bien.
-// Devuelve { text, call }: call = la frase ya dice el canto o la respuesta (el cliente no repite el "¡Truco!").
-// partner: contestó por el equipo sin esperar al compañero humano (eso no reemplaza el canto: se dice antes).
-export function talkFor(a, kind, out, rng = Math.random, partner = false, canto = '') {
-  const p = out?.p ?? 0.5;
-  const fill = (key) => ({ text: say(key, rng).replace(/{C}/g, canto).replace(/{c}/g, canto.toLowerCase()), call: true });
-  if (partner && pick(rng, 0.6)) return { text: say('partner', rng), call: false };
-  if (a.t === 'truco' && canto && pick(rng, 0.7)) {
-    if (kind === 'truco') return fill('raise');
-    const proud = p >= 0.6 ? pick(rng, 0.65) : p < 0.4 ? pick(rng, 0.75) : pick(rng, 0.5);
-    return fill(proud ? 'strongCall' : 'humbleCall');
-  }
-  if (a.t === 'envido' && canto && pick(rng, 0.6)) {
-    if (a.kind === 'falta') return fill('falta');
-    return fill(p >= 0.6 || (p < 0.35 && pick(rng, 0.75)) ? 'envidoStrong' : 'envidoHumble');
-  }
-  if (a.t === 'quiero' && pick(rng, 0.55)) {
-    if (kind === 'envido') return fill('envidoAccept');
-    return fill(p > 0.6 && pick(rng, 0.8) ? 'strongAccept' : 'humbleAccept');
-  }
-  if (a.t === 'noquiero' && pick(rng, 0.55)) return fill(kind === 'envido' ? 'envidoDecline' : 'decline');
-  return null;
+// Qué dice un bot al cantar o contestar: el canto a secas (lo pone el juego, como el de una persona). Si contesta por
+// el equipo sin esperar al compañero humano, a veces lo avisa.
+export function talkFor(a, kind, out, rng = Math.random, partner = false) {
+  return partner && pick(rng, 0.6) ? { text: say('partner', rng), call: false } : null;
 }
 
 // Al terminar la mano: festeja, se lamenta, o (a veces) se burla si un farol le salió bien.
@@ -209,9 +158,8 @@ export function talkAsk(kind, rng = Math.random, level = 1) {
   return sayFrom(kind === 'truco' && level >= 3 ? t.askCuatro : kind === 'truco' && level === 2 ? t.askRe : t.ask, rng);
 }
 
-// El compañero que no es pie le avisa que tiene tantos (o farolea), sin que nadie le pregunte.
-export const TELL_TANTOS = ['Cantámelo que tengo.', 'Cantámelo que tengo, compañero.', 'Dale, cantámelo que tengo.', 'Cantámelo, que vengo cargado.'];
-export const talkTellTantos = (rng = Math.random) => sayFrom(TELL_TANTOS, rng);
+// Con 27 o 29 justos, a veces lo dice de palabra.
+export const talkTellTantos = (rng = Math.random, tanto = 0) => (TANTO_NAMES[tanto] && pick(rng, 0.5) ? TANTO_NAMES[tanto] : sayFrom(TELL_TANTOS, rng));
 
 export const talkAnswer = (kind, ans, rng = Math.random) => sayFrom(ASK_TALK[kind][ans], rng);
 

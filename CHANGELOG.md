@@ -1,5 +1,9 @@
 # Cambios
 
+## 1.14.1 — mismas frases para todos
+- La ruleta tiene todas las frases que pueden decir los bots, por tema y con páginas, y ellos no dicen ninguna otra.
+- Los bots cantan a secas, como una persona con el botón.
+
 ## 1.14.0 — ranking poblado, espectadores e invitar a tu equipo
 - Los usuarios de las mesas en juego aparecen en el ranking.
 - Se ve cuántos están mirando (ojito y número) y los espectadores tienen su propio chat.
