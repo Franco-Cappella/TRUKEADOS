@@ -212,7 +212,10 @@ export class TrucoRoom extends DurableObject {
 
       case 'act': {
         if (r.status !== 'playing' || seat == null) return;
-        if (Date.now() < (r.dealUntil || 0)) return this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
+        if (Date.now() < (r.dealUntil || 0)) {
+          this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
+          return this.sendState(ws); // el cliente pintó la jugada: el estado real lo corrige
+        }
         const seen = observe(r.game, seat, msg.a);
         const res = act(r.game, seat, msg.a);
         if (res.error) {
@@ -327,8 +330,7 @@ export class TrucoRoom extends DurableObject {
     } catch (e) {
       console.error('alarm failed', e);
       try {
-        await this.save();
-        await this.scheduleAlarm();
+        await this.commit(); // manda el estado (si un bot ya jugó antes del error, que se vea) y reprograma
       } catch {}
     }
   }
@@ -354,9 +356,10 @@ export class TrucoRoom extends DurableObject {
         const a = botShow(g, sh.seat);
         changed = this.botAct(sh.seat, a);
         if (changed && a.t === 'nomostrar') this.onFold(sh.seat);
-      } else if (r.botClaimAt && now >= r.botClaimAt) {
-        changed = this.botAct(r.botClaimer, { t: 'reclamar' });
-      } else if (now - since >= TIMING.showWindow) {
+      }
+      // si el bot no pudo mostrar o reclamar, igual se cierra por tiempo (si no, la mesa queda trabada en el show)
+      if (!changed && r.botClaimAt && now >= r.botClaimAt) changed = this.botAct(r.botClaimer, { t: 'reclamar' });
+      if (!changed && now - since >= TIMING.showWindow) {
         changed = closeShow(g);
         if (changed) this.rec.step('close');
       }
@@ -640,7 +643,7 @@ export class TrucoRoom extends DurableObject {
     if (this.answerers(q).every((s) => q.answers[s] != null)) {
       q.done = true;
       // ya contestaron todos: el que preguntó (si es bot) sigue apenas se termina de decir la respuesta
-      if (r.seats[q.seat]?.bot) r.botReadyAt = Date.now() + speechMs(text) + TIMING.botAfterTalk + 300;
+      if (r.seats[q.seat]?.bot) r.botReadyAt = Math.max(r.botReadyAt || 0, Date.now() + speechMs(text) + TIMING.botAfterTalk + 300);
     }
     return true;
   }

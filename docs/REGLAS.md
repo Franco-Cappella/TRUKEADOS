@@ -75,7 +75,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
      fue parda, aunque seas mano.
 3. Mientras dura la ronda en que la tiraste **parece una carta normal para todos, también para vos** (para que la trampa sirva) y queda
    casi alineada con la de abajo. **Al terminar esa ronda se ve quemada** (si se quemó), así en la siguiente
-   los rivales se dan cuenta.
+   los rivales se dan cuenta. Los eventos de la encimada (`double`, y la jugada automática `auto` con `burned`) se filtran igual en `viewFor`: los rivales no los reciben, y a quien la tiró le avisa "se jugó sola tu carta de arriba".
 4. Cualquier rival puede pedir **"mostrá las dos"**: se levanta la de arriba y todos ven la de abajo. No hay
    puntos de por medio.
 

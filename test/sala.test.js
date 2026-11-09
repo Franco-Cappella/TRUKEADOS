@@ -65,6 +65,19 @@ test('sala: si le consultás al compañero bot cuando le toca, primero contesta 
   assert.equal(h.state(ws[0]).ask.can.tantos, false);
 });
 
+test('sala: una jugada que llega mientras reparten se rechaza y se manda el estado (el cliente corrige la carta pintada)', async () => {
+  const h = await makeRoom({ mode: '1v1', target: 30 });
+  const w0 = await h.join('u0');
+  await h.join('u1');
+  await h.send(w0, { t: 'start', fillBots: false });
+  const r = h.room.room;
+  assert.ok(r.dealUntil > h.now, 'todavía están repartiendo');
+  w0.got.length = 0;
+  await h.send(w0, { t: 'act', a: { t: 'play', card: r.game.h.inHand[0][0], mode: 'normal' } });
+  assert.ok(w0.got.some((m) => m.t === 'error'), 'la jugada se rechaza mientras reparten');
+  assert.ok(w0.got.some((m) => m.t === 'state'), 'y el servidor manda el estado real para que la carta pintada vuelva a la mano');
+});
+
 test('sala: "¿Tienen tantos?" solo lo puede preguntar el que canta el envido (el pie)', async () => {
   // reparte el 2: los pies son el 2 y el 1; la persona (0) no es pie
   const { h, ws } = await table({ dealer: 2 });

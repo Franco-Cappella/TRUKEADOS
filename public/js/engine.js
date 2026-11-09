@@ -483,6 +483,7 @@ function actInner(g, seat, a) {
 
     case 'mazo': {
       if (['envido', 'declare', 'flor'].includes(w.kind)) return { error: 'Primero resolvé el canto' };
+      if (w.kind === 'truco' && !mine) return { error: 'Le toca contestar al otro equipo' };
       // en equipo uno se va al mazo por todo el equipo
       for (const s of teamSeats(g, T)) {
         h.mazo[s] = true;
@@ -718,6 +719,7 @@ function autoPre(g) {
   h.pre[s] = null;
   const burned = h.table[s].find((p) => p.over && p.c === c)?.burned !== false;
   h.rounds[h.r].plays.push(burned ? { seat: s, c, burned } : { seat: s, c });
+  event(g, { type: 'play', seat: s, c, burned, auto: true, round: h.r }); // viewFor oculta burned y auto a los rivales
   advanceTurn(g);
 }
 
@@ -878,6 +880,7 @@ export function viewFor(g, seat) {
     h: vh,
     waiting: waitingFor(g),
     actions: actionsFor(g, seat),
-    ev: g.ev,
+    // la encimada y su jugada automática (double, auto) solo las sabe quien la hizo
+    ev: g.ev.map((e) => (e.seat !== seat && (e.double || e.auto) ? { ...e, double: false, auto: false, burned: false } : e)),
   };
 }

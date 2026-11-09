@@ -331,6 +331,31 @@ test('dos encimadas: la de abajo juega; la de arriba es la jugada de la ronda si
   assert.deepEqual(g.score, [0, 1]);
 });
 
+test('la encimada que se juega sola en tu turno deja su evento (auto), para que se vea en la mesa', () => {
+  const g = fixed([['1E', '4E', '5C'], ['3O', '6O', '12B']]);
+  ok(act(g, 0, { t: 'play2', bottom: '4E', top: '1E' }));
+  ok(act(g, 1, { t: 'play', card: '3O' })); // primera: gana el 1
+  g.ev = []; // desde acá: la segunda
+  ok(act(g, 1, { t: 'play', card: '12B' })); // al 0 le toca y se le juega solo el 1E, quemado
+  const auto = g.ev.find((e) => e.type === 'play' && e.seat === 0);
+  assert.ok(auto, 'no hay evento para la carta que se jugó sola');
+  assert.deepEqual({ c: auto.c, burned: auto.burned, auto: auto.auto }, { c: '1E', burned: true, auto: true });
+  // los rivales no se enteran de que fue una encimada ni de que quedó quemada: eso lo ve quien la hizo
+  const rival = viewFor(g, 1).ev.find((e) => e.type === 'play' && e.seat === 0);
+  assert.deepEqual({ auto: rival.auto, burned: rival.burned }, { auto: false, burned: false });
+  assert.equal(viewFor(g, 0).ev.find((e) => e.type === 'play' && e.seat === 0).auto, true);
+});
+
+test('con truco pendiente, quien lo cantó no puede irse al mazo: act lo rechaza como dice actionsFor', () => {
+  const g = fixed([['1E', '4E', '5C'], ['3O', '6O', '12B']]);
+  ok(act(g, 0, { t: 'truco' }));
+  assert.equal(actionsFor(g, 0).mazo, false);
+  assert.equal(actionsFor(g, 1).mazo, true); // el que contesta sí puede
+  assert.ok(act(g, 0, { t: 'mazo' }).error, 'act aceptó el mazo de quien cantó el truco');
+  assert.equal(g.h.phase, 'play');
+  assert.deepEqual(g.score, [0, 0]);
+});
+
 test('la carta quemada vale como un 4 (empata con un 4, pierde con un 5)', () => {
   assert.equal(BURNED_VALUE, rank('4C'));
   assert.equal(playValue({ c: '1E', burned: true }), rank('4O'));

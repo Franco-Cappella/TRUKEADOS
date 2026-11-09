@@ -264,7 +264,11 @@ export class RoomClient {
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
-      if (st.dealLeft > 0 && g.handNo !== this.dealtHand) this.startDeal(g, st.dealLeft);
+      // cada reparto termina en un instante fijo (st.now + st.dealLeft, igual en todos los states de ese reparto):
+      // así también se anima la revancha, que vuelve a la mano 1 y no cambia el número de mano
+      const dealEnd = st.dealLeft > 0 ? st.now + st.dealLeft : 0;
+      if (dealEnd && dealEnd !== this.dealEnd) this.startDeal(g, st.dealLeft);
+      if (dealEnd) this.dealEnd = dealEnd;
       this.dealtHand = g.handNo;
       this.handNo = g.handNo;
       scene.setDealer(g.dealer);
@@ -321,6 +325,8 @@ export class RoomClient {
     this.dealing = deal;
     this.selected = null;
     this.choosingTop = null;
+    this.mazoArmed = false; // una confirmación de "Irse al mazo" no pasa a la mano nueva
+    clearTimeout(this.mazoT);
     const finish = () => {
       if (this.dealing !== deal) return;
       this.dealing = null;
@@ -380,6 +386,8 @@ export class RoomClient {
           const who = e.seat === me ? 'Tiraste' : `${name(e.seat)} tiró`;
           this.toast(`${who} fuera de turno: la carta se quema (vale como un 4).`, 'bad', 3500);
         }
+        // la carta de arriba de una encimada se juega sola cuando te toca: solo te lo avisamos a vos
+        if (e.auto && e.seat === me) this.toast('Se jugó sola tu carta de arriba: en esta ronda no podías elegir otra.', 'bad', 4500);
         break;
       case 'round': {
         // dos encimadas propias: en la mesa la de arriba tapa a la de abajo y parece que jugaste esa en esta ronda;
