@@ -481,3 +481,13 @@ test('"¿queremos?": el bot contesta según lo que tiene', () => {
   withCards(['12B', '4C', '5O']);
   assert.equal(botAnswer(g, seat, 'canto', () => 0), 'nada');
 });
+
+test('"callado" al preguntar por el re no dice que lo canten ellos: el quiero es nuestro', () => {
+  for (let i = 0; i < 200; i++) {
+    assert.doesNotMatch(talkAnswer('truco', 'callado', seeded(i), 2), /ellos/);
+    assert.doesNotMatch(talkAnswer('truco', 'callado', seeded(i), 3), /ellos/);
+  }
+  const antes = new Set(Array.from({ length: 200 }, (_, i) => talkAnswer('truco', 'callado', seeded(i), 1)));
+  assert.ok([...antes].some((t) => /ellos/.test(t)), 'antes de cantar el truco sí pueden cantarlo ellos');
+  assert.ok(new Set(Array.from({ length: 200 }, (_, i) => talkAnswer('tantos', 'callado', seeded(i), 2))).size > 1);
+});

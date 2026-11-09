@@ -861,7 +861,7 @@ export class RoomClient {
       const what = q.kind === 'tantos' ? 'los tantos' : { 2: 'el re', 3: 'el cuatro' }[g.h.truco.level] || 'el truco';
       const lbl = `${esc(this.nameOf(q.seat))} pregunta por ${what}`;
       add('equipo', lbl, q.kind === 'tantos' ? 'Tengo, cantá' : 'Dale, cantá', 'good', () => this.send({ t: 'answer', ans: 'si' }));
-      add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
+      add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), q.kind === 'truco' && g.h.truco.level >= 2 ? 'Seguir jugando sin subirlo' : 'Seguir jugando sin cantarlo: que lo canten los otros');
       add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
     } else if (!q) {
       if (ask?.can.canto) add('equipo', 'Compañero', '¿Queremos?', '', () => this.send({ t: 'ask', kind: 'canto' }), 'Le preguntás a tu compañero cómo viene antes de contestar');

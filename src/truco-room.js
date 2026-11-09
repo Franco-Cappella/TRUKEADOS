@@ -829,7 +829,7 @@ export class TrucoRoom extends DurableObject {
     const q = this.openAsk(T);
     if (!q || q.seat === seat || q.answers[seat] != null || r.game.h.mazo[seat] || !this.answerers(q).includes(seat)) return false;
     q.answers[seat] = ans;
-    const text = talkAnswer(q.kind, ans, rng);
+    const text = talkAnswer(q.kind, ans, rng, r.game.h.truco.level);
     this.teamSay(seat, text);
     if (this.answerers(q).every((s) => q.answers[s] != null)) {
       q.done = true;
