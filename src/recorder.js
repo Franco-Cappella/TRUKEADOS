@@ -34,7 +34,7 @@ export class MatchRecorder {
   /** Empieza a grabar una partida nueva (borra la anterior). */
   async start(room) {
     await this.clear();
-    const seats = room.seats.map((s) => ({ name: s.name, uid: s.bot ? null : s.pid, bot: !!s.bot, ...(s.disguised ? { disguised: true, elo: s.elo } : {}) }));
+    const seats = room.seats.map((s) => ({ name: s.name, uid: s.bot ? null : s.pid, bot: !!s.bot, cos: s.cos || {}, ...(s.disguised ? { disguised: true, elo: s.elo } : {}) }));
     this.meta = {
       v: LOG_VERSION,
       code: room.code,

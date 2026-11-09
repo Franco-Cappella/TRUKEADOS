@@ -161,29 +161,42 @@
     </div>
   </section>
 
-  <!-- ============ PARTIDA GRABADA (historial) ============ -->
+  <!-- ============ REVISIÓN DE UNA PARTIDA ============ -->
   <section id="replay" class="screen hidden">
-    <div class="r-wrap">
-      <header class="r-top">
-        <button class="btn small ghost" id="replay-back" type="button" title="Volver al historial">✕</button>
-        <div class="r-title"><b id="replay-title"></b><small id="replay-sub"></small></div>
-        <button class="btn small" id="replay-analyze" type="button">Analizar mis jugadas</button>
-      </header>
-      <div class="r-summary hidden" id="replay-summary"></div>
-      <nav class="r-hands" id="replay-hands" aria-label="Manos"></nav>
-      <div class="r-main">
-        <div class="r-board" id="replay-board"></div>
-        <div class="r-side">
-          <div class="r-controls">
-            <button class="btn small" type="button" data-step="first" title="Principio de la mano">⏮</button>
-            <button class="btn small" type="button" data-step="prev" title="Paso anterior (←)">◀</button>
-            <span id="replay-pos"></span>
-            <button class="btn small" type="button" data-step="next" title="Paso siguiente (→)">▶</button>
-            <button class="btn small" type="button" data-step="last" title="Final de la mano">⏭</button>
-          </div>
-          <ol class="r-log" id="replay-log"></ol>
+    <div class="rv">
+      <div class="rv-main">
+        <div class="rv-eval" aria-hidden="true">
+          <span id="replay-eval-them"></span>
+          <i id="replay-eval-fill"></i>
+          <span id="replay-eval-me"></span>
+        </div>
+        <div class="rv-stagebox">
+          <div id="replay-stage"></div>
+          <div id="replay-labels"></div>
+          <button class="btn small ghost rv-close" id="replay-back" type="button" title="Volver">✕</button>
+          <div class="rv-caption" id="replay-caption" role="status"></div>
         </div>
       </div>
+      <aside class="rv-side">
+        <header class="rv-head">
+          <b id="replay-title"></b>
+          <small id="replay-sub"></small>
+        </header>
+        <div id="replay-summary"></div>
+        <div class="rv-graph" id="replay-graph" title="Tocá para ir a ese momento"></div>
+        <small class="rv-progress" id="replay-progress"></small>
+        <div class="rv-coach" id="replay-coach"></div>
+        <ol class="rv-log" id="replay-log"></ol>
+        <label class="rv-reveal"><input type="checkbox" id="replay-reveal" checked> Ver las cartas de todos</label>
+        <div class="rv-controls" id="replay-controls">
+          <button class="btn small" type="button" data-step="first" title="Principio (Inicio)">⏮</button>
+          <button class="btn small" type="button" data-step="prev" title="Atrás (←)">◀</button>
+          <button class="btn small primary" type="button" data-step="play" id="replay-play" title="Reproducir (espacio)">▶</button>
+          <button class="btn small" type="button" data-step="next" title="Adelante (→)">▶▏</button>
+          <button class="btn small" type="button" data-step="last" title="Final (Fin)">⏭</button>
+          <span id="replay-pos"></span>
+        </div>
+      </aside>
     </div>
   </section>
 

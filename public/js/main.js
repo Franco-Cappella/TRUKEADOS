@@ -49,7 +49,10 @@ function route() {
   room?.close();
   room = null;
   const pm = location.pathname.match(ROUTES.matchRe);
-  if (pm) return showReplay(pm[1]);
+  if (pm) {
+    scene?.pause();
+    return showReplay(pm[1]);
+  }
   hideReplay();
   showMenu();
 }
@@ -62,6 +65,7 @@ function openRoom(code) {
     preloadCards();
     bindGameUI();
   }
+  scene.resume();
   scene.resize();
   room?.close();
   room = new RoomClient(code, scene, { onNotFound: goHome });

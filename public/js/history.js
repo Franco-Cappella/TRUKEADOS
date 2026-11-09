@@ -1,12 +1,16 @@
-// Historial: la lista de tus partidas (pestaña del menú) y el visor de una partida grabada (/partida/ID), que
-// la rebobina mano por mano y paso por paso, con el análisis de tus decisiones (analysis.js en un Web Worker).
+// Historial: la lista de tus partidas y la revisión de una partida grabada (/partida/ID), como la de chess.com:
+// la partida se reproduce en la mesa 3D frase por frase, para adelante y para atrás, con un ícono según lo buena o
+// mala que fue cada jugada, la barra y el gráfico de quién la tenía ganada, y la precisión de cada equipo.
+// La evaluación corre en un Web Worker (analysis-worker.js) y empieza sola al abrir la partida.
 import { ROUTES, GRADES, modeLabel, roomOptionsText } from './config.js';
-import { cardName, team, TRUCO_NAMES } from './engine.js';
+import { cardName, team } from './engine.js';
 import { handFrames, describe, actionLabel } from './replay.js';
-import { accuracy, gradeCounts } from './analysis.js';
+import { accuracy, gradeCounts, winSeries } from './analysis.js';
+import { lookFor, dressed } from './characters.js';
+import { TableScene } from './scene.js';
 import { $, esc, api } from './dom.js';
 
-// ------------------------------------------------------------------ lista (pestaña Historial)
+// ------------------------------------------------------------------ lista
 
 let oldest = null; // ended_at de la última partida mostrada, para "Ver más"
 
@@ -18,7 +22,7 @@ const ago = (iso) => {
 };
 const sign = (n) => (n > 0 ? `+${n}` : String(n));
 
-function rowHtml(r) {
+export function rowHtml(r) {
   const m = r.match;
   const mine = team(r.seat);
   const rivals = m.seats.filter((_, i) => team(i) !== mine).map((s) => s.name).join(', ');
@@ -47,257 +51,366 @@ export async function loadHistory(more = false) {
   }
 }
 
-// openMatch(id): abre el visor (lo resuelve main.js con la ruta /partida/ID).
+// openMatch(id): abre la revisión (lo resuelve main.js con la ruta /partida/ID).
 export function initHistory(openMatch, back) {
-  $('#history-list').addEventListener('click', (e) => {
+  document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-match]');
     if (b) openMatch(b.dataset.match);
   });
   $('#history-more').addEventListener('click', () => loadHistory(true));
   $('#replay-back').addEventListener('click', back);
-  $('#replay-analyze').addEventListener('click', () => viewer?.analyze());
-  $('#replay-hands').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-hand]');
-    if (b) viewer?.goHand(Number(b.dataset.hand));
-  });
   $('#replay-log').addEventListener('click', (e) => {
-    const li = e.target.closest('[data-frame]');
-    if (li) viewer?.goFrame(Number(li.dataset.frame));
+    const li = e.target.closest('[data-at]');
+    if (li) viewer?.go(Number(li.dataset.at));
   });
-  document.querySelector('.r-controls').addEventListener('click', (e) => {
+  $('#replay-graph').addEventListener('click', (e) => viewer?.seekGraph(e));
+  $('#replay-reveal').addEventListener('change', (e) => viewer?.setReveal(e.target.checked));
+  $('#replay-controls').addEventListener('click', (e) => {
     const b = e.target.closest('[data-step]');
     if (b) viewer?.step(b.dataset.step);
   });
   addEventListener('keydown', (e) => {
     if (!viewer || $('#replay').classList.contains('hidden') || e.target.matches('input, textarea')) return;
-    const k = { ArrowRight: 'next', ArrowLeft: 'prev', Home: 'first', End: 'last' }[e.key];
-    if (k) {
-      e.preventDefault();
-      viewer.step(k);
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      viewer.goHand(viewer.hand + (e.key === 'ArrowDown' ? 1 : -1));
-    }
+    const k = { ArrowRight: 'next', ArrowLeft: 'prev', Home: 'first', End: 'last', ' ': 'play', ArrowDown: 'nextHand', ArrowUp: 'prevHand' }[e.key];
+    if (!k) return;
+    e.preventDefault();
+    viewer.step(k);
   });
 }
 
-// ------------------------------------------------------------------ visor
+// ------------------------------------------------------------------ revisión
 
 let viewer = null;
+let stage = null; // una sola escena 3D para todas las revisiones
 
 export async function showReplay(id) {
   for (const s of ['#menu', '#game']) $(s).classList.add('hidden');
   $('#replay').classList.remove('hidden');
-  $('#replay-board').innerHTML = '<p class="muted">Cargando la partida…</p>';
-  $('#replay-log').innerHTML = '';
-  $('#replay-hands').innerHTML = '';
-  $('#replay-summary').classList.add('hidden');
+  $('#replay-log').innerHTML = '<li class="muted">Cargando la partida…</li>';
+  $('#replay-summary').innerHTML = '';
+  $('#replay-graph').innerHTML = '';
+  $('#replay-coach').innerHTML = '';
+  $('#replay-title').textContent = '';
+  $('#replay-sub').textContent = '';
   viewer?.close();
   viewer = null;
   try {
     const { match } = await api(ROUTES.api.match(id));
-    viewer = new Viewer(match);
+    if (!stage) stage = new TableScene($('#replay-stage'));
+    stage.resume();
+    stage.resize();
+    viewer = new Viewer(match, stage);
   } catch (err) {
-    $('#replay-board').innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+    $('#replay-log').innerHTML = `<li class="muted">${esc(err.message)}</li>`;
   }
 }
 
 export function hideReplay() {
   viewer?.close();
   viewer = null;
+  stage?.pause();
   $('#replay').classList.add('hidden');
 }
 
-const card = (c, cls = '') => `<img class="r-card ${cls}" src="${ROUTES.card(c)}" alt="${esc(cardName(c))}" title="${esc(cardName(c))}">`;
 const GRADE = Object.fromEntries(GRADES.map((g) => [g.key, g]));
-const ROUND = ['Primera', 'Segunda', 'Tercera'];
+const AUTOPLAY_MS = 1800;
+
+const icon = (key, cls = '') => (key ? `<i class="g-ic g-${key} ${cls}" title="${esc(GRADE[key].label)}">${esc(GRADE[key].glyph)}</i>` : '');
+const pct = (x) => `${Math.round(x * 100)}%`;
+// La frase que se escucha en la mesa ("¡Truco!", "Quiero"): solo los cantos y los tantos van en globo.
+const spoken = (f) => f.events.filter((e) => e.type === 'call' || e.type === 'tanto').map((e) => (e.type === 'call' ? e.text : e.value ?? 'Son buenas')).join(' · ');
 
 class Viewer {
-  constructor(match) {
+  constructor(match, scene) {
     this.m = match;
+    this.scene = scene;
     this.me = match.me.seat;
+    this.myTeam = team(this.me);
     this.names = match.seats.map((s) => s.name);
     this.hands = match.log.hands;
     this.frames = this.hands.map(handFrames); // cuadros de cada mano (reproducidos con el motor)
-    this.analysis = []; // resultados por mano (analyzeHand)
-    this.hand = 0;
-    this.frame = 0;
-    const mine = team(this.me);
+    // la partida entera en una sola línea: cada paso que dice algo
+    this.line = [];
+    this.frames.forEach((frames, hand) => frames.forEach((f, frame) => {
+      if (!frame || describe(f, this.names).length) this.line.push({ hand, frame });
+    }));
+    const series = winSeries(this.frames);
+    const key = (hand, frame) => `${hand}:${frame}`;
+    const byKey = new Map(series.map((s) => [key(s.hand, s.frame), s.p]));
+    this.series = this.line.map(({ hand, frame }) => {
+      const p = byKey.get(key(hand, frame)); // chance del equipo 0
+      return this.myTeam === 0 ? p : 1 - p;
+    });
+    this.analysis = this.hands.map(() => null);
+    this.at = 0;
+    this.reveal = $('#replay-reveal').checked;
+    this.plates = new Map();
+    this.drawn = null;
+    const mine = this.myTeam;
     $('#replay-title').textContent = `${match.me.won ? 'Ganaste' : 'Perdiste'} ${match.score[mine]} a ${match.score[1 - mine]}`;
     const opts = roomOptionsText(match.options || {});
-    $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
-    $('#replay-analyze').disabled = false;
-    $('#replay-analyze').textContent = 'Analizar mis jugadas';
-    this.goHand(0);
+    $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, match.rated ? 'por ELO' : '', opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
+
+    this.seats = match.seats.map((s, i) => ({ name: s.name, cos: s.cos || {}, seat: i }));
+    scene.setLayout({ n: match.seats.length, me: this.me, spectator: false });
+    scene.setTable({});
+    scene.setMyLook(dressed(lookFor(this.names[this.me], this.me), this.seats[this.me].cos));
+    this.buildPlates();
+    scene.onFrame = () => this.placePlates();
+    this.renderLog();
+    this.renderGraph();
+    this.renderSummary();
+    this.go(0);
+    this.analyze();
   }
 
   close() {
     this.worker?.terminate();
     this.worker = null;
+    clearInterval(this.timer);
+    this.timer = null;
+    this.scene.onFrame = null;
+    $('#replay-labels').innerHTML = '';
+    $('#replay-caption').textContent = '';
   }
 
-  framesOf(i) {
-    return this.frames[i];
+  // ---------------------------------------------------------------- moverse
+  get cur() {
+    return this.line[this.at];
   }
 
-  goHand(i) {
-    if (i < 0 || i >= this.hands.length) return;
-    this.hand = i;
-    this.frame = 0;
-    this.renderHands();
-    this.renderLog();
-    this.render();
-  }
-
-  goFrame(i) {
-    const n = this.framesOf(this.hand).length;
-    this.frame = Math.max(0, Math.min(n - 1, i));
-    this.render();
+  go(i, { auto = false } = {}) {
+    if (!auto) this.stopAuto();
+    const prev = this.drawn;
+    this.at = Math.max(0, Math.min(this.line.length - 1, i));
+    const { hand, frame } = this.cur;
+    // de a un paso hacia adelante en la misma mano se anima; si no, la mesa se arma de nuevo de golpe
+    const animate = !!prev && prev.hand === hand && this.at === prev.at + 1;
+    this.drawn = { hand, frame, at: this.at };
+    this.paintScene(animate);
+    this.renderPosition();
   }
 
   step(k) {
-    const n = this.framesOf(this.hand).length;
-    if (k === 'first') return this.goFrame(0);
-    if (k === 'last') return this.goFrame(n - 1);
-    if (k === 'next') {
-      if (this.frame < n - 1) return this.goFrame(this.frame + 1);
-      return this.goHand(this.hand + 1);
+    const { hand } = this.cur;
+    const firstOf = (h) => this.line.findIndex((x) => x.hand === h);
+    if (k === 'next') return this.go(this.at + 1);
+    if (k === 'prev') return this.go(this.at - 1);
+    if (k === 'first') return this.go(0);
+    if (k === 'last') return this.go(this.line.length - 1);
+    if (k === 'nextHand') return hand + 1 < this.hands.length && this.go(firstOf(hand + 1));
+    if (k === 'prevHand') return this.go(firstOf(this.at === firstOf(hand) ? Math.max(0, hand - 1) : hand));
+    if (k === 'play') return this.timer ? this.stopAuto() : this.startAuto();
+  }
+
+  startAuto() {
+    if (this.at >= this.line.length - 1) this.go(0);
+    $('#replay-play').textContent = '❚❚';
+    this.timer = setInterval(() => {
+      if (this.at >= this.line.length - 1) return this.stopAuto();
+      this.go(this.at + 1, { auto: true });
+    }, AUTOPLAY_MS);
+  }
+
+  stopAuto() {
+    clearInterval(this.timer);
+    this.timer = null;
+    $('#replay-play').textContent = '▶';
+  }
+
+  seekGraph(e) {
+    const svg = e.currentTarget.querySelector('svg');
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    this.go(Math.round(((e.clientX - r.left) / r.width) * (this.line.length - 1)));
+  }
+
+  setReveal(on) {
+    this.reveal = on;
+    this.paintPlates();
+  }
+
+  // ---------------------------------------------------------------- la mesa
+  paintScene(animate) {
+    const { hand, frame } = this.cur;
+    const f = this.frames[hand][frame];
+    const g = f.g;
+    const h = g.h;
+    const s = this.scene;
+    s.setPlayers(this.seats, h.inHand.map((c) => c.length));
+    if (!animate) {
+      s.setMyCards([], null);
+      s.syncTable([], { animate: false });
     }
-    if (this.frame > 0) return this.goFrame(this.frame - 1);
-    if (this.hand > 0) {
-      this.goHand(this.hand - 1);
-      this.goFrame(this.framesOf(this.hand).length - 1);
+    s.setMyCards(h.inHand[this.me], null);
+    s.syncTable(h.table, { animate });
+    s.setDealer(g.dealer);
+    s.setMuestra(h.muestra);
+    const said = spoken(f);
+    if (said && f.seat != null && f.seat !== this.me) s.speak(f.seat, 1400);
+    this.paintPlates();
+  }
+
+  buildPlates() {
+    const box = $('#replay-labels');
+    box.innerHTML = '';
+    this.plates.clear();
+    this.seats.forEach((p, seat) => {
+      if (seat === this.me) return;
+      const el = document.createElement('div');
+      el.className = `rv-plate t${team(seat)}`;
+      box.appendChild(el);
+      this.plates.set(seat, el);
+    });
+  }
+
+  paintPlates() {
+    const { hand, frame } = this.cur;
+    const f = this.frames[hand][frame];
+    const r = this.resultAt(hand, frame);
+    const h = f.g.h;
+    for (const [seat, el] of this.plates) {
+      const acted = f.seat === seat;
+      const said = acted ? spoken(f) : '';
+      const cards = this.reveal ? h.inHand[seat].map((c) => `<img src="${ROUTES.card(c)}" alt="${esc(cardName(c))}" title="${esc(cardName(c))}">`).join('') : '';
+      el.innerHTML = `${said ? `<div class="bubble">${esc(said)}</div>` : ''}
+        ${acted && r ? icon(r.grade, 'big') : ''}
+        <div class="nameplate t${team(seat)}"><span>${esc(this.names[seat])}</span>${f.g.dealer === seat ? '<span class="chip">reparte</span>' : ''}${h.mazo[seat] ? '<span class="chip">al mazo</span>' : ''}</div>
+        ${cards ? `<div class="rv-cards">${cards}</div>` : ''}`;
+    }
+    this.placePlates();
+  }
+
+  placePlates() {
+    for (const [seat, el] of this.plates) {
+      const p = this.scene.screenPos(seat);
+      el.style.display = p?.visible ? '' : 'none';
+      if (p?.visible) el.style.transform = `translate(calc(${p.x}px - 50%), calc(${p.y}px - 100%))`;
     }
   }
 
-  // Manos: el tanteador con que terminó cada una (y la peor calificación tuya, si ya se analizó).
-  renderHands() {
-    $('#replay-hands').innerHTML = this.hands
-      .map((h, i) => {
-        const fr = this.frames[i];
-        const end = fr ? fr[fr.length - 1].g.score : null;
-        const worst = (this.analysis[i] || []).reduce((w, r) => (GRADES.findIndex((g) => g.key === r.grade) > GRADES.findIndex((g) => g.key === w) ? r.grade : w), 'mejor');
-        const flag = this.analysis[i] && ['error', 'insensata'].includes(worst) ? `<i class="g-dot g-${worst}"></i>` : '';
-        return `<button type="button" data-hand="${i}" class="${i === this.hand ? 'on' : ''}">Mano ${i + 1}${end ? `<small>${end[0]}-${end[1]}</small>` : ''}${flag}</button>`;
-      })
-      .join('');
-    $('#replay-hands .on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  // ---------------------------------------------------------------- panel
+  resultAt(hand, frame) {
+    return (this.analysis[hand] || []).find((r) => r.frame === frame) || null;
   }
 
-  resultFor(frame) {
-    return (this.analysis[this.hand] || []).find((r) => r.frame === frame);
+  renderPosition() {
+    const { hand, frame } = this.cur;
+    const f = this.frames[hand][frame];
+    const r = this.resultAt(hand, frame);
+    const text = frame ? describe(f, this.names) : [`Mano ${hand + 1}: reparte ${this.names[f.g.dealer]}${f.g.h.muestra ? ` · muestra ${cardName(f.g.h.muestra)}` : ''}`];
+    $('#replay-caption').innerHTML = `${r ? icon(r.grade) : ''}<span>${text.map(esc).join('<br>')}</span>`;
+    $('#replay-pos').textContent = `Mano ${hand + 1} de ${this.hands.length} · ${this.at + 1}/${this.line.length}`;
+
+    const p = this.series[this.at];
+    $('#replay-eval-fill').style.height = pct(p);
+    $('#replay-eval-me').textContent = p >= 0.5 ? pct(p) : '';
+    $('#replay-eval-them').textContent = p < 0.5 ? pct(1 - p) : '';
+    const cursor = $('#replay-graph .rv-cursor');
+    if (cursor) cursor.setAttribute('x', this.gx(this.at) - 0.6);
+
+    for (const li of $('#replay-log').children) li.classList.toggle('on', Number(li.dataset.at) === this.at);
+    const on = $('#replay-log .on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+    this.renderCoach(r);
+  }
+
+  renderCoach(r) {
+    const box = $('#replay-coach');
+    if (!r) {
+      box.innerHTML = this.analyzing ? '<p class="muted">Analizando la partida…</p>' : '<p class="muted">Esta jugada no tenía decisión para evaluar.</p>';
+      return;
+    }
+    const good = ['brillante', 'genial', 'mejor', 'excelente'].includes(r.grade);
+    const tip = good
+      ? 'Era de lo mejor que se podía hacer.'
+      : `Lo mejor era ${esc(actionLabel(r.best.a))}${r.loss >= 0.005 ? `: le costó ${(r.loss * 100).toFixed(1).replace('.', ',')}% de chance de ganar` : ''}.`;
+    box.innerHTML = `${icon(r.grade, 'big')}<div><b>${esc(this.names[r.seat])}: ${esc(GRADE[r.grade].label)}</b><small>${tip}</small></div>`;
   }
 
   renderLog() {
-    const frames = this.framesOf(this.hand);
-    $('#replay-log').innerHTML = frames
-      .map((f, i) => {
-        if (!i) return `<li data-frame="0" class="r-deal">Reparte ${esc(this.names[f.g.dealer])}${f.g.h.muestra ? ` · muestra: ${esc(cardName(f.g.h.muestra))}` : ''}</li>`;
-        const text = describe(f, this.names);
-        if (!text.length) return '';
-        const r = this.resultFor(i);
-        const badge = r ? `<span class="g-badge g-${r.grade}">${esc(GRADE[r.grade].label)}</span>` : '';
-        const tip = r && r.grade !== 'mejor' ? `<small class="r-tip">Lo mejor era ${esc(actionLabel(r.best.a))}${r.loss >= 0.05 ? ` (perdiste ${r.loss.toFixed(1).replace('.', ',')})` : ''}</small>` : '';
-        const auto = f.step?.[2] ? ' <small>(jugó el bot por él)</small>' : '';
-        return `<li data-frame="${i}" class="${f.seat === this.me ? 'mine' : ''}">${badge}${text.map(esc).join('<br>')}${auto}${tip}</li>`;
+    let lastHand = -1;
+    $('#replay-log').innerHTML = this.line
+      .map(({ hand, frame }, at) => {
+        const f = this.frames[hand][frame];
+        const head = hand !== lastHand ? `<li class="rv-hand" data-at="${at}">Mano ${hand + 1}<small>${f.g.score[this.myTeam]} a ${f.g.score[1 - this.myTeam]}</small></li>` : '';
+        lastHand = hand;
+        if (!frame) return head;
+        const r = this.resultAt(hand, frame);
+        return `${head}<li data-at="${at}" class="${f.seat === this.me ? 'mine' : ''}">${r ? icon(r.grade) : '<i class="g-ic g-none"></i>'}<span>${describe(f, this.names).map(esc).join('<br>')}</span></li>`;
       })
       .join('');
   }
 
-  render() {
-    const frames = this.framesOf(this.hand);
-    const f = frames[this.frame];
-    const g = f.g;
-    const h = g.h;
-    $('#replay-pos').textContent = `Mano ${this.hand + 1} de ${this.hands.length} · paso ${this.frame} de ${frames.length - 1}`;
-    for (const li of $('#replay-log').children) li.classList.toggle('on', Number(li.dataset.frame) === this.frame);
-    $('#replay-log .on')?.scrollIntoView({ block: 'nearest' });
-
-    // asientos: los rivales arriba, tu equipo abajo (vos al medio de abajo)
-    const order = Array.from({ length: g.n }, (_, k) => (this.me + k) % g.n);
-    const mine = order.filter((s) => team(s) === team(this.me));
-    const theirs = order.filter((s) => team(s) !== team(this.me));
-    const seatHtml = (s) => {
-      const played = h.table[s];
-      const turn = !f.events.some((e) => e.type === 'hand-end') && h.phase === 'play' && h.turn === s;
-      return `<div class="r-seat t${team(s)} ${s === this.me ? 'me' : ''} ${turn ? 'turn' : ''}">
-        <div class="r-name">${esc(this.names[s])}${s === g.dealer ? ' <small>reparte</small>' : ''}${s === h.mano ? ' <small>mano</small>' : ''}${h.mazo[s] ? ' <small>al mazo</small>' : ''}</div>
-        <div class="r-hand">${h.inHand[s].map((c) => card(c)).join('') || '<span class="muted">sin cartas</span>'}</div>
-        <div class="r-played">${[0, 1, 2]
-          .map((rd) => {
-            const p = played.find((x) => x.round === rd && !x.over) || played.find((x) => x.round === rd);
-            if (!p) return '<span class="r-slot"></span>';
-            const cls = [p.faceDown ? 'down' : '', p.burned ? 'burned' : ''].join(' ');
-            return `<span class="r-slot">${card(p.c, cls)}<small>${ROUND[rd]}${p.faceDown ? ' · tapada' : p.burned ? ' · quemada' : ''}</small></span>`;
-          })
-          .join('')}</div>
-      </div>`;
-    };
-    const tr = h.truco;
-    const status = [
-      tr.level > 1 ? `${TRUCO_NAMES[tr.level]} querido` : '',
-      tr.pending ? `${TRUCO_NAMES[tr.pending.level]} sin contestar` : '',
-      h.envido.state === 'done' && h.envido.winnerSeat != null ? `Envido: ${this.names[h.envido.winnerSeat]}` : '',
-    ].filter(Boolean);
-    const teamNames = (t) => this.names.filter((_, i) => team(i) === t).join(' y ');
-    $('#replay-board').innerHTML = `
-      <div class="r-row">${theirs.map(seatHtml).join('')}</div>
-      <div class="r-center">
-        <div class="r-score"><span class="t${team(this.me)}">${esc(teamNames(team(this.me)))} <b>${g.score[team(this.me)]}</b></span><span class="t${1 - team(this.me)}"><b>${g.score[1 - team(this.me)]}</b> ${esc(teamNames(1 - team(this.me)))}</span></div>
-        ${h.muestra ? `<div class="r-muestra">${card(h.muestra)}<small>muestra</small></div>` : ''}
-        ${status.length ? `<div class="r-status">${status.map(esc).join(' · ')}</div>` : ''}
-        ${this.frame ? `<div class="r-now">${describe(f, this.names).map(esc).join('<br>')}</div>` : ''}
-      </div>
-      <div class="r-row">${mine.map(seatHtml).join('')}</div>`;
+  gx(i) {
+    return (i / Math.max(1, this.line.length - 1)) * 300;
   }
 
-  // Analiza tus decisiones mano por mano en un Web Worker (no traba la pantalla).
-  analyze() {
-    if (this.worker) return;
-    const btn = $('#replay-analyze');
-    btn.disabled = true;
-    this.worker = new Worker('/js/analysis-worker.js', { type: 'module' });
-    let i = 0;
-    const next = () => {
-      if (i >= this.hands.length) {
-        this.worker.terminate();
-        this.worker = null;
-        btn.textContent = 'Análisis listo';
-        return this.renderSummary();
-      }
-      btn.textContent = `Analizando mano ${i + 1} de ${this.hands.length}…`;
-      this.worker.postMessage({ id: i, hand: this.hands[i], seats: [this.me], seed: i + 1 });
-    };
-    this.worker.onmessage = (e) => {
-      this.analysis[e.data.id] = e.data.results || [];
-      if (e.data.id === this.hand) this.renderLog(), this.render();
-      this.renderHands();
-      this.renderSummary();
-      i++;
-      next();
-    };
-    this.worker.onerror = () => {
-      btn.textContent = 'No se pudo analizar';
-      this.worker?.terminate();
-      this.worker = null;
-    };
-    next();
+  // Gráfico de ventaja: la parte clara es tu equipo. Marcas en las jugadas destacadas.
+  renderGraph() {
+    const H = 72;
+    const y = (p) => H - p * H;
+    const pts = this.series.map((p, i) => `${this.gx(i).toFixed(1)},${y(p).toFixed(1)}`).join(' ');
+    const seps = this.line.map(({ hand, frame }, i) => (frame === 0 && hand ? `<line class="rv-sep" x1="${this.gx(i)}" x2="${this.gx(i)}" y1="0" y2="${H}"/>` : '')).join('');
+    const marks = this.line
+      .map(({ hand, frame }, i) => {
+        const r = this.resultAt(hand, frame);
+        return r && ['brillante', 'genial', 'error', 'insensata', 'perdida'].includes(r.grade) ? `<circle class="rv-mark g-${r.grade}" cx="${this.gx(i)}" cy="${y(this.series[i])}" r="2.6"/>` : '';
+      })
+      .join('');
+    $('#replay-graph').innerHTML = `<svg viewBox="0 0 300 ${H}" preserveAspectRatio="none" role="img" aria-label="Chance de ganar de tu equipo durante la partida">
+      <polygon class="rv-area" points="0,${H} ${pts} 300,${H}"/>
+      <line class="rv-mid" x1="0" x2="300" y1="${H / 2}" y2="${H / 2}"/>
+      ${seps}${marks}
+      <rect class="rv-cursor" x="${this.gx(this.at) - 0.6}" y="0" width="1.2" height="${H}"/>
+    </svg>`;
   }
 
   renderSummary() {
     const all = this.analysis.flat().filter(Boolean);
-    if (!all.length) return;
-    const c = gradeCounts(all);
-    const worst = all.reduce((w, r) => (r.loss > (w?.loss ?? -1) ? r : w), null);
-    const handOf = (r) => this.analysis.findIndex((a) => a?.includes(r));
-    $('#replay-summary').classList.remove('hidden');
-    $('#replay-summary').innerHTML = `
-      <div class="r-acc"><b>${accuracy(all)}%</b><small>precisión</small></div>
-      <div class="r-grades">${GRADES.map((g) => `<span class="g-badge g-${g.key}">${esc(g.label)} <b>${c[g.key]}</b></span>`).join('')}</div>
-      ${worst && worst.loss >= 0.8 ? `<button type="button" class="a-link" id="replay-worst">Ver tu jugada más cara (mano ${handOf(worst) + 1})</button>` : ''}`;
-    $('#replay-worst')?.addEventListener('click', () => {
-      this.goHand(handOf(worst));
-      this.goFrame(worst.frame);
-    });
+    const of = (t) => all.filter((r) => team(r.seat) === t);
+    const names = (t) => this.names.filter((_, i) => team(i) === t).join(' y ');
+    const side = (t) => `<div class="rv-acc t${t}"><small>${esc(names(t))}</small><b>${all.length && of(t).length ? `${accuracy(of(t))}%` : '—'}</b><small>precisión</small></div>`;
+    const a = gradeCounts(of(this.myTeam));
+    const b = gradeCounts(of(1 - this.myTeam));
+    $('#replay-summary').innerHTML = `<div class="rv-accs">${side(this.myTeam)}${side(1 - this.myTeam)}</div>
+      ${all.length ? `<table class="rv-counts"><tbody>${GRADES.filter((g) => a[g.key] || b[g.key]).map((g) => `<tr><td>${a[g.key]}</td><td>${icon(g.key)}<span>${esc(g.label)}</span></td><td>${b[g.key]}</td></tr>`).join('')}</tbody></table>` : ''}`;
+  }
+
+  // Analiza las decisiones de todos, mano por mano, en un Web Worker (no traba la pantalla).
+  analyze() {
+    const seats = this.seats.map((s) => s.seat);
+    this.analyzing = true;
+    this.worker = new Worker('/js/analysis-worker.js', { type: 'module' });
+    let i = 0;
+    const done = () => {
+      this.worker?.terminate();
+      this.worker = null;
+      this.analyzing = false;
+      $('#replay-progress').textContent = '';
+      this.renderPosition();
+    };
+    const next = () => {
+      if (i >= this.hands.length) return done();
+      $('#replay-progress').textContent = `Analizando mano ${i + 1} de ${this.hands.length}…`;
+      this.worker.postMessage({ id: i, hand: this.hands[i], seats, seed: i + 1 });
+    };
+    this.worker.onmessage = (e) => {
+      this.analysis[e.data.id] = e.data.results || [];
+      this.renderLog();
+      this.renderGraph();
+      this.renderSummary();
+      this.paintPlates();
+      this.renderPosition();
+      i++;
+      next();
+    };
+    this.worker.onerror = () => {
+      this.worker?.terminate();
+      this.worker = null;
+      this.analyzing = false;
+      $('#replay-progress').textContent = 'No se pudo analizar';
+    };
+    next();
   }
 }

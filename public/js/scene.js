@@ -519,6 +519,16 @@ export class TableScene {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
+  // Se frena el dibujo cuando la escena no está a la vista (hay una para jugar y otra para las revisiones).
+  pause() {
+    this.renderer.setAnimationLoop(null);
+  }
+
+  resume() {
+    this.clock.getDelta();
+    this.renderer.setAnimationLoop(() => this.frame());
+  }
+
   // ------------------------------------------------------------ salón
   buildRoom() {
     const s = this.scene;

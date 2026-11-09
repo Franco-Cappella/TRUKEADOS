@@ -652,3 +652,100 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .qs-seat span:last-child { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .qs-seat b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qs-seat small { color: var(--text-dim); font-size: 13px; }
+
+/* ---- revisión de una partida (como la de chess.com) ---- */
+:root {
+  --g-brillante: #1fb6a6;
+  --g-genial: #5b93e8;
+  --g-mejor: #2e9e57;
+  --g-excelente: #5fb86f;
+  --g-buena: #93a889;
+  --g-arriesgada: #c58be0;
+  --g-imprecision: #f2c12e;
+  --g-error: #ef8a3a;
+  --g-insensata: #d93b30;
+  --g-perdida: #e0689a;
+}
+#replay { background: var(--bg); }
+.rv { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 420px); }
+.rv-main { display: flex; min-width: 0; min-height: 0; }
+.rv-eval { width: 26px; flex: none; position: relative; background: #2a2a2a; display: flex; flex-direction: column; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rv-eval i { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: var(--text); transition: height 0.42s cubic-bezier(0.16, 1, 0.3, 1); }
+.rv-eval span { position: relative; z-index: 1; padding: 6px 0; }
+#replay-eval-them { color: var(--text); }
+#replay-eval-me { color: var(--text-on-light); }
+.rv-stagebox { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+#replay-stage { position: absolute; inset: 0; }
+#replay-stage canvas { display: block; touch-action: none; }
+#replay-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.rv-close { position: absolute; top: 10px; left: 10px; }
+.rv-plate { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; will-change: transform; }
+.rv-plate .g-ic.big { position: absolute; right: -14px; top: -10px; }
+.rv-plate:has(.bubble) .g-ic.big { top: auto; bottom: 34px; right: -22px; }
+.rv-cards { display: flex; gap: 2px; }
+.rv-cards img { width: 30px; border-radius: 2px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.rv-caption { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: min(620px, calc(100% - 24px)); display: flex; align-items: center; gap: 10px; padding: 9px 16px; background: var(--panel); border-radius: 3px; font-size: 17px; font-weight: 600; line-height: 1.3; pointer-events: none; text-align: left; }
+.rv-side { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--surface); min-height: 0; overflow: hidden; }
+.rv-head { display: flex; flex-direction: column; gap: 2px; }
+.rv-head b { font-size: 22px; font-weight: 700; }
+.rv-head small { color: var(--text-dim); font-size: 13px; }
+.rv-accs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rv-acc { display: flex; flex-direction: column; align-items: center; padding: 8px 6px; background: var(--surface-2); border-radius: 3px; min-width: 0; }
+.rv-acc small { color: var(--text-dim); font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rv-acc b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.rv-acc.t0 { border-top: 2px solid var(--team0); }
+.rv-acc.t1 { border-top: 2px solid var(--team1); }
+.rv-counts { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+.rv-counts td { padding: 1px 4px; font-variant-numeric: tabular-nums; }
+.rv-counts td:first-child, .rv-counts td:last-child { width: 28px; text-align: center; font-weight: 700; }
+.rv-counts td:nth-child(2) { display: flex; align-items: center; gap: 6px; }
+.rv-counts .g-ic { width: 16px; height: 16px; font-size: 9px; }
+.rv-graph { flex: none; height: 72px; background: #2a2a2a; border-radius: 3px; overflow: hidden; cursor: pointer; }
+.rv-graph svg { width: 100%; height: 100%; display: block; }
+.rv-area { fill: var(--text); }
+.rv-mid { stroke: rgba(128, 128, 128, 0.7); stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+.rv-sep { stroke: rgba(128, 128, 128, 0.32); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.rv-cursor { fill: var(--accent); }
+.rv-mark { stroke: #000; stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+.rv-mark.g-brillante { fill: var(--g-brillante); }
+.rv-mark.g-genial { fill: var(--g-genial); }
+.rv-mark.g-error { fill: var(--g-error); }
+.rv-mark.g-insensata { fill: var(--g-insensata); }
+.rv-mark.g-perdida { fill: var(--g-perdida); }
+.rv-progress { color: var(--text-dim); font-size: 13px; min-height: 16px; margin: -4px 0; }
+.rv-coach { display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 8px 10px; background: var(--surface-2); border-radius: 3px; }
+.rv-coach p { margin: 0; font-size: 14px; }
+.rv-coach div { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.rv-coach small { color: var(--text-dim); font-size: 13px; }
+.rv-log { flex: 1; min-height: 80px; overflow-y: auto; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.rv-log li { display: flex; align-items: flex-start; gap: 8px; padding: 5px 6px; border-radius: 2px; cursor: pointer; line-height: 1.3; }
+.rv-log li:hover { background: var(--hover-tint); }
+.rv-log li.on { background: var(--surface-2); outline: 1px solid var(--accent); outline-offset: -1px; }
+.rv-log li.mine span { font-weight: 600; }
+.rv-log .rv-hand { font-stretch: var(--narrow); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); justify-content: space-between; margin-top: 6px; border-top: 1px solid var(--line); border-radius: 0; }
+.rv-hand small { font-size: 12px; letter-spacing: 0; text-transform: none; font-stretch: 100%; }
+.rv-reveal { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); cursor: pointer; }
+.rv-reveal input { accent-color: var(--yellow); }
+.rv-controls { display: flex; align-items: center; gap: 4px; }
+.rv-controls .btn { flex: 1; min-height: 42px; padding: 4px; }
+.rv-controls span { flex: 2; text-align: right; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.g-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-style: normal; font-weight: 800; font-size: 11px; line-height: 1; color: #fff; letter-spacing: -0.5px; }
+.g-ic.big { width: 30px; height: 30px; font-size: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); }
+.g-ic.g-none { background: none; }
+.g-brillante { background: var(--g-brillante); }
+.g-genial { background: var(--g-genial); }
+.g-mejor { background: var(--g-mejor); }
+.g-excelente { background: var(--g-excelente); }
+.g-buena { background: var(--g-buena); }
+.g-arriesgada { background: var(--g-arriesgada); }
+.g-imprecision { background: var(--g-imprecision); color: #121212; }
+.g-error { background: var(--g-error); }
+.g-insensata { background: var(--g-insensata); }
+.g-perdida { background: var(--g-perdida); }
+@media (max-width: 860px) {
+  .rv { grid-template-columns: 1fr; grid-template-rows: 46vh minmax(0, 1fr); }
+  .rv-side { padding: 10px; gap: 8px; }
+  .rv-graph { height: 52px; }
+  .rv-counts { display: none; }
+  .rv-caption { font-size: 15px; bottom: 8px; }
+}
