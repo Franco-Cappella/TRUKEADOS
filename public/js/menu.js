@@ -5,7 +5,7 @@ import { $, $$, esc, store, KEYS, api, avatarHtml } from './dom.js';
 import { currentMe, loadMe } from './auth.js';
 import { loadHistory, rowHtml } from './history.js';
 import { initShop, loadShop } from './shop.js';
-import { initSocial, loadFriends, loadRanking } from './social.js';
+import { initSocial, loadFriends, loadRanking, loadInvites } from './social.js';
 import { initProfile, loadProfile, loadSettings } from './profile.js';
 import { initRejoin, checkRejoin, stopRejoin } from './rejoin.js';
 
@@ -85,7 +85,7 @@ export function initMenu(go, logout) {
   });
   $('#logout').addEventListener('click', logout);
   initShop(paintMe);
-  initSocial(paintMe);
+  initSocial(paintMe, go);
   initProfile();
   initRejoin(go);
 }
@@ -189,7 +189,11 @@ export function showMenu() {
   } catch {}
   showTab(tab);
   clearInterval(lobbyTimer);
-  lobbyTimer = setInterval(loadPublic, LOBBY_REFRESH_MS);
+  loadInvites();
+  lobbyTimer = setInterval(() => {
+    loadPublic();
+    loadInvites();
+  }, LOBBY_REFRESH_MS);
 }
 
 export function hideMenu() {

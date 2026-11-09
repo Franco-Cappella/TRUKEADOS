@@ -1,6 +1,7 @@
 // Partida rápida: si no aparece gente en un rato, completan la mesa rivales automáticos de un ELO parecido.
 // En la mesa se ven como cualquier jugador; su fuerza depende de su ELO (botSkill en config.js).
 import { MATCH, ELO, COSMETICS, cleanEquipped } from '../public/js/config.js';
+import { rosterPick } from './roster.js';
 
 const FIRST = ['mati', 'nacho', 'lucho', 'facu', 'juani', 'santi', 'tomi', 'gonza', 'pato', 'vicky', 'caro', 'sofi', 'flor', 'agus', 'maxi', 'fede', 'nico', 'rama', 'seba', 'gaby', 'lau', 'mechi', 'pau', 'cande', 'cami', 'ezequiel', 'dani', 'leo', 'ale', 'marce', 'bruno', 'joaco', 'lolo', 'negro', 'turco', 'gringo', 'tano', 'colo', 'pipi', 'chino'];
 const PLACE = ['lanus', 'quilmes', 'rosario', 'cba', 'mdq', 'tucuman', 'salta', 'moron', 'tigre', 'avella', 'bahia', 'mendoza'];
@@ -46,7 +47,10 @@ function rivalCos(rng) {
   return cleanEquipped(cos);
 }
 
-export function rivalSeat(base, rng, used) {
+// Siempre que se pueda, uno de los usuarios del plantel (los del ranking).
+export function rivalSeat(base, rng, used, mode = '1v1') {
+  const p = rosterPick(base, MATCH.eloSpread * 1.6, mode, rng, used);
+  if (p) return { bot: true, disguised: true, name: p.username, elo: p[`elo_${mode}`], cos: rivalCos(rng) };
   return { bot: true, disguised: true, name: rivalName(rng, used), elo: rivalElo(base, rng), cos: rivalCos(rng) };
 }
 

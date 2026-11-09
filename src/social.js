@@ -2,6 +2,7 @@
 // no se aplicó, leer devuelve vacío y escribir avisa, sin romper el resto del juego.
 import { AUTH, AVATAR, MODES, ELO_START, RANKING_SIZE } from '../public/js/config.js';
 import { rest, forgetProfile } from './auth.js';
+import { rosterAt } from './roster.js';
 
 const NOT_READY = 'Esta función todavía se está activando. Probá de nuevo en un rato.';
 const UUID = /^[0-9a-f-]{36}$/;
@@ -149,10 +150,24 @@ export async function removeFriend(env, uid, otherId) {
   return res.ok ? { ok: true } : { error: NOT_READY };
 }
 
+/** Personas y usuarios automáticos juntos, de mayor a menor ELO. */
+export function mergeRanking(real, mode, now = Date.now()) {
+  const key = `elo_${mode}`;
+  return [...real, ...rosterAt(now)].sort((a, b) => b[key] - a[key]).slice(0, RANKING_SIZE);
+}
+
+/** ¿Son amigos de verdad? (para que no se pueda invitar a cualquiera) */
+export async function areFriends(env, a, b) {
+  if (!UUID.test(String(b))) return false;
+  const [x, y] = pair(a, b);
+  const res = await rest(env, `friendships?user_a=eq.${x}&user_b=eq.${y}&status=eq.accepted&select=user_a`);
+  return res.ok && (await res.json()).length > 0;
+}
+
 /** Los mejores de un modo (solo quien jugó alguna partida por ELO). */
 export async function ranking(env, mode) {
   const m = MODES[mode] ? mode : Object.keys(MODES)[0];
   const res = await rest(env, `profiles?games_${m}=gt.0&select=*&order=elo_${m}.desc&limit=${RANKING_SIZE}`);
   if (!res.ok) throw new Error('No se pudo leer el ranking');
-  return { mode: m, players: (await res.json()).map(publicCard) };
+  return { mode: m, players: mergeRanking((await res.json()).map(publicCard), m) };
 }

@@ -1,6 +1,6 @@
 // Del menú: amigos por nombre de usuario, ranking y foto de perfil.
 import { ROUTES, AVATAR, MODES, modeLabel, ELO_START } from './config.js';
-import { $, esc, api, avatarHtml } from './dom.js';
+import { $, esc, api, avatarHtml, KEYS } from './dom.js';
 import { loadMe, currentMe } from './auth.js';
 
 const eloOf = (p, mode) => p[`elo_${mode}`] ?? ELO_START;
@@ -75,8 +75,34 @@ async function shrink(file) {
   throw new Error('Esa imagen no se pudo achicar lo suficiente');
 }
 
-// repaint(): vuelve a pintar tu usuario con la foto nueva.
-export function initSocial(repaint) {
+let enterRoom = () => {};
+
+// Las invitaciones a un equipo: aparecen arriba del menú mientras estén vigentes.
+export async function loadInvites() {
+  const box = $('#invites');
+  try {
+    const { invites } = await api(ROUTES.api.invites);
+    box.innerHTML = invites.map((i) => `<div class="rj"><p class="rj-text"><b>${esc(i.from)} te invita a su equipo</b><span>${esc(modeLabel(i.mode))}</span></p>
+      <div class="rj-actions"><button class="btn ghost" type="button" data-skip="${esc(i.code)}">Ahora no</button><button class="btn primary" type="button" data-join="${esc(i.code)}">Unirme</button></div></div>`).join('');
+  } catch {
+    box.innerHTML = '';
+  }
+}
+
+// repaint(): vuelve a pintar tu usuario con la foto nueva. go(código): entra a una mesa.
+export function initSocial(repaint, go) {
+  enterRoom = go;
+  $('#invites').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-join],[data-skip]');
+    if (!b) return;
+    const code = b.dataset.join || b.dataset.skip;
+    b.closest('.rj').remove();
+    await api(ROUTES.api.invitesDone, { code }).catch(() => {});
+    if (b.dataset.join) {
+      sessionStorage.setItem(KEYS.teamInvite, code);
+      enterRoom(code);
+    }
+  });
   $('#fr-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = $('#fr-name');

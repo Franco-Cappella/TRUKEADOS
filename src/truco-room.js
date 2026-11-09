@@ -31,6 +31,7 @@ export class TrucoRoom extends DurableObject {
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get('room')) || null;
       this.chat = (await ctx.storage.get('chat')) || [];
+      this.specChat = (await ctx.storage.get('specChat')) || [];
       await this.rec.load();
     });
   }
@@ -40,8 +41,9 @@ export class TrucoRoom extends DurableObject {
     if (this.room && !this.reusable()) return { ok: false };
     // código reciclado: se arranca de cero (sin chat ni miradas de la sala anterior)
     this.chat = [];
+    this.specChat = [];
     this.gaze = {};
-    await this.ctx.storage.put('chat', this.chat);
+    await this.ctx.storage.put({ chat: this.chat, specChat: this.specChat });
     await this.ctx.storage.deleteAlarm();
     this.room = {
       code,
@@ -73,8 +75,9 @@ export class TrucoRoom extends DurableObject {
     }
     if (cur && !cur.show && !this.reusable()) return { ok: false };
     this.chat = [];
+    this.specChat = [];
     this.gaze = {};
-    await this.ctx.storage.put('chat', this.chat);
+    await this.ctx.storage.put({ chat: this.chat, specChat: this.specChat });
     await this.ctx.storage.deleteAlarm();
     this.room = {
       code,
@@ -185,7 +188,7 @@ export class TrucoRoom extends DurableObject {
           delete r.afkSince[seat];
           if (r.afkBot) delete r.afkBot[seat];
         } else if (r.status === 'lobby' && !msg.spectate) {
-          const free = this.freeSeat();
+          const free = this.openSeat(!!msg.invited);
           if (free != null) {
             r.seats[free] = { pid, name, cos, elo: account.elo, avatar: account.avatar };
             this.addSystemChat(`${name} se sentó a la mesa`);
@@ -194,6 +197,7 @@ export class TrucoRoom extends DurableObject {
         if (r.quick && r.status === 'lobby' && r.seats.every(Boolean)) await this.beginGame();
         if (!r.host || this.seatOf(r.host) == null) r.host = this.seatOf(pid) != null ? pid : r.host;
         this.send(ws, { t: 'chat-history', messages: this.chat });
+        if (this.seatOf(pid) == null) this.send(ws, { t: 'spec-history', messages: this.specChat });
         if (r.status === 'ended' && r.lastMatch) this.send(ws, { t: 'match', ...r.lastMatch });
         this.send(ws, { t: 'gaze-all', gaze: this.gaze });
         return this.commit();
@@ -311,6 +315,8 @@ export class TrucoRoom extends DurableObject {
       case 'chat': {
         const text = String(msg.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, MAX_CHAT_TEXT);
         if (!text || !pid) return;
+        // los que miran tienen su chat aparte: a los jugadores no les llega
+        if (seat == null && r.status !== 'lobby') return this.specSay(ws, text);
         const name = seat != null ? r.seats[seat].name : ws.deserializeAttachment()?.name || 'Espectador';
         const entry = { name, seat, text, ts: Date.now() };
         this.pushChat(entry);
@@ -328,6 +334,20 @@ export class TrucoRoom extends DurableObject {
       case 'answer': {
         const q = seat != null ? this.openAsk(team(seat)) : null;
         if (!q || !ASK_ANSWERS[q.kind]?.includes(msg.ans) || !this.answerAsk(seat, msg.ans)) return;
+        return this.commit();
+      }
+
+      // Partida rápida en equipo: el que busca invita a su equipo y se le guardan los lugares.
+      case 'invite-team': {
+        if (!r.quick || r.status !== 'lobby' || !isHost || r.seats.length <= 2) return;
+        r.quick.holdUntil = Date.now() + MATCH.inviteHold;
+        return this.commit();
+      }
+
+      case 'invite-cancel': {
+        if (!r.quick || r.status !== 'lobby' || !isHost) return;
+        r.quick.holdUntil = 0;
+        r.quick.nextAt = Math.min(r.quick.nextAt, Date.now() + nextRivalIn(false, rng));
         return this.commit();
       }
 
@@ -537,14 +557,15 @@ export class TrucoRoom extends DurableObject {
     const q = r.quick;
     if (!this.online().size) return;
     if (Date.now() >= q.nextAt) {
-      const free = this.freeSeat();
+      const free = this.openSeat(false);
       if (free != null) {
         const used = new Set(r.seats.filter(Boolean).map((s) => s.name));
-        const seat = rivalSeat(q.elo, rng, used);
+        const seat = rivalSeat(q.elo, rng, used, r.cfg.mode);
         r.seats[free] = seat;
         this.addSystemChat(`${seat.name} se sentó a la mesa`);
       }
-      q.nextAt = Date.now() + nextRivalIn(false, rng);
+      // solo quedan los lugares guardados: se sigue cuando termine la espera
+      q.nextAt = free == null && q.holdUntil > Date.now() ? q.holdUntil + 100 : Date.now() + nextRivalIn(false, rng);
       if (r.seats.every(Boolean)) await this.beginGame();
     }
     await this.commit();
@@ -1149,6 +1170,27 @@ export class TrucoRoom extends DurableObject {
     return i < 0 ? null : i;
   }
 
+  // Los lugares de tu equipo que se están guardando para tus invitados.
+  heldSeats() {
+    const r = this.room;
+    if (!r.quick || !(r.quick.holdUntil > Date.now())) return [];
+    const mine = team(this.seatOf(r.host) ?? 0);
+    return r.seats.map((s, i) => (s || team(i) !== mine ? -1 : i)).filter((i) => i >= 0);
+  }
+
+  // Dónde se sienta el que llega: el invitado, con el que invitó; los demás, fuera de los lugares guardados.
+  openSeat(invited) {
+    const r = this.room;
+    const held = this.heldSeats();
+    if (!r.quick || (!held.length && !invited)) return this.freeSeat();
+    if (invited) {
+      const mine = team(this.seatOf(r.host) ?? 0);
+      return r.seats.findIndex((s, i) => !s && team(i) === mine) >= 0 ? r.seats.findIndex((s, i) => !s && team(i) === mine) : this.freeSeat();
+    }
+    const i = r.seats.findIndex((s, k) => !s && !held.includes(k));
+    return i < 0 ? null : i;
+  }
+
   // Balancea equipos: primero un lugar libre del equipo con menos gente.
   freeSeat() {
     const seats = this.room.seats;
@@ -1225,6 +1267,17 @@ export class TrucoRoom extends DurableObject {
     this.broadcastRaw({ t: 'chat', msg: entry });
   }
 
+  async specSay(ws, text) {
+    const entry = { name: ws.deserializeAttachment()?.name || 'Espectador', text, ts: Date.now(), spec: true };
+    this.specChat.push(entry);
+    if (this.specChat.length > MAX_CHAT_HISTORY) this.specChat.splice(0, this.specChat.length - MAX_CHAT_HISTORY);
+    await this.ctx.storage.put('specChat', this.specChat);
+    for (const s of this.sockets()) {
+      const pid = s.deserializeAttachment()?.pid;
+      if (pid && this.seatOf(pid) == null) this.send(s, { t: 'spec-chat', msg: entry });
+    }
+  }
+
   pushChat(entry) {
     this.chat.push(entry);
     if (this.chat.length > MAX_CHAT_HISTORY) this.chat.splice(0, this.chat.length - MAX_CHAT_HISTORY);
@@ -1251,7 +1304,7 @@ export class TrucoRoom extends DurableObject {
       code: r.code,
       cfg: r.cfg,
       status: r.status,
-      quick: r.quick ? { elo: r.quick.elo, startedAt: r.quick.startedAt } : null,
+      quick: r.quick ? { elo: r.quick.elo, startedAt: r.quick.startedAt, holding: this.heldSeats().length } : null,
       rematch: r.status === 'ended' && r.rematch ? Object.keys(r.rematch).map(Number) : [],
       seats: r.seats.map((s, i) => {
         if (!s) return null;
@@ -1337,7 +1390,7 @@ export class TrucoRoom extends DurableObject {
         elo: r.quick?.elo ?? null,
         status: r.status,
         players: r.seats.map((s) => s?.name ?? null),
-        free: r.seats.filter((s) => !s).length,
+        free: r.seats.filter((s) => !s).length - this.heldSeats().length,
         online: r.seats.filter((s) => s && !s.bot && online.has(s.pid)).length,
         score: r.game?.score ?? null,
         options: roomOptionsText(r.cfg),

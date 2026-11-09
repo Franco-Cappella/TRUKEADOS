@@ -83,6 +83,7 @@
 
       <main class="ap-main">
         <div class="rj hidden" id="rejoin" role="status"></div>
+        <div class="rj-list" id="invites"></div>
         <div class="ap-panel h-panel" data-panel="jugar">
           <div class="ho-hero" id="quick">
             <h2>Partida rápida</h2>
@@ -343,7 +344,9 @@
 
     <aside id="chat" class="hidden">
       <div class="chat-head"><b>Chat</b><button class="btn small ghost" id="chat-close">✕</button></div>
+      <div class="chat-tabs hidden" id="chat-tabs"><button type="button" data-chat="spec">Espectadores</button><button type="button" data-chat="mesa">Mesa</button></div>
       <div id="chat-log"></div>
+      <div id="chat-spec-log" class="hidden"></div>
       <form id="chat-form"><input id="chat-input" maxlength="280" placeholder="Escribí algo…" autocomplete="off"><button class="btn primary small">Enviar</button></form>
     </aside>
 

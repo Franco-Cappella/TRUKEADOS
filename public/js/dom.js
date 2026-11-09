@@ -26,6 +26,7 @@ export const store = {
 export const KEYS = {
   name: 'truco-name', // el nombre del perfil (lo pone auth.js al iniciar sesión)
   voice: 'truco-voice',
+  teamInvite: 'truco-team-invite', // sessionStorage: la mesa a la que te invitaron a su equipo
   activeRoom: 'truco-active-room', // la partida en la que estás sentado (para el cartel de reconectar)
   voiceVol: 'truco-voice-volume',
   sfx: 'truco-sfx',

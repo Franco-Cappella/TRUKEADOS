@@ -38,6 +38,8 @@ export const ROUTES = {
     friends: '/api/friends',
     friendsRespond: '/api/friends/respond',
     friendsRemove: '/api/friends/remove',
+    invites: '/api/invites',
+    invitesDone: '/api/invites/done',
     ranking: (mode) => `/api/ranking?mode=${mode}`,
     shop: '/api/shop',
     buy: '/api/shop/buy',
@@ -63,7 +65,7 @@ export const TIMING = {
   botAfterTalk: 500, // después de que termina de decirse un canto o una frase, antes de que un bot juegue
   roundPause: 1400, // al cerrarse una ronda (o el envido), para ver quién ganó
   botHeartbeat: 2500, // latido para las miradas de los bots
-  askWait: 7000, // consulta al compañero ("¿tienen tantos?"): lo que se espera la respuesta antes de seguir
+  askWait: 7000, // consulta al compañero ("¿tenés tantos?"): lo que se espera la respuesta antes de seguir
   askBotAnswer: 1600, // + hasta 0,9 s: lo que tarda un bot en contestarle al compañero
   partnerAnswer: 15_000, // en equipo, lo que espera el compañero bot antes de contestar un canto que le toca a los dos
   botChatGap: 2200, // como mucho un mensaje de bot cada tanto
@@ -153,6 +155,8 @@ export const MATCH = {
   eloSpread: 150, // qué tan lejos de tu ELO aparecen
   joinRange: 400, // a qué mesas abiertas te manda
   cosmeticChance: 0.35,
+  inviteHold: 90_000, // cuánto se le guardan los lugares a tu equipo mientras invitás
+  inviteTtl: 120_000, // cuánto dura una invitación sin contestar
   rematchMin: 1500, // lo que tardan en aceptar la revancha
   rematchRand: 3000,
 };

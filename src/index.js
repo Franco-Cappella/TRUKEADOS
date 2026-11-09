@@ -8,7 +8,7 @@ import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
-import { setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
+import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, SHOW_TABLES, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -105,6 +105,29 @@ async function handle(request, env) {
       : path === '/api/friends/remove' ? await removeFriend(env, uid, body.id)
       : { error: 'No encontrado' };
     return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+
+  // invitaciones a tu equipo: solo a amigos, las ve el otro en su menú
+  if (path === '/api/invites' && method === 'GET') {
+    const auth = await requireUser(env, request);
+    return auth.error || json({ invites: await lobbyStub(env).invites(auth.user.id) });
+  }
+  if (path === '/api/invites' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    if (!/^\d{4}$/.test(String(body.code)) || !(await areFriends(env, auth.user.id, body.friend))) return json({ error: 'Solo podés invitar a tus amigos' }, 400);
+    const info = await roomStub(env, body.code).info();
+    if (!info.exists) return json({ error: 'Esa mesa ya no existe' }, 400);
+    await lobbyStub(env).invite(body.friend, { from: auth.profile.username, code: body.code, mode: info.mode });
+    return json({ ok: true });
+  }
+  if (path === '/api/invites/done' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    await lobbyStub(env).inviteDone(auth.user.id, String(body.code));
+    return json({ ok: true });
   }
 
   if (path === '/api/ranking' && method === 'GET') {

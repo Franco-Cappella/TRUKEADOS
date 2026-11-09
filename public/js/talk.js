@@ -179,16 +179,16 @@ export const talkCaught = (rng = Math.random) => say('caught', rng);
 // puede cantar si tiene él.
 export const ASK_TALK = {
   tantos: {
-    ask: ['¿Tienen tantos?', '¿Cómo andan de tantos?', '¿Canto el primero?', '¿Hay tantos, compañeros?'],
+    ask: ['¿Tenés tantos, compañero?', '¿Cómo andás de tantos?', '¿Canto el primero?', '¿Hay tantos, compañero?'],
     si: ['Tengo, cantá.', 'Cantá nomás.', 'Dale, que tengo.', 'Cantá, que hay.'],
     callado: ['Callado.', 'Callado, que canten ellos.', 'Mejor callado.', 'Callado, compañero.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'De tantos, nada.', 'Ni para empezar.'],
   },
   truco: {
-    ask: ['¿Le canto el segundo?', '¿Cómo vienen? ¿Canto?', '¿El segundo o no?', '¿Canto, compañeros?'],
+    ask: ['¿Le canto el segundo?', '¿Cómo vienen? ¿Canto?', '¿El segundo o no?', '¿Canto, compañero?'],
     // ya se cantó: lo que se pregunta es subirlo
-    askRe: ['¿Canto el re?', '¿Le damos el re?', '¿Va el re, compañeros?'],
-    askCuatro: ['¿Canto el cuatro?', '¿Le mando el cuatro?', '¿Va el cuatro, compañeros?'],
+    askRe: ['¿Canto el re?', '¿Le damos el re?', '¿Va el re, compañero?'],
+    askCuatro: ['¿Canto el cuatro?', '¿Le mando el cuatro?', '¿Va el cuatro, compañero?'],
     si: ['Dale, cantá.', 'Cantá, que vengo bien.', 'Cantale nomás.', 'Dale, que tengo con qué.'],
     callado: ['Callado.', 'Callado por ahora.', 'Mejor callado, compañero.', 'Callado, que lo canten ellos.'],
     nada: ['No tengo nada.', 'Nada, compañero.', 'Vengo seco.', 'Con esto no gano ni una.'],

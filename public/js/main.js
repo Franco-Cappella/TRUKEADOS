@@ -74,6 +74,7 @@ async function gated(code) {
 }
 
 async function openRoom(code) {
+  if (new URLSearchParams(location.search).has('equipo')) sessionStorage.setItem(KEYS.teamInvite, code);
   if (await gated(code)) return;
   $('#gate').classList.add('hidden');
   hideMenu();
@@ -136,12 +137,17 @@ function bindGameUI() {
     if (!chat.classList.contains('hidden')) $('#chat-input').focus();
   };
   $('#chat-close').onclick = () => chat.classList.add('hidden');
+  $('#chat-tabs').onclick = (e) => {
+    const b = e.target.closest('[data-chat]');
+    if (b) room?.showChat(b.dataset.chat);
+  };
   $('#chat-form').onsubmit = (e) => {
     e.preventDefault();
     const v = $('#chat-input').value.trim();
     if (!v) return;
     room?.send({ t: 'chat', text: v });
     $('#chat-input').value = '';
+    if (room?.you == null) room?.showChat('spec');
   };
   initWheel((text) => room?.send({ t: 'chat', text }), () => room?.st?.game?.n ?? 2);
 
@@ -190,6 +196,9 @@ function bindGameUI() {
     else if (d.rules) room.toggleRules();
     else if (d.exit) goHome();
     else if (d.copy) copy(d.copy, 'Copiado');
+    else if (d.teamhold) room.holdTeam();
+    else if (d.teamcancel) room.send({ t: 'invite-cancel' });
+    else if (d.invite) room.inviteFriend(d.invite);
     else if (d.share) navigator.share?.({ title: APP_NAME, text: '¿Un truquito?', url: room.link }).catch(() => {});
     else if (d.v !== undefined) {
       const name = b.closest('[data-cfg]')?.dataset.cfg;

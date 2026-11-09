@@ -101,10 +101,10 @@ export async function makeRoom({ mode = '2v2', target = 15, options = {}, host =
       return now;
     },
     // conecta un jugador (token = id) y lo hace entrar
-    async join(pid) {
+    async join(pid, extra = {}) {
       const ws = new FakeSocket(room);
       sockets.push(ws);
-      await room.webSocketMessage(ws, JSON.stringify({ t: 'join', token: pid }));
+      await room.webSocketMessage(ws, JSON.stringify({ t: 'join', token: pid, ...extra }));
       return ws;
     },
     async send(ws, msg) {

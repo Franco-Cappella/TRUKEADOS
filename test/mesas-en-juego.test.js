@@ -3,10 +3,11 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRoom, restoreClock } from './helpers/room-harness.mjs';
 import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from '../src/show-tables.js';
-import { SHOW_TABLES, AUTH, MODES, AVATAR } from '../public/js/config.js';
-import { parseGif } from '../src/social.js';
+import { SHOW_TABLES, AUTH, MODES, AVATAR, MATCH } from '../public/js/config.js';
+import { parseGif, mergeRanking } from '../src/social.js';
+import { rosterAt } from '../src/roster.js';
 import { seeded } from '../public/js/analysis.js';
-import { PHRASE_WHEEL, BOT_TALK } from '../public/js/talk.js';
+import { PHRASE_WHEEL, BOT_TALK, ASK_TALK } from '../public/js/talk.js';
 import { newGame, act, actionsFor, viewFor } from '../public/js/engine.js';
 import { voiceKey, voiceText, voiceFor, VOICES } from '../public/js/voices.js';
 
@@ -124,4 +125,91 @@ test('voces: se alternan entre las dos por asiento', () => {
   assert.notEqual(voiceFor(0), voiceFor(1));
   assert.equal(voiceFor(0), voiceFor(2));
   assert.ok(VOICES.includes(voiceFor(null)));
+});
+
+test('ranking: los usuarios automáticos están, sin repetirse, y las mesas los usan', () => {
+  const list = rosterAt(Date.UTC(2026, 10, 12));
+  assert.equal(new Set(list.map((p) => p.username)).size, list.length);
+  assert.ok(list.every((p) => AUTH.usernameRe.test(p.username) && p.elo_1v1 > 0 && p.games_1v1 > 0));
+  const real = [{ id: 'yo', username: 'Theo', avatar: null, elo_1v1: 5000, games_1v1: 3 }];
+  const top = mergeRanking(real, '1v1', Date.UTC(2026, 10, 12));
+  assert.equal(top[0].id, 'yo');
+  assert.ok(top.length <= 50 && top.every((p, i) => !i || top[i - 1].elo_1v1 >= p.elo_1v1));
+  const names = new Set(rosterAt().map((p) => p.username));
+  const t = newShowTable(seeded(7), Date.now(), new Set());
+  assert.ok(t.seats.every((s) => names.has(s.name)));
+  // cambia de a poco, día a día
+  const a = rosterAt(Date.UTC(2026, 10, 12))[0].elo_1v1;
+  const b = rosterAt(Date.UTC(2026, 10, 13))[0].elo_1v1;
+  assert.ok(Math.abs(a - b) <= 25);
+});
+
+test('espectadores: se cuentan y tienen su chat, que a los jugadores no les llega', async () => {
+  const h = await makeRoom({ mode: '1v1' });
+  const a = await h.join('u0');
+  const b = await h.join('u1');
+  await h.send(a, { t: 'start', fillBots: false });
+  const v = await h.join('mira', { spectate: true });
+  const w = await h.join('mira2', { spectate: true });
+  assert.equal(h.state(a).room.spectators, 2);
+  assert.ok(v.last('spec-history'));
+  a.got.length = 0;
+  await h.send(v, { t: 'chat', text: 'qué partido' });
+  assert.equal(w.last('spec-chat').msg.text, 'qué partido');
+  assert.equal(a.last('spec-chat'), null);
+  assert.equal(a.last('chat'), null);
+  assert.equal(b.last('spec-chat'), null);
+  // el jugador sigue hablando en la mesa
+  await h.send(a, { t: 'chat', text: 'truco no' });
+  assert.equal(v.last('chat').msg.text, 'truco no');
+});
+
+async function quickTeam(mode = '2v2') {
+  const h = await makeRoom({ mode });
+  h.room.room.quick = { elo: 1300, startedAt: Date.now(), nextAt: Date.now() + MATCH.waitMin };
+  h.room.room.cfg.isPublic = true;
+  const ws = await h.join('u0');
+  return { h, ws, r: h.room.room };
+}
+
+test('invitar a tu equipo: el invitado se sienta con vos y los rivales no te ocupan el lugar', async () => {
+  const { h, ws, r } = await quickTeam();
+  await h.send(ws, { t: 'invite-team' });
+  assert.equal(h.state(ws).room.quick.holding, 1);
+  await h.tick(MATCH.waitMin + MATCH.gapMin + MATCH.gapRand + 2000, 200);
+  assert.equal(r.seats[2], null, 'un bot ocupó el lugar de tu compañero');
+  assert.equal(r.seats.filter(Boolean).length, 3);
+  assert.equal(r.status, 'lobby');
+  await h.join('amigo', { invited: true });
+  assert.equal(r.seats[2]?.pid, 'amigo');
+  assert.equal(r.status, 'playing');
+});
+
+test('invitar a tu equipo: si desistís o se acaba el tiempo, se completa la mesa', async () => {
+  const a = await quickTeam();
+  await a.h.send(a.ws, { t: 'invite-team' });
+  await a.h.send(a.ws, { t: 'invite-cancel' });
+  await a.h.tick(MATCH.waitMin + (MATCH.gapMin + MATCH.gapRand) * 4, 200);
+  assert.equal(a.r.status, 'playing');
+  const b = await quickTeam();
+  await b.h.send(b.ws, { t: 'invite-team' });
+  await b.h.tick(MATCH.inviteHold + (MATCH.gapMin + MATCH.gapRand) * 4, 200);
+  assert.equal(b.r.status, 'playing');
+});
+
+test('invitar a tu equipo: un desconocido no entra a los lugares guardados', async () => {
+  const { h, ws, r } = await quickTeam();
+  await h.send(ws, { t: 'invite-team' });
+  await h.join('x');
+  await h.join('y');
+  await h.join('z');
+  assert.equal(r.seats[2], null);
+  assert.equal(r.seats.filter((s) => s && !s.bot).length, 3);
+});
+
+test('las consultas al compañero van en singular', () => {
+  for (const list of [ASK_TALK.tantos.ask, ASK_TALK.truco.ask, ASK_TALK.truco.askRe, ASK_TALK.truco.askCuatro]) {
+    assert.ok(list.every((t) => !/tienen|compañeros|andan/i.test(t)), list.join());
+  }
+  assert.ok(ASK_TALK.tantos.ask.includes('¿Tenés tantos, compañero?'));
 });

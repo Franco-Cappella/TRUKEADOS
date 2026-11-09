@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.14.0 — ranking poblado, espectadores e invitar a tu equipo
+- Los usuarios de las mesas en juego aparecen en el ranking.
+- Se ve cuántos están mirando (ojito y número) y los espectadores tienen su propio chat.
+- En partida rápida de 2 vs 2 y 3 vs 3 podés invitar a tu equipo: amigos o por enlace, con los lugares guardados.
+- Las consultas al compañero van en singular: "¿Tenés tantos, compañero?".
+
 ## 1.13.2 — abandonar y volver
 - Si salís de una partida, el menú te muestra un cartel para reconectarte con la cuenta regresiva.
 - Si no volvés en 40 segundos, gana el otro equipo (en equipo, si te queda un compañero conectado, juega un bot por vos).

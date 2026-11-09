@@ -95,6 +95,22 @@ export class Lobby extends DurableObject {
     await this.ctx.storage.put('show', tables);
   }
 
+  // Invitaciones a un equipo: duran poco y se guardan por persona.
+  async invites(uid, now = Date.now()) {
+    const list = (await this.ctx.storage.get('inv:' + uid)) || [];
+    return list.filter((i) => now - i.at < MATCH.inviteTtl);
+  }
+
+  async invite(uid, inv, now = Date.now()) {
+    const list = (await this.invites(uid, now)).filter((i) => i.code !== inv.code);
+    await this.ctx.storage.put('inv:' + uid, [...list, { ...inv, at: now }]);
+  }
+
+  async inviteDone(uid, code) {
+    const list = (await this.ctx.storage.get('inv:' + uid)) || [];
+    await this.ctx.storage.put('inv:' + uid, list.filter((i) => i.code !== code));
+  }
+
   async upsert(summary) {
     if (summary.show) return this.showProgress(summary);
     await this.ctx.storage.put('t:' + summary.code, { ...summary, updatedAt: Date.now() });

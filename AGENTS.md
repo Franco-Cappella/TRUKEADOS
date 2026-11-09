@@ -190,6 +190,11 @@ encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
 ## Abandonar una partida
 Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y no le queda un compañero persona conectado, su equipo pierde (`forfeitDue` en truco-room.js, también con la sala vacía: `scheduleAlarm` deja la alarma). Si le queda un compañero, juega un bot por él. El menú muestra el cartel de reconectar (`rejoin.js`, ruta `/api/rooms/CÓDIGO/me`).
 
+## Plantel, espectadores e invitaciones
+- `src/roster.js`: los usuarios automáticos (siempre los mismos). Juegan las mesas del lobby y la partida rápida, y salen en el ranking.
+- Los que miran tienen su chat (`spec-chat`): a los jugadores no les llega.
+- Partida rápida en equipo: `invite-team` guarda los lugares del equipo de quien busca (`heldSeats`). Entran con `invited` (enlace `?equipo=1` o invitación de un amigo por `/api/invites`).
+
 ## Voces
 Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voces libres de Piper; licencias en `public/voz/LICENCIAS.txt`). **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
 

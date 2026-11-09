@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
-import { $, esc, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
+import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
 import { audio, flick, ding, say, hush } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
@@ -31,6 +31,10 @@ export class RoomClient {
     this.labels = new Map();
     this.retry = 0;
     this.spectate = takeSession(KEYS.spectate, code);
+    this.teamInvited = takeSession(KEYS.teamInvite, code);
+    this.chatView = 'spec';
+    this.invitedFriends = new Set();
+    $('#chat-spec-log').innerHTML = '';
     this.autostart = takeSession(KEYS.autostart, code);
     $('#room-code').textContent = code;
     $('#chat-log').innerHTML = '';
@@ -59,7 +63,7 @@ export class RoomClient {
     const ws = new WebSocket(`${proto}//${location.host}${ROUTES.api.ws(this.code)}`);
     this.ws = ws;
     ws.onopen = async () => {
-      this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate });
+      this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate, invited: this.teamInvited });
       this.retry = 0;
     };
     ws.onmessage = (e) => {
@@ -211,6 +215,12 @@ export class RoomClient {
         return;
       case 'chat':
         return this.addChat(m.msg, true);
+      case 'spec-history':
+        $('#chat-spec-log').innerHTML = '';
+        m.messages.forEach((x) => this.addSpecChat(x, false));
+        return;
+      case 'spec-chat':
+        return this.addSpecChat(m.msg, true);
       case 'gaze-all':
         for (const [s, t] of Object.entries(m.gaze)) this.setGaze(Number(s), t);
         return;
@@ -583,6 +593,28 @@ export class RoomClient {
     return true;
   }
 
+  // Chat de los que miran: a los jugadores no les llega.
+  addSpecChat(msg, live) {
+    const log = $('#chat-spec-log');
+    const div = document.createElement('div');
+    div.innerHTML = `<b>${esc(msg.name)}:</b> ${esc(msg.text)}`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    if (live && $('#chat').classList.contains('hidden')) $('#chat-badge').classList.remove('hidden');
+  }
+
+  // Los que miran ven dos chats: el suyo y el de la mesa (ese solo lo leen).
+  showChat(view = this.chatView) {
+    this.chatView = view;
+    const spectating = this.you == null && this.st?.room.status !== 'lobby';
+    $('#chat-tabs').classList.toggle('hidden', !spectating);
+    const spec = spectating && view === 'spec';
+    $('#chat-log').classList.toggle('hidden', spec);
+    $('#chat-spec-log').classList.toggle('hidden', !spec);
+    $('#chat-input').placeholder = spectating ? 'Escribí a los espectadores…' : 'Escribí algo…';
+    for (const b of $('#chat-tabs').children) b.classList.toggle('on', b.dataset.chat === view);
+  }
+
   addChat(msg, live) {
     const log = $('#chat-log');
     const div = document.createElement('div');
@@ -618,7 +650,10 @@ export class RoomClient {
     this.renderPlates();
     this.renderWaiting();
     this.renderResult();
-    $('#spect').textContent = st.room.spectators ? `${st.room.spectators} mirando` : '';
+    const watching = st.room.spectators;
+    $('#spect').innerHTML = watching ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>${Number(watching)}` : '';
+    $('#spect').title = watching ? `${watching} ${watching === 1 ? 'persona mirando' : 'personas mirando'}` : '';
+    this.showChat();
     const playing = !!st.game && st.room.status === 'playing';
     $('#tools').classList.toggle('hidden', this.you == null || !playing);
     $('#trampa-dd').classList.toggle('hidden', !st.game?.trampas); // sin trampas no hay dos encimadas que denunciar
@@ -823,7 +858,7 @@ export class RoomClient {
       add('equipo', lbl, 'Callado', '', () => this.send({ t: 'answer', ans: 'callado' }), 'Seguir jugando sin cantarlo: que lo canten los otros');
       add('equipo', lbl, 'No tengo nada', '', () => this.send({ t: 'answer', ans: 'nada' }), 'Igual puede cantar si tiene él');
     } else if (!q) {
-      if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tienen tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
+      if (ask?.can.tantos) add('equipo', 'Compañero', '¿Tenés tantos?', '', () => this.send({ t: 'ask', kind: 'tantos' }), 'Le preguntás a tu compañero si cantar el envido');
       if (ask?.can.truco) {
         const next = { 1: ['¿Le canto truco?', 'cantar truco'], 2: ['¿Canto el re?', 'cantar el retruco'], 3: ['¿Canto el cuatro?', 'cantar vale cuatro'] }[g.h.truco.level] || ['¿Le canto truco?', 'cantar truco'];
         add('equipo', 'Compañero', next[0], '', () => this.send({ t: 'ask', kind: 'truco' }), `Le preguntás a tu compañero si ${next[1]}`);
@@ -1036,6 +1071,7 @@ export class RoomClient {
       <div class="qs-pulse" aria-hidden="true"><i></i><i></i><i></i></div>
       <p class="qs-time"><b id="qs-time">${elapsed()}</b><small>${free === 1 ? 'Falta 1 jugador' : `Faltan ${free} jugadores`} de tu nivel</small></p>
       <ul class="qs-seats">${r.seats.map(seat).join('')}</ul>
+      ${this.teamInviteHtml()}
     </div>`;
     clearInterval(this.searchT);
     this.searchT = setInterval(() => {
@@ -1043,6 +1079,42 @@ export class RoomClient {
       if (t) t.textContent = elapsed();
       else clearInterval(this.searchT);
     }, 1000);
+  }
+
+  // En 2v2 y 3v3, el que busca puede traer gente a su equipo: amigos o cualquiera con el enlace.
+  teamInviteHtml() {
+    const st = this.st;
+    const r = st.room;
+    if (r.seats.length <= 2 || !st.isHost) return '';
+    if (!r.quick.holding) return r.seats.some((p, i) => !p && team(i) === team(st.you)) ? '<button type="button" class="btn" data-teamhold="1">Invitar a mi equipo</button>' : '';
+    const link = `${this.link}?equipo=1`;
+    const friends = (this.friends || []).map((f) => `<li>${avatarHtml(f)}<span>${esc(f.username)}</span><button type="button" class="btn small" data-invite="${esc(f.id)}" ${this.invitedFriends.has(f.id) ? 'disabled' : ''}>${this.invitedFriends.has(f.id) ? 'Invitado' : 'Invitar'}</button></li>`).join('');
+    return `<section class="qs-invite">
+      <h3>Tu equipo</h3>
+      <p>Te guardamos ${r.quick.holding === 1 ? 'el lugar' : `${r.quick.holding} lugares`} un minuto y medio. Pasales el enlace o invitá a un amigo.</p>
+      <div class="qs-actions"><button type="button" class="btn small primary" data-copy="${esc(link)}">Copiar enlace</button><button type="button" class="btn small ghost" data-teamcancel="1">Seguir sin invitar</button></div>
+      ${friends ? `<ul class="qs-friends">${friends}</ul>` : ''}
+    </section>`;
+  }
+
+  async holdTeam() {
+    this.send({ t: 'invite-team' });
+    try {
+      this.friends = (await api(ROUTES.api.friends)).friends;
+    } catch {
+      this.friends = [];
+    }
+    this.renderWaiting();
+  }
+
+  async inviteFriend(friend) {
+    try {
+      await api(ROUTES.api.invites, { friend, code: this.code });
+      this.invitedFriends.add(friend);
+      this.renderWaiting();
+    } catch (err) {
+      this.toast(esc(err.message), 'bad');
+    }
   }
 
   // El anfitrión abre y cierra los ajustes de la sala (cerrados, la sala de espera entra en pantalla).

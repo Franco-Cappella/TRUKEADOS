@@ -19,7 +19,7 @@ export function newShowTable(rng, now, taken = new Set()) {
   const elo = 600 + Math.floor(rng() * 1300);
   const used = new Set();
   const seats = Array.from({ length: MODES[mode] }, () => {
-    const s = rivalSeat(elo, rng, used);
+    const s = rivalSeat(elo, rng, used, mode);
     used.add(s.name);
     return s;
   });
