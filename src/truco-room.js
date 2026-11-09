@@ -118,6 +118,22 @@ export class TrucoRoom extends DurableObject {
     };
   }
 
+  // Para el cartel de reconectar: si seguís sentado en la partida y cuánto te queda para volver.
+  async mine(pid) {
+    const r = this.room;
+    const seat = r && pid ? this.seatOf(pid) : null;
+    if (!r || seat == null || r.status !== 'playing') return { playing: false };
+    const since = r.afkSince?.[seat];
+    return {
+      playing: true,
+      mode: r.cfg.mode,
+      score: r.game.score,
+      myTeam: team(seat),
+      left: since ? Math.max(0, since + TIMING.afk - Date.now()) : null,
+      forfeit: !this.partnerOnline(seat, this.online()),
+    };
+  }
+
   async fetch() {
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
@@ -352,7 +368,8 @@ export class TrucoRoom extends DurableObject {
       // se cortó: corre la cuenta (la ven todos en su cartel) hasta que juegue un bot por él
       if (!r.afkSince[seat]) {
         r.afkSince[seat] = Date.now();
-        this.addSystemChat(`${r.seats[seat].name} se desconectó. Si no vuelve en ${Math.round(TIMING.afk / 1000)} s, juega un bot en su lugar.`);
+        const secs = Math.round(TIMING.afk / 1000);
+        this.addSystemChat(`${r.seats[seat].name} se desconectó. Si no vuelve en ${secs} s, ${this.partnerOnline(seat, this.online(ws)) ? 'juega un bot en su lugar' : 'pierde la partida'}.`);
       }
       await this.save();
     }
@@ -391,6 +408,7 @@ export class TrucoRoom extends DurableObject {
       return this.tryRematch();
     }
     if (!r || r.status !== 'playing') return;
+    if (this.forfeitDue(Date.now())) return this.commit();
     const g = r.game;
     const now = Date.now();
     let changed = false;
@@ -947,6 +965,27 @@ export class TrucoRoom extends DurableObject {
     return any;
   }
 
+  // ¿Le queda a este asiento algún compañero persona conectado?
+  partnerOnline(seat, online) {
+    return this.room.seats.some((s, i) => s && !s.bot && i !== seat && team(i) === team(seat) && online.has(s.pid));
+  }
+
+  // Se fue y no volvió a tiempo, y no le queda ningún compañero en la mesa: su equipo pierde la partida.
+  forfeitDue(now) {
+    const r = this.room;
+    const online = this.online();
+    for (const [k, since] of Object.entries(r.afkSince || {})) {
+      const seat = Number(k);
+      const p = r.seats[seat];
+      if (!p || p.bot || now - since < TIMING.afk || online.has(p.pid) || this.partnerOnline(seat, online)) continue;
+      if (!this.botAct(seat, { t: 'rendirse' })) continue;
+      this.addSystemChat(`${p.name} no volvió: pierde la partida`);
+      this.onGameChange();
+      return true;
+    }
+    return false;
+  }
+
   // Bot, o humano desconectado hace más de TIMING.afk: juega el servidor por él.
   isAway(seat, now = Date.now()) {
     const r = this.room;
@@ -1150,7 +1189,12 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     if (r?.status === 'lobby' && r.quick && this.online().size) return this.ctx.storage.setAlarm(Math.max(Date.now() + 100, r.quick.nextAt));
     if (r?.status === 'ended' && r.rematchBotAt && this.online().size) return this.ctx.storage.setAlarm(Math.max(Date.now() + 100, r.rematchBotAt));
-    if (!r || r.status !== 'playing' || !this.online().size) return this.ctx.storage.deleteAlarm(); // nadie mirando: se duerme
+    if (r?.status === 'playing' && !this.online().size) {
+      // nadie mirando: se duerme, salvo que haya que darle la derrota al que se fue
+      const due = Object.values(r.afkSince || {}).map((t) => t + TIMING.afk);
+      return due.length ? this.ctx.storage.setAlarm(Math.max(Date.now() + 100, Math.min(...due))) : this.ctx.storage.deleteAlarm();
+    }
+    if (!r || r.status !== 'playing') return this.ctx.storage.deleteAlarm();
     const now = Date.now();
     const g = r.game;
     let at = now + TIMING.botHeartbeat;
@@ -1216,7 +1260,7 @@ export class TrucoRoom extends DurableObject {
         const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
         const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
         // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
-        return { name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
+        return { forfeit: !!since && !this.partnerOnline(i, online), name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
       }),
       // el paño y el mazo son los del anfitrión
       table: (() => {

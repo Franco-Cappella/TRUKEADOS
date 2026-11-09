@@ -27,6 +27,7 @@ export const ROUTES = {
   api: {
     rooms: '/api/rooms',
     room: (code) => `/api/rooms/${code}`,
+    roomMine: (code) => `/api/rooms/${code}/me`,
     ws: (code) => `/api/rooms/${code}/ws`,
     quick: '/api/quick',
     lobby: '/api/lobby',
@@ -56,7 +57,7 @@ export const TIMING = {
   handPause: 5200, // pausa para ver cómo terminó la mano (y escuchar lo que dicen)
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
   foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
-  afk: 40_000, // humano desconectado: después de esto juega el bot por él
+  afk: 40_000, // humano desconectado: después de esto pierde la partida (si le queda un compañero conectado, juega un bot por él)
   botThinkMin: 1300, // los bots "piensan" entre 1,3 y 2,3 s después de lo último que pasó
   botThinkRand: 1000,
   botAfterTalk: 500, // después de que termina de decirse un canto o una frase, antes de que un bot juegue

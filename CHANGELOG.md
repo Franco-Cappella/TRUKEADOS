@@ -1,5 +1,9 @@
 # Cambios
 
+## 1.13.2 — abandonar y volver
+- Si salís de una partida, el menú te muestra un cartel para reconectarte con la cuenta regresiva.
+- Si no volvés en 40 segundos, gana el otro equipo (en equipo, si te queda un compañero conectado, juega un bot por vos).
+
 ## 1.13.1 — voces de hombre, GIF de perfil y revisión más compacta
 - Voces: dos voces de hombre que se alternan por asiento, sin efectos de tono.
 - GIF como foto de perfil (hasta 800 KB).

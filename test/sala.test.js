@@ -180,6 +180,7 @@ test('sala: el bot pie te consulta los tantos; si le decís callado, no canta en
 
 test('sala: desconexión, cuenta regresiva, juega el bot y vuelve', async () => {
   const { h, ws, r } = await table({ humans: ['u0', 'u1'] });
+  [r.seats[1], r.seats[2]] = [r.seats[2], r.seats[1]]; // compañeros: si se va uno, sigue el otro
   const seat1 = r.seats.findIndex((s) => s?.pid === 'u1');
   await h.disconnect(ws[1]);
   assert.match(h.chat().at(-1), /se desconectó.*juega un bot en su lugar/);

@@ -3,9 +3,9 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRoom, restoreClock } from './helpers/room-harness.mjs';
 import { rivalName, rivalElo, rivalSeat } from '../src/matchmaking.js';
-import { AUTH, MATCH, ELO, botSkill, SKILL_LEVELS, levelElo } from '../public/js/config.js';
+import { AUTH, MATCH, ELO, TIMING, botSkill, SKILL_LEVELS, levelElo } from '../public/js/config.js';
 import { botAction } from '../public/js/bot.js';
-import { newGame } from '../public/js/engine.js';
+import { newGame, act } from '../public/js/engine.js';
 import { seeded } from '../public/js/analysis.js';
 
 after(restoreClock);
@@ -133,35 +133,19 @@ test('los rivales automáticos no hacen trampa ni se pasan las cartas', async ()
 });
 
 test('después de tirar dos encimadas, si te cantan truco podés contestar', async () => {
-  let cases = 0;
-  for (let i = 0; i < 60 && cases < 8; i++) {
-    const h = await makeRoom({ mode: '1v1', options: { trampas: true } });
-    const ws = await h.join('u0');
-    await h.send(ws, { t: 'start', fillBots: true });
-    const r = h.room.room;
-    r.dealUntil = h.now;
-    r.botReadyAt = 0;
-    let doubled = false;
-    await h.room.scheduleAlarm();
-    for (let t = 0; t < 40_000 && r.game.h.phase === 'play'; t += 200) {
-      await h.tick(200);
-      const st = h.state(ws);
-      const a = st?.game?.actions;
-      if (!a) continue;
-      if (!doubled && a.canDouble) {
-        const [bottom, top] = r.game.h.inHand[0];
-        await h.send(ws, { t: 'act', a: { t: 'play2', bottom, top } });
-        doubled = true;
-        continue;
-      }
-      if (doubled && r.game.h.truco.pending && r.game.h.truco.pending.byTeam === 1) {
-        cases++;
-        assert.ok(h.state(ws).game.actions.quiero && h.state(ws).game.actions.noquiero, 'no te deja contestar');
-        break;
-      }
-    }
-  }
-  assert.ok(cases > 0, 'nunca cantaron truco');
+  const h = await makeRoom({ mode: '1v1', options: { trampas: true } });
+  const ws = await h.join('u0');
+  await h.send(ws, { t: 'start', fillBots: true });
+  const r = h.room.room;
+  r.game = newGame({ mode: '1v1', target: 30, trampas: true, dealer: 1 }, seeded(2));
+  r.dealUntil = h.now;
+  const [bottom, top] = r.game.h.inHand[0];
+  await h.send(ws, { t: 'act', a: { t: 'play2', bottom, top } });
+  assert.equal(r.game.h.turn, 1);
+  assert.ok(act(r.game, 1, { t: 'truco' }).ok);
+  h.room.broadcastState();
+  const actions = h.state(ws).game.actions;
+  assert.ok(actions.quiero && actions.noquiero, 'no te deja contestar');
 });
 
 async function endedTable(humans = 2, disguised = false) {
@@ -225,4 +209,69 @@ test('el análisis da lo mismo para todos los que lo abren', async () => {
   }
   const of = () => analyzeHand(JSON.parse(JSON.stringify(hand)), [0, 1], 1).map((r) => [r.frame, r.grade, r.loss]);
   assert.deepEqual(of(), of());
+});
+
+async function playingTable(mode = '1v1', humans = ['u0', 'u1']) {
+  const h = await makeRoom({ mode });
+  const ws = [];
+  for (const pid of humans) ws.push(await h.join(pid));
+  await h.send(ws[0], { t: 'start', fillBots: true });
+  return { h, ws, r: h.room.room };
+}
+
+test('te vas y no volvés en 40 s: gana el otro', async () => {
+  const { h, ws, r } = await playingTable();
+  await h.disconnect(ws[1]);
+  assert.match(h.chat().at(-1), /pierde la partida/);
+  await h.tick(TIMING.afk - 1000, 200);
+  assert.equal(r.status, 'playing');
+  await h.tick(1500, 200);
+  assert.equal(r.status, 'ended');
+  assert.equal(r.game.winner, 0);
+});
+
+test('si volvés antes de los 40 s, la partida sigue', async () => {
+  const { h, ws, r } = await playingTable();
+  await h.disconnect(ws[1]);
+  await h.tick(TIMING.afk - 5000, 200);
+  await h.join('u1');
+  await h.tick(10_000, 200);
+  assert.equal(r.status, 'playing');
+});
+
+test('jugando solo contra bots, irte también te hace perder aunque no quede nadie en la sala', async () => {
+  const { h, ws, r } = await playingTable('1v1', ['u0']);
+  await h.disconnect(ws[0]);
+  assert.ok(h.storage.alarm, 'no quedó la alarma');
+  await h.tick(TIMING.afk + 1000, 200);
+  assert.equal(r.status, 'ended');
+  assert.equal(r.game.winner, 1);
+});
+
+test('el cartel de reconectar sabe si seguís en la partida y cuánto te queda', async () => {
+  const { h, ws, r } = await playingTable();
+  await h.disconnect(ws[1]);
+  await h.tick(10_000, 200);
+  const m = await h.room.mine('u1');
+  assert.equal(m.playing, true);
+  assert.equal(m.forfeit, true);
+  assert.ok(m.left > 25_000 && m.left <= 30_000);
+  assert.equal((await h.room.mine('otro')).playing, false);
+  await h.tick(TIMING.afk, 200);
+  assert.equal(r.status, 'ended');
+  assert.equal((await h.room.mine('u1')).playing, false);
+});
+
+test('en equipo, si te queda un compañero conectado, juega un bot por vos y no se pierde', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  const a = await h.join('u0');
+  const b = await h.join('u1');
+  await h.send(a, { t: 'move', from: h.room.seatOf('u1'), to: 2 }); // u0 y u1 compañeros
+  await h.send(a, { t: 'start', fillBots: true });
+  const r = h.room.room;
+  await h.disconnect(b);
+  assert.match(h.chat().at(-1), /juega un bot en su lugar/);
+  await h.tick(TIMING.afk + 1000, 200);
+  assert.equal(r.status, 'playing');
+  assert.equal(r.afkBot?.[2], true);
 });

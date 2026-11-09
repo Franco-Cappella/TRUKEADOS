@@ -245,6 +245,9 @@ export class RoomClient {
     const prev = this.st;
     this.st = st;
     this.you = st.you;
+    // si salís de una partida que sigue, el menú te ofrece volver
+    if (st.you != null && st.room.status === 'playing') store.set(KEYS.activeRoom, this.code);
+    else if (store.get(KEYS.activeRoom) === this.code) store.set(KEYS.activeRoom, '');
     this.afkAt = {};
     st.room.seats.forEach((p, i) => {
       if (p?.botIn != null) this.afkAt[i] = Date.now() + p.botIn;
@@ -918,6 +921,7 @@ export class RoomClient {
     const at = this.afkAt[seat];
     if (at == null) return 'desconectado';
     const left = Math.ceil((at - Date.now()) / 1000);
+    if (this.st?.room.seats[seat]?.forfeit) return left > 0 ? `desconectado · pierde en ${left} s` : 'desconectado';
     return left > 0 ? `desconectado · bot en ${left} s` : 'desconectado · juega el bot';
   }
 

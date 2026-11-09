@@ -7,6 +7,7 @@ import { loadHistory, rowHtml } from './history.js';
 import { initShop, loadShop } from './shop.js';
 import { initSocial, loadFriends, loadRanking } from './social.js';
 import { initProfile, loadProfile, loadSettings } from './profile.js';
+import { initRejoin, checkRejoin, stopRejoin } from './rejoin.js';
 
 const LOBBY_REFRESH_MS = 7000;
 const PUBLIC_MAX = 5; // en la pantalla de inicio, como mucho
@@ -86,6 +87,7 @@ export function initMenu(go, logout) {
   initShop(paintMe);
   initSocial(paintMe);
   initProfile();
+  initRejoin(go);
 }
 
 function showTab(tab) {
@@ -177,6 +179,7 @@ export function showMenu() {
   $('#game').classList.add('hidden');
   $('#menu').classList.remove('hidden');
   document.title = APP_NAME;
+  checkRejoin();
   paintMe();
   // al volver de una partida cambian el ELO y las monedas
   loadMe().then((me) => me?.profile && paintMe());
@@ -191,6 +194,7 @@ export function showMenu() {
 
 export function hideMenu() {
   clearInterval(lobbyTimer);
+  stopRejoin();
   $('#menu').classList.add('hidden');
   $('#game').classList.remove('hidden');
 }

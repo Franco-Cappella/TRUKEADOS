@@ -187,6 +187,9 @@ colores, y se arreglaron: botones chicos, mazo partido después del corte, parpa
 la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la carta de arriba de las dos
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
 
+## Abandonar una partida
+Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y no le queda un compañero persona conectado, su equipo pierde (`forfeitDue` en truco-room.js, también con la sala vacía: `scheduleAlarm` deja la alarma). Si le queda un compañero, juega un bot por él. El menú muestra el cartel de reconectar (`rejoin.js`, ruta `/api/rooms/CÓDIGO/me`).
+
 ## Voces
 Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voces libres de Piper; licencias en `public/voz/LICENCIAS.txt`). **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
 

@@ -178,6 +178,13 @@ async function handle(request, env) {
   const info = path.match(/^\/api\/rooms\/(\d{4})$/);
   if (info && method === 'GET') return json(await roomStub(env, info[1]).info());
 
+  // ¿Sigo sentado en esa partida? (el cartel de reconectar del menú)
+  const mine = path.match(/^\/api\/rooms\/(\d{4})\/me$/);
+  if (mine && method === 'GET') {
+    const auth = await requireUser(env, request);
+    return auth.error || json(await roomStub(env, mine[1]).mine(auth.user.id));
+  }
+
   const ws = path.match(/^\/api\/rooms\/(\d{4})\/ws$/);
   if (ws) {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('Se esperaba un WebSocket', { status: 426 });
