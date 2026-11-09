@@ -1,12 +1,17 @@
 // ELO por equipos (compartido: lo usa el servidor al terminar la partida y los tests). Sin DOM.
+// Como en chess.com: al principio el sistema no sabe tu nivel y cada partida mueve mucho; a medida que juega
+// te ubica y el número varía poco. Es la idea de la "desviación" de Glicko, con las partidas jugadas como medida.
 import { ELO } from './config.js';
 
 const expected = (mine, theirs) => 1 / (1 + 10 ** ((theirs - mine) / 400));
 
+/** Cuánto mueve una partida a alguien que ya jugó `games`. */
+export const eloK = (games = 0) => ELO.kMin + (ELO.kStart - ELO.kMin) * Math.exp(-games / ELO.settle);
+
 /**
  * players: [{ team, elo, games }] (games: partidas por ELO que ya jugó en este modo). winner: 0 o 1.
- * Devuelve la diferencia de cada uno (mismo orden). El equipo se mide por su promedio; cada uno suma con su K
- * (las primeras partidas mueven más).
+ * Devuelve la diferencia de cada uno (mismo orden). El equipo se mide por su promedio; cada uno suma con su K.
+ * Nadie baja de ELO.floor.
  */
 export function eloDeltas(players, winner) {
   const avg = [0, 1].map((t) => {
@@ -14,8 +19,14 @@ export function eloDeltas(players, winner) {
     return xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
   });
   return players.map((p) => {
-    const k = (p.games ?? 0) < ELO.newGames ? ELO.kNew : ELO.k;
     const score = p.team === winner ? 1 : 0;
-    return Math.round(k * (score - expected(avg[p.team], avg[1 - p.team])));
+    const d = Math.round(eloK(p.games) * (score - expected(avg[p.team], avg[1 - p.team])));
+    return Math.max(d, ELO.floor - p.elo);
   });
+}
+
+/** Monedas por pasar escalones de ELO que nunca habías alcanzado. peak: tu récord hasta ahora. */
+export function milestoneCoins(peak, elo, step, reward) {
+  const steps = Math.floor(elo / step) - Math.floor(peak / step);
+  return steps > 0 ? steps * reward : 0;
 }

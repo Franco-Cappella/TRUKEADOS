@@ -8,7 +8,8 @@ import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
-import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, roomOptions } from '../public/js/config.js';
+import { setAvatar, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
+import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
 
@@ -33,7 +34,7 @@ async function readPlayer(env, request) {
   const auth = await requireUser(env, request);
   if (auth.error) return auth;
   const body = await request.json().catch(() => ({}));
-  return { body, pid: auth.user.id, name: auth.profile.username };
+  return { body, pid: auth.user.id, name: auth.profile.username, profile: auth.profile };
 }
 
 export default {
@@ -69,8 +70,38 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     if (auth.profile) return json({ error: 'Ya tenés un perfil' }, 409);
     const body = await request.json().catch(() => ({}));
-    const r = await createProfile(env, auth.user.id, body.username);
+    const r = await createProfile(env, auth.user.id, body.username, body.level);
     return r.error ? json({ error: r.error }, 400) : json({ user: auth.user, profile: r.profile });
+  }
+
+  if (path === '/api/me/avatar' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await setAvatar(env, auth.user.id, body.avatar ?? null);
+    return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+
+  // amigos: por nombre de usuario; una solicitud que se acepta
+  if (path === '/api/friends' && method === 'GET') {
+    const auth = await requireUser(env, request);
+    return auth.error || json(await listFriends(env, auth.user.id));
+  }
+  if (path.startsWith('/api/friends') && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const uid = auth.user.id;
+    const r = path === '/api/friends' ? await requestFriend(env, uid, body.username)
+      : path === '/api/friends/respond' ? await respondFriend(env, uid, body.id, !!body.accept)
+      : path === '/api/friends/remove' ? await removeFriend(env, uid, body.id)
+      : { error: 'No encontrado' };
+    return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+
+  if (path === '/api/ranking' && method === 'GET') {
+    const auth = await requireUser(env, request);
+    return auth.error || json(await ranking(env, new URL(request.url).searchParams.get('mode')));
   }
 
   if (path === '/api/rooms' && method === 'POST') {
@@ -88,12 +119,13 @@ async function handle(request, env) {
   }
 
   if (path === '/api/quick' && method === 'POST') {
-    const { error, body, pid, name } = await readPlayer(env, request);
+    const { error, body, pid, name, profile } = await readPlayer(env, request);
     if (error) return error;
     const mode = pickMode(body.mode);
-    const found = await lobbyStub(env).findOpen(mode);
+    const elo = profile[`elo_${mode}`] ?? ELO_START;
+    const found = await lobbyStub(env).findOpen(mode, elo);
     if (found) return json({ code: found, joined: true });
-    const code = await createRoom(env, { mode, target: DEFAULT_TARGET, options: roomOptions(), isPublic: true, pid, name });
+    const code = await createRoom(env, { mode, target: DEFAULT_TARGET, options: roomOptions(), isPublic: true, pid, name, quick: { elo } });
     return json({ code, joined: false });
   }
 

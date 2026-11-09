@@ -1,7 +1,7 @@
 // Cuentas: verifica la sesión de Supabase Auth (el token que manda el navegador) y lee el perfil del jugador.
 // La base de datos es la de Supabase; el Worker la usa con la clave secreta (SUPABASE_SECRET_KEY), así que las
 // tablas no necesitan políticas de escritura para el navegador. Ver docs/CUENTAS.md.
-import { AUTH } from '../public/js/config.js';
+import { AUTH, COINS, levelElo } from '../public/js/config.js';
 import { json } from './util.js';
 
 // ------------------------------------------------------------------ token (JWT de Supabase)
@@ -74,7 +74,8 @@ export function rest(env, path, init = {}) {
 const dbError = (res, what) =>
   new Error(`${what}: Supabase respondió ${res.status}${res.status === 401 ? ' (revisá SUPABASE_SECRET_KEY en el Worker, ver docs/CUENTAS.md)' : ''}`);
 
-const PROFILE_FIELDS = 'id,username,coins,elo_1v1,elo_2v2,elo_3v3,games_1v1,games_2v2,games_3v3,equipped,created_at';
+// Todas las columnas: las nuevas (foto, récord) pueden no existir todavía si falta aplicar una migración.
+const PROFILE_FIELDS = '*';
 
 // Perfiles leídos hace poco (por isolate): cada pedido y cada "join" no tiene que ir a la base.
 const cache = new Map();
@@ -91,14 +92,18 @@ export async function getProfile(env, id, { fresh = false } = {}) {
   return profile;
 }
 
-/** Crea el perfil con el nombre elegido. { profile } o { error } (nombre inválido u ocupado). */
-export async function createProfile(env, id, username) {
+/**
+ * Crea el perfil con el nombre elegido y el ELO del nivel que dijo tener, más las monedas de bienvenida.
+ * { profile } o { error } (nombre inválido u ocupado).
+ */
+export async function createProfile(env, id, username, level) {
   const name = String(username ?? '').trim();
   if (!AUTH.usernameRe.test(name)) return { error: AUTH.usernameHint };
+  const elo = levelElo(level);
   const res = await rest(env, `profiles?select=${PROFILE_FIELDS}`, {
     method: 'POST',
     headers: { prefer: 'return=representation' },
-    body: JSON.stringify({ id, username: name }),
+    body: JSON.stringify({ id, username: name, coins: COINS.signup, elo_1v1: elo, elo_2v2: elo, elo_3v3: elo }),
   });
   if (res.status === 409) {
     const taken = (await res.json().catch(() => ({}))).message?.includes('username');

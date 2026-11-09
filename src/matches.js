@@ -1,22 +1,23 @@
 // Partidas terminadas: ELO, monedas e historial en la base de Supabase (tablas matches y match_players,
 // función record_match en supabase/migrations). Lo usa la sala al terminar y las rutas /api/matches.
-import { COINS, HISTORY_PAGE } from '../public/js/config.js';
-import { eloDeltas } from '../public/js/elo.js';
+import { COINS, ELO_START, HISTORY_PAGE } from '../public/js/config.js';
+import { eloDeltas, milestoneCoins } from '../public/js/elo.js';
 import { team } from '../public/js/engine.js';
 import { rest, forgetProfile } from './auth.js';
 
 /**
  * Guarda una partida terminada y actualiza ELO y monedas. meta: lo de MatchRecorder; game: el estado final.
- * Devuelve { id, players: [{ seat, eloBefore, eloDelta, coins }] } para avisarle a cada uno.
+ * Devuelve { id, players: [{ seat, eloBefore, eloDelta, coins, milestone }] } para avisarle a cada uno.
  */
 export async function recordMatch(env, meta, log, game) {
   const winner = game.winner;
-  const humans = meta.seats.map((s, seat) => ({ ...s, seat })).filter((s) => s.uid);
+  const seats = meta.seats.map((s, seat) => ({ ...s, seat }));
+  const humans = seats.filter((s) => s.uid);
   if (!humans.length) return null;
 
-  // ELO de ahora (sin caché: puede haber cambiado en otra partida)
+  // ELO de ahora (sin caché: puede haber cambiado en otra partida). Todas las columnas: elo_peak puede no existir.
   const ids = humans.map((s) => s.uid);
-  const res = await rest(env, `profiles?id=in.(${ids.join(',')})&select=id,elo_${meta.mode},games_${meta.mode}`);
+  const res = await rest(env, `profiles?id=in.(${ids.join(',')})&select=*`);
   if (!res.ok) throw new Error('No se pudieron leer los perfiles');
   const prof = new Map((await res.json()).map((p) => [p.id, p]));
 
@@ -25,14 +26,29 @@ export async function recordMatch(env, meta, log, game) {
     seat: s.seat,
     team: team(s.seat),
     won: team(s.seat) === winner,
-    elo_before: prof.get(s.uid)?.[`elo_${meta.mode}`] ?? null,
+    elo_before: prof.get(s.uid)?.[`elo_${meta.mode}`] ?? ELO_START,
     games: prof.get(s.uid)?.[`games_${meta.mode}`] ?? 0,
   }));
-  const deltas = meta.rated ? eloDeltas(players.map((p) => ({ team: p.team, elo: p.elo_before, games: p.games })), winner) : players.map(() => 0);
+  // los rivales automáticos de la partida rápida cuentan con su ELO para el promedio del equipo
+  const rivals = seats.filter((s) => s.disguised).map((s) => ({ team: team(s.seat), elo: s.elo ?? ELO_START, games: 999 }));
+  const deltas = meta.rated
+    ? eloDeltas([...players.map((p) => ({ team: p.team, elo: p.elo_before, games: p.games })), ...rivals], winner).slice(0, players.length)
+    : players.map(() => 0);
   const factor = meta.rated ? 1 : COINS.botFactor;
+  const peaks = [];
   players.forEach((p, i) => {
     p.elo_delta = deltas[i];
     p.coins = Math.round((COINS.game + (p.won ? COINS.win : 0)) * factor);
+    p.milestone = 0;
+    const row = prof.get(p.user_id);
+    // sin la columna elo_peak (migración pendiente) no hay premio: no se puede saber si ya lo cobró
+    if (meta.rated && row && 'elo_peak' in row) {
+      const peak = row.elo_peak ?? Math.max(row.elo_1v1 ?? 0, row.elo_2v2 ?? 0, row.elo_3v3 ?? 0);
+      const now = p.elo_before + p.elo_delta;
+      p.milestone = milestoneCoins(peak, now, COINS.milestoneStep, COINS.milestone);
+      p.coins += p.milestone;
+      if (now > peak) peaks.push([p.user_id, now]);
+    }
     delete p.games;
   });
 
@@ -53,12 +69,17 @@ export async function recordMatch(env, meta, log, game) {
   const r = await rest(env, 'rpc/record_match', { method: 'POST', body: JSON.stringify({ m: body }) });
   if (!r.ok) throw new Error('No se pudo guardar la partida: ' + (await r.text()).slice(0, 200));
   const id = await r.json();
+  await Promise.all(peaks.map(([uid, elo]) => rest(env, `profiles?id=eq.${uid}`, { method: 'PATCH', body: JSON.stringify({ elo_peak: elo }) }).catch(() => null)));
   ids.forEach(forgetProfile);
   return {
     id,
-    players: players.map((p) => ({ seat: p.seat, eloBefore: meta.rated ? p.elo_before : null, eloDelta: p.elo_delta, coins: p.coins })),
+    players: players.map((p) => ({ seat: p.seat, eloBefore: meta.rated ? p.elo_before : null, eloDelta: p.elo_delta, coins: p.coins, milestone: p.milestone })),
   };
 }
+
+// Lo que sabe el servidor de cada asiento y el navegador no necesita.
+const clientSeats = (seats) => (seats || []).map(({ disguised, ...s }) => (disguised ? { ...s, bot: false } : s));
+const forClient = (m) => (m ? { ...m, seats: clientSeats(m.seats), ...(m.log ? { log: { ...m.log, seats: clientSeats(m.log.seats) } } : {}) } : m);
 
 const LIST_FIELDS = 'seat,team,won,elo_before,elo_after,coins,ended_at,match:matches(id,mode,target,options,rated,winner_team,score,hands,seats,started_at)';
 
@@ -67,7 +88,7 @@ export async function listMatches(env, userId, before) {
   const older = before && !Number.isNaN(Date.parse(before)) ? `&ended_at=lt.${encodeURIComponent(new Date(before).toISOString())}` : '';
   const res = await rest(env, `match_players?user_id=eq.${userId}${older}&select=${LIST_FIELDS}&order=ended_at.desc&limit=${HISTORY_PAGE}`);
   if (!res.ok) throw new Error('No se pudo leer el historial');
-  return res.json();
+  return (await res.json()).map((r) => ({ ...r, match: forClient(r.match) }));
 }
 
 /** Una partida con su registro, solo si el jugador estuvo sentado en ella. */
@@ -78,5 +99,5 @@ export async function getMatch(env, userId, id) {
   if (!me) return null;
   const res = await rest(env, `matches?id=eq.${id}&select=*`);
   const match = res.ok ? (await res.json())[0] : null;
-  return match ? { ...match, me } : null;
+  return match ? { ...forClient(match), me } : null;
 }

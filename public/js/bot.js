@@ -367,23 +367,50 @@ function teamAccepts(g, seat, ctx, world, key, xOf) {
 // Cuánto vale ganar d puntos (o perderlos, si d < 0) medido en "puntos de ahora": no es lo mismo
 // arriesgar una falta envido 0 a 0 que 28 a 12. Sale de una estimación de la chance de ganar la partida.
 function utility(g, seat) {
-  const T = team(seat);
-  const V = (d) => {
+  const V = matchValue(g, team(seat));
+  const v0 = V(0);
+  const slope = Math.max((V(1) - V(-1)) / 2, 1e-4);
+  const u = (d) => (d ? (V(d) - v0) / slope : 0);
+  u.slope = slope; // cuánta chance de ganar la partida vale un punto ahora
+  return u;
+}
+
+// Chance de que el equipo T gane la partida si suma d puntos (o el rival, si d < 0), según el tanteador.
+function matchValue(g, T) {
+  return (d) => {
     const a = g.target - g.score[T] - Math.max(d, 0);
     const b = g.target - g.score[1 - T] - Math.max(-d, 0);
     if (a <= 0) return 1;
     if (b <= 0) return 0;
     return 1 / (1 + Math.exp((-0.9 * (b - a)) / Math.sqrt(a + b)));
   };
-  const v0 = V(0);
-  const slope = Math.max((V(1) - V(-1)) / 2, 1e-4);
-  return (d) => (d ? (V(d) - v0) / slope : 0);
+}
+
+/**
+ * Chance de que el equipo T gane la partida en este momento, viendo todas las cartas (el gráfico de la revisión).
+ * Mezcla el tanteador con quién va ganando la mano, pesado por lo que hay en juego. Con pocas cartas tiradas se confía
+ * menos en cómo termina la mano: todavía se puede cantar, mentir o equivocarse.
+ */
+export function winChance(g, T) {
+  if (g.status === 'ended' && g.winner != null) return g.winner === T ? 1 : 0;
+  const V = matchValue(g, T);
+  const h = g.h;
+  if (!h || h.phase !== 'play') return V(0);
+  const L = h.truco.level || 1;
+  const played = h.table.reduce((n, l) => n + l.length, 0);
+  const conf = 0.35 + (0.65 * played) / (g.n * 3);
+  const r = rollout(g, T, { hands: h.inHand, full: h.cards, unknown: [] }, null);
+  const p = 0.5 + (r - 0.5) * conf;
+  return p * V(L) + (1 - p) * V(-L);
 }
 
 // Elige entre opciones { a, ev } (puntos esperados): casi siempre la mejor, con algo de ruido.
+// Ruido de la decisión en curso: lo fija botAction según el ELO del bot.
+let curTemp = BOT.temp;
+
 function choose(options, rng) {
   const best = Math.max(...options.map((o) => o.ev));
-  const ws = options.map((o) => Math.exp((o.ev - best) / BOT.temp));
+  const ws = options.map((o) => Math.exp((o.ev - best) / curTemp));
   let r = rng() * ws.reduce((a, b) => a + b, 0);
   for (let i = 0; i < options.length; i++) if ((r -= ws[i]) <= 0) return options[i].a;
   return options[options.length - 1].a;
@@ -588,6 +615,11 @@ export function fallbackActions(g, seat) {
 export function botAction(g, seat, rng = Math.random, ctx = {}) {
   const h = g.h;
   if (!h || g.status !== 'playing') return null;
+  // ctx.skill (ver botSkill en config.js): un bot flojo imagina menos manos, duda más y a veces se manda una macana
+  const sk = ctx.skill;
+  const slipped = !!sk && rng() < sk.slip;
+  curTemp = sk ? (slipped ? 4 : sk.temp) : BOT.temp;
+  if (sk) ctx = { ...ctx, samples: slipped ? 3 : sk.samples, memo: null };
   if (h.phase === 'show') return h.show.seat === seat && !h.show.folded ? botShow(g, seat) : null;
   if (h.phase !== 'play') return null;
   const w = waitingFor(g);
@@ -650,6 +682,8 @@ export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
   const winMemo = new Map();
   const win = (wo) => (winMemo.has(wo) ? winMemo.get(wo) : winMemo.set(wo, rollout(g, seat, wo, null)).get(wo));
   const handEv = (L) => wavg(samples, (wo) => win(wo) * u(L) + (1 - win(wo)) * u(-L));
+  // para calificar la jugada: cuánto vale un punto y con qué chances entraba a lo que cantó
+  const info = () => ({ slope: u.slope, handWin: wavg(samples, win), envidoWin: wavg(samples, (wo) => (envidoWins(g, seat, wo) ? 1 : 0)) });
   const raiseEv = (level, cur) =>
     wavg(samples, (wo) => {
       const p = win(wo);
@@ -677,7 +711,7 @@ export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
     });
     options.push({ a: { t: 'noquiero' }, ev: u(-envidoDeclinedPoints(g, calls, 1 - T)) });
     for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([...calls, kind]) });
-    return { kind: 'envido', options };
+    return { kind: 'envido', options, ...info() };
   }
 
   if (w.kind === 'truco') {
@@ -687,7 +721,7 @@ export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
     // "el envido está primero": cantarlo vale el envido más lo mejor del truco
     const pass = Math.max(...options.map((o) => o.ev));
     for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([kind]) + pass });
-    return { kind: 'truco', options };
+    return { kind: 'truco', options, ...info() };
   }
 
   const L = h.truco.level;
@@ -698,7 +732,7 @@ export function evaluateDecision(g, seat, rng = Math.random, ctx = {}) {
   const bestCard = Math.max(...options.map((o) => o.ev));
   if (a.truco) options.push({ a: { t: 'truco' }, ev: raiseEv(L + 1, L) });
   if (envidoOpenFor(g, seat)) for (const kind of a.envido) options.push({ a: { t: 'envido', kind }, ev: envidoEv([kind]) + bestCard });
-  return { kind: 'play', options };
+  return { kind: 'play', options, ...info() };
 }
 
 // Después de la mano: muestra si dijo la verdad; si mintió, se va sin mostrar.

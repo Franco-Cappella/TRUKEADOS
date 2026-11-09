@@ -56,8 +56,8 @@ export async function loadMe() {
 }
 
 /** Primera vez: el nombre con el que aparece en la mesa y en el ranking. */
-export async function chooseUsername(username) {
-  me = await api(ROUTES.api.me, { username });
+export async function chooseUsername(username, level) {
+  me = await api(ROUTES.api.me, { username, level });
   store.set(KEYS.name, me.profile.username);
   return me;
 }

@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { newGame, act, nextHand, waitingFor, closeShow } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
 import { handFrames, describe } from '../public/js/replay.js';
-import { eloDeltas } from '../public/js/elo.js';
-import { analyzeHand, accuracy, gradeCounts, seeded } from '../public/js/analysis.js';
+import { eloDeltas, milestoneCoins } from '../public/js/elo.js';
+import { analyzeHand, accuracy, gradeCounts, seeded, classify, winSeries } from '../public/js/analysis.js';
+import { GRADES } from '../public/js/config.js';
 import { MatchRecorder } from '../src/recorder.js';
 
 // storage del Durable Object, en memoria
@@ -91,16 +92,63 @@ test('el registro marca las jugadas que hizo un bot por una persona', async () =
 
 test('ELO: ganarle a uno mejor suma más; en equipo todos suman lo mismo', () => {
   const [a, b] = eloDeltas([{ team: 0, elo: 1200, games: 20 }, { team: 1, elo: 1400, games: 20 }], 0);
-  assert.ok(a > 16 && a < 32 && b === -a);
+  assert.ok(a > 10 && a < 22 && b === -a);
   const [c] = eloDeltas([{ team: 0, elo: 1400, games: 20 }, { team: 1, elo: 1200, games: 20 }], 0);
   assert.ok(c > 0 && c < a);
   const team = eloDeltas([{ team: 0, elo: 1300, games: 20 }, { team: 1, elo: 1200, games: 20 }, { team: 0, elo: 1100, games: 20 }, { team: 1, elo: 1200, games: 20 }], 1);
   assert.equal(team[0], team[2]);
   assert.equal(team[1], team[3]);
-  assert.equal(team[0], -16);
-  // las primeras partidas mueven más
-  const [fresh] = eloDeltas([{ team: 0, elo: 1200, games: 0 }, { team: 1, elo: 1200, games: 30 }], 0);
-  assert.equal(fresh, 24);
+  assert.ok(team[0] < -8 && team[0] > -16);
+  // las primeras partidas mueven mucho y, ya ubicado, poquito (como chess.com)
+  const delta = (games) => eloDeltas([{ team: 0, elo: 1200, games }, { team: 1, elo: 1200, games: 30 }], 0)[0];
+  assert.equal(delta(0), 80);
+  assert.ok(delta(5) > 30 && delta(5) < delta(0));
+  assert.ok(delta(20) < delta(5) && delta(20) <= 12);
+  assert.ok(delta(60) >= 6 && delta(60) <= 8);
+  // nadie baja del piso
+  assert.equal(eloDeltas([{ team: 0, elo: 110, games: 0 }, { team: 1, elo: 110, games: 0 }], 1)[0], -10);
+});
+
+test('ELO: premio por escalones nuevos, una sola vez', () => {
+  assert.equal(milestoneCoins(1190, 1210, 100, 75), 75);
+  assert.equal(milestoneCoins(1190, 1420, 100, 75), 225);
+  assert.equal(milestoneCoins(1450, 1420, 100, 75), 0);
+  assert.equal(milestoneCoins(1210, 1290, 100, 75), 0);
+});
+
+test('calificaciones, como en chess.com: por chance de ganar perdida', () => {
+  const play = { t: 'play', card: '4E' };
+  const truco = { t: 'truco' };
+  const base = { a: play, best: play, gap: 0, strength: 0.5, folded: false };
+  assert.equal(classify({ ...base, loss: 0 }), 'mejor');
+  assert.equal(classify({ ...base, loss: 0.008 }), 'excelente');
+  assert.equal(classify({ ...base, loss: 0.02 }), 'buena');
+  assert.equal(classify({ ...base, loss: 0.04 }), 'imprecision');
+  assert.equal(classify({ ...base, loss: 0.08 }), 'error');
+  assert.equal(classify({ ...base, loss: 0.3 }), 'insensata');
+  // la única buena
+  assert.equal(classify({ ...base, loss: 0, gap: 0.1 }), 'genial');
+  // cantar sin cartas y que convenga es una mentira brillante
+  assert.equal(classify({ ...base, a: truco, best: truco, loss: 0, strength: 0.1 }), 'brillante');
+  // costando un poco, si se la creyeron también
+  assert.equal(classify({ ...base, a: truco, best: play, loss: 0.02, strength: 0.1, folded: true }), 'brillante');
+  assert.equal(classify({ ...base, a: truco, best: play, loss: 0.04, strength: 0.1 }), 'arriesgada');
+  // farolear carísimo es insensato, no arriesgado
+  assert.equal(classify({ ...base, a: truco, best: play, loss: 0.3, strength: 0.1 }), 'insensata');
+  // tenía para cantar y no cantó
+  assert.equal(classify({ ...base, best: truco, loss: 0.05, strength: 0.9 }), 'perdida');
+  assert.equal(new Set(GRADES.map((g) => g.key)).size, GRADES.length);
+  assert.ok(GRADES.every((g) => g.label && g.glyph));
+});
+
+test('gráfico: la chance de ganar arranca pareja y termina en 0 o 1', async () => {
+  const { rec, g } = await recordedGame('1v1', 7);
+  const frames = rec.log().hands.map(handFrames);
+  const series = winSeries(frames);
+  assert.equal(series.length, frames.reduce((n, f) => n + f.length, 0));
+  assert.ok(series.every((x) => x.p >= 0 && x.p <= 1));
+  assert.ok(Math.abs(series[0].p - 0.5) < 0.1, String(series[0].p));
+  assert.equal(series[series.length - 1].p, g.winner === 0 ? 1 : 0);
 });
 
 test('análisis: califica las decisiones de un jugador y da la precisión', async () => {

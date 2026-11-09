@@ -1,6 +1,6 @@
 // Historial: la lista de tus partidas (pestaña del menú) y el visor de una partida grabada (/partida/ID), que
 // la rebobina mano por mano y paso por paso, con el análisis de tus decisiones (analysis.js en un Web Worker).
-import { ROUTES, ANALYSIS, modeLabel, roomOptionsText } from './config.js';
+import { ROUTES, GRADES, modeLabel, roomOptionsText } from './config.js';
 import { cardName, team, TRUCO_NAMES } from './engine.js';
 import { handFrames, describe, actionLabel } from './replay.js';
 import { accuracy, gradeCounts } from './analysis.js';
@@ -109,7 +109,7 @@ export function hideReplay() {
 }
 
 const card = (c, cls = '') => `<img class="r-card ${cls}" src="${ROUTES.card(c)}" alt="${esc(cardName(c))}" title="${esc(cardName(c))}">`;
-const GRADE = Object.fromEntries(ANALYSIS.grades.map((g) => [g.key, g]));
+const GRADE = Object.fromEntries(GRADES.map((g) => [g.key, g]));
 const ROUND = ['Primera', 'Segunda', 'Tercera'];
 
 class Viewer {
@@ -176,8 +176,8 @@ class Viewer {
       .map((h, i) => {
         const fr = this.frames[i];
         const end = fr ? fr[fr.length - 1].g.score : null;
-        const worst = (this.analysis[i] || []).reduce((w, r) => (ANALYSIS.grades.findIndex((g) => g.key === r.grade) > ANALYSIS.grades.findIndex((g) => g.key === w) ? r.grade : w), 'mejor');
-        const flag = this.analysis[i] && ['error', 'grave'].includes(worst) ? `<i class="g-dot g-${worst}"></i>` : '';
+        const worst = (this.analysis[i] || []).reduce((w, r) => (GRADES.findIndex((g) => g.key === r.grade) > GRADES.findIndex((g) => g.key === w) ? r.grade : w), 'mejor');
+        const flag = this.analysis[i] && ['error', 'insensata'].includes(worst) ? `<i class="g-dot g-${worst}"></i>` : '';
         return `<button type="button" data-hand="${i}" class="${i === this.hand ? 'on' : ''}">Mano ${i + 1}${end ? `<small>${end[0]}-${end[1]}</small>` : ''}${flag}</button>`;
       })
       .join('');
@@ -293,7 +293,7 @@ class Viewer {
     $('#replay-summary').classList.remove('hidden');
     $('#replay-summary').innerHTML = `
       <div class="r-acc"><b>${accuracy(all)}%</b><small>precisión</small></div>
-      <div class="r-grades">${ANALYSIS.grades.map((g) => `<span class="g-badge g-${g.key}">${esc(g.label)} <b>${c[g.key]}</b></span>`).join('')}</div>
+      <div class="r-grades">${GRADES.map((g) => `<span class="g-badge g-${g.key}">${esc(g.label)} <b>${c[g.key]}</b></span>`).join('')}</div>
       ${worst && worst.loss >= 0.8 ? `<button type="button" class="a-link" id="replay-worst">Ver tu jugada más cara (mano ${handOf(worst) + 1})</button>` : ''}`;
     $('#replay-worst')?.addEventListener('click', () => {
       this.goHand(handOf(worst));

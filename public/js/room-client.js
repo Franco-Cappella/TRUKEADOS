@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
-import { $, esc, store, KEYS, savedName, sessionToken, takeSession, initial } from './dom.js';
+import { $, esc, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
 import { audio, flick, ding, say, hush } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
@@ -899,7 +899,7 @@ export class RoomClient {
       const looking = this.you != null && this.gaze[seat] === this.you ? '<span class="chip eye">te mira</span>' : '';
       const turn = g && st.room.status === 'playing' && g.waiting.seats.includes(seat);
       l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''}`;
-      l.plate.innerHTML = `${esc(p.name)} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
+      l.plate.innerHTML = `${esc(p.name)} ${p.elo ? `<span class="chip">${esc(p.elo)}</span>` : ''} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
     });
   }
 
@@ -914,8 +914,12 @@ export class RoomClient {
   renderWaiting() {
     const st = this.st;
     const el = $('#waiting');
-    if (st.room.status !== 'lobby') return el.classList.add('hidden');
+    if (st.room.status !== 'lobby') {
+      clearInterval(this.searchT);
+      return el.classList.add('hidden');
+    }
     el.classList.remove('hidden');
+    if (st.room.quick && st.you != null) return this.renderSearching();
     const r = st.room;
     const cfg = r.cfg;
     const host = st.isHost;
@@ -994,6 +998,37 @@ export class RoomClient {
     </div>`;
   }
 
+  // Partida rápida: se busca gente de tu nivel hasta que la mesa se llena (arranca sola).
+  renderSearching() {
+    const st = this.st;
+    const r = st.room;
+    const free = r.seats.filter((p) => !p).length;
+    const skew = Date.now() - st.now; // el reloj del servidor contra el tuyo
+    const elapsed = () => {
+      const s = Math.max(0, Math.floor((Date.now() - skew - r.quick.startedAt) / 1000));
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    };
+    const seat = (p, i) =>
+      p
+        ? `<li class="qs-seat ${i === st.you ? 'me' : ''}">${avatarHtml(p)}<span><b>${esc(p.name)}</b><small>${i === st.you ? 'vos' : team(i) === team(st.you) ? 'compañero' : 'rival'}${p.elo ? ` · ${esc(p.elo)}` : ''}</small></span></li>`
+        : '<li class="qs-seat empty"><span class="w-av">?</span><span><small>Buscando…</small></span></li>';
+    $('#waiting').innerHTML = `<div class="card-box w-box qs-box">
+      <header class="w-head">
+        <div><h2>Buscando rivales</h2><div class="muted">${esc(modeLabel(r.cfg.mode))} · a ${r.cfg.target} · por ELO</div></div>
+        <button type="button" class="w-exit" data-exit="1">Cancelar</button>
+      </header>
+      <div class="qs-pulse" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="qs-time"><b id="qs-time">${elapsed()}</b><small>${free === 1 ? 'Falta 1 jugador' : `Faltan ${free} jugadores`} de tu nivel</small></p>
+      <ul class="qs-seats">${r.seats.map(seat).join('')}</ul>
+    </div>`;
+    clearInterval(this.searchT);
+    this.searchT = setInterval(() => {
+      const t = $('#qs-time');
+      if (t) t.textContent = elapsed();
+      else clearInterval(this.searchT);
+    }, 1000);
+  }
+
   // El anfitrión abre y cierra los ajustes de la sala (cerrados, la sala de espera entra en pantalla).
   toggleRules() {
     this.showRules = !this.showRules;
@@ -1016,7 +1051,7 @@ export class RoomClient {
     // lo que te dejó la partida (llega un ratito después, cuando se guarda)
     const mine = this.match?.players.find((p) => p.seat === this.you);
     const gains = mine
-      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Con bots no se juega por ELO</small></span>'}<span>+${mine.coins} monedas</span></div>`
+      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Con bots no se juega por ELO</small></span>'}<span>+${mine.coins} monedas${mine.milestone ? ` <small>(${mine.milestone} por tu récord de ELO)</small>` : ''}</span></div>`
       : '';
     el.innerHTML = `<div class="card-box">
       <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron!' : 'Perdieron'}</h2>
@@ -1026,7 +1061,7 @@ export class RoomClient {
       ${mine ? `<p><button class="btn" data-replay="${esc(this.match.id)}">Ver la partida y el análisis</button></p>` : ''}
       <div class="row center">
         ${this.you != null ? '<button class="btn primary big" data-rematch="1">Revancha</button>' : ''}
-        ${st.isHost ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}
+        ${st.isHost && !st.room.quick ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}
         <button class="btn big" data-exit="1">Salir</button>
       </div></div>`;
   }

@@ -3,10 +3,11 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
+import { rivalSeat, nextRivalIn } from './matchmaking.js';
 import { recordMatch } from './matches.js';
 
 // Memoria de situaciones de los bots (ver BotMemo en bot.js): una por isolate, compartida por todas las salas
@@ -35,7 +36,7 @@ export class TrucoRoom extends DurableObject {
   }
 
   // ---- RPC desde el Worker ----
-  async create({ code, mode, target, options, isPublic, pid, name }) {
+  async create({ code, mode, target, options, isPublic, pid, name, quick = null }) {
     if (this.room && !this.reusable()) return { ok: false };
     // código reciclado: se arranca de cero (sin chat ni miradas de la sala anterior)
     this.chat = [];
@@ -52,6 +53,8 @@ export class TrucoRoom extends DurableObject {
       handEndedAt: 0,
       afkSince: {},
       createdAt: Date.now(),
+      // partida rápida: arranca sola cuando se llena y, si no aparece gente, la completan rivales automáticos
+      quick: quick ? { elo: quick.elo, startedAt: Date.now(), nextAt: Date.now() + nextRivalIn(true, rng) } : null,
     };
     this.room.seats[0] = { pid, name: cleanName(name) };
     await this.save();
@@ -96,7 +99,7 @@ export class TrucoRoom extends DurableObject {
       // sin caché: lo que tiene puesto de la tienda puede haber cambiado recién
       const profile = user && (await getProfile(this.env, user.id, { fresh: true }).catch(() => null));
       if (!profile) return this.send(ws, { t: 'auth' });
-      account = { pid: user.id, name: profile.username, cos: cleanEquipped(profile.equipped) };
+      account = { pid: user.id, name: profile.username, cos: cleanEquipped(profile.equipped), elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
     }
 
     const r = this.room;
@@ -113,6 +116,8 @@ export class TrucoRoom extends DurableObject {
         if (seat != null) {
           r.seats[seat].name = name;
           r.seats[seat].cos = cos;
+          r.seats[seat].elo = account.elo;
+          r.seats[seat].avatar = account.avatar;
           // volvió después de cortarse: se avisa (y si ya jugaba el bot por él, que deja de jugar)
           if (r.status === 'playing' && r.afkSince[seat] && !this.online(ws).has(pid)) {
             this.addSystemChat(r.afkBot?.[seat] ? `${name} volvió: deja de jugar el bot en su lugar` : `${name} volvió`);
@@ -122,10 +127,11 @@ export class TrucoRoom extends DurableObject {
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.freeSeat();
           if (free != null) {
-            r.seats[free] = { pid, name, cos };
+            r.seats[free] = { pid, name, cos, elo: account.elo, avatar: account.avatar };
             this.addSystemChat(`${name} se sentó a la mesa`);
           }
         }
+        if (r.quick && r.status === 'lobby' && r.seats.every(Boolean)) await this.beginGame();
         if (!r.host || this.seatOf(r.host) == null) r.host = this.seatOf(pid) != null ? pid : r.host;
         this.send(ws, { t: 'chat-history', messages: this.chat });
         if (r.status === 'ended' && r.lastMatch) this.send(ws, { t: 'match', ...r.lastMatch });
@@ -196,17 +202,11 @@ export class TrucoRoom extends DurableObject {
       }
 
       case 'start': {
-        if (!lobbyHost) return;
+        if (!lobbyHost || r.quick) return;
         // de a uno: así botName() ve los nombres que ya se pusieron y no repite
         if (msg.fillBots) r.seats.forEach((s, i) => s || (r.seats[i] = { bot: true, name: this.botName() }));
         if (r.seats.some((s) => !s)) return this.send(ws, { t: 'error', msg: 'Faltan jugadores (o llená con bots)' });
-        r.status = 'playing';
-        const { mode, target, trucoDesdeSegunda } = r.cfg;
-        r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
-        await this.rec.start(r);
-        await this.loadBrains();
-        this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
-        this.afterDeal();
+        await this.beginGame();
         return this.commit();
       }
 
@@ -283,7 +283,7 @@ export class TrucoRoom extends DurableObject {
       }
 
       case 'to-lobby': {
-        if (!isHost || r.status !== 'ended') return;
+        if (!isHost || r.status !== 'ended' || r.quick) return;
         r.status = 'lobby';
         r.game = null;
         r.lastMatch = null;
@@ -337,6 +337,7 @@ export class TrucoRoom extends DurableObject {
 
   async tick() {
     const r = this.room;
+    if (r?.status === 'lobby' && r.quick) return this.quickTick();
     if (!r || r.status !== 'playing') return;
     const g = r.game;
     const now = Date.now();
@@ -430,6 +431,37 @@ export class TrucoRoom extends DurableObject {
     else await this.scheduleAlarm();
   }
 
+  // ---- partida rápida ----
+  // Si el que buscaba se fue, no se sigue llenando (la sala queda vacía y el Lobby la olvida).
+  async quickTick() {
+    const r = this.room;
+    const q = r.quick;
+    if (!this.online().size) return;
+    if (Date.now() >= q.nextAt) {
+      const free = this.freeSeat();
+      if (free != null) {
+        const used = new Set(r.seats.filter(Boolean).map((s) => s.name));
+        const seat = rivalSeat(q.elo, rng, used);
+        r.seats[free] = seat;
+        this.addSystemChat(`${seat.name} se sentó a la mesa`);
+      }
+      q.nextAt = Date.now() + nextRivalIn(false, rng);
+      if (r.seats.every(Boolean)) await this.beginGame();
+    }
+    await this.commit();
+  }
+
+  async beginGame() {
+    const r = this.room;
+    r.status = 'playing';
+    const { mode, target, trucoDesdeSegunda } = r.cfg;
+    r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
+    await this.rec.start(r);
+    await this.loadBrains();
+    this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
+    this.afterDeal();
+  }
+
   // ---- lógica de sala ----
   // Jugada de un bot (o de un ausente): si el motor la acepta, queda grabada.
   botAct(seat, a) {
@@ -486,9 +518,10 @@ export class TrucoRoom extends DurableObject {
     if (!g.trampas) return;
     const behind = (s) => g.score[1 - team(s)] - g.score[team(s)] > g.target * BOT.behind;
     r.seats.forEach((s, i) => {
-      if (s?.bot && rng() < (behind(i) ? BOT.peekBehind : BOT.peek)) r.botPeek[i] = true;
+      // en partida rápida (por ELO) los rivales automáticos no hacen trampa
+      if (s?.bot && !s.disguised && rng() < (behind(i) ? BOT.peekBehind : BOT.peek)) r.botPeek[i] = true;
     });
-    if (r.seats[g.dealer]?.bot && rng() < (behind(g.dealer) ? BOT.stackBehind : BOT.stack)) stackDeck(g, g.dealer, rng);
+    if (r.seats[g.dealer]?.bot && !r.seats[g.dealer].disguised && rng() < (behind(g.dealer) ? BOT.stackBehind : BOT.stack)) stackDeck(g, g.dealer, rng);
   }
 
   // Lo que necesita un bot para decidir: si espía esta mano, quiénes son bots (sus compañeros bots le
@@ -498,6 +531,7 @@ export class TrucoRoom extends DurableObject {
     return {
       peek: !!r.botPeek?.[seat],
       memo: MEMO,
+      skill: r.seats[seat]?.disguised ? botSkill(r.seats[seat].elo) : null,
       // de quién es el modelo con el que se imagina a cada rival (parte de la clave de la memoria)
       brainKey: (s) => {
         const p = r.seats[s];
@@ -508,7 +542,8 @@ export class TrucoRoom extends DurableObject {
       senas: [...(r.senaSeen?.[seat] || []), ...this.askSenas(seat)],
       hush: this.askHush(seat),
       primera: this.askPrimera(seat),
-      bots: r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0),
+      // los compañeros bots se pasan las cartas por señas; en partida rápida, no
+      bots: r.seats.map((s, i) => (s?.bot && !s.disguised ? i : -1)).filter((i) => i >= 0),
       brainOf: (s) => {
         const p = r.seats[s];
         return !p || p.bot ? null : this.brains?.[p.pid] || this.brains?.global || null;
@@ -1009,6 +1044,7 @@ export class TrucoRoom extends DurableObject {
 
   async scheduleAlarm() {
     const r = this.room;
+    if (r?.status === 'lobby' && r.quick && this.online().size) return this.ctx.storage.setAlarm(Math.max(Date.now() + 100, r.quick.nextAt));
     if (!r || r.status !== 'playing' || !this.online().size) return this.ctx.storage.deleteAlarm(); // nadie mirando: se duerme
     const now = Date.now();
     const g = r.game;
@@ -1066,6 +1102,7 @@ export class TrucoRoom extends DurableObject {
       code: r.code,
       cfg: r.cfg,
       status: r.status,
+      quick: r.quick ? { elo: r.quick.elo, startedAt: r.quick.startedAt } : null,
       seats: r.seats.map((s, i) => {
         if (!s) return null;
         const on = s.bot || online.has(s.pid);
@@ -1073,7 +1110,7 @@ export class TrucoRoom extends DurableObject {
         const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
         const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
         // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
-        return { name: s.name, bot: !!s.bot, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {} };
+        return { name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
       }),
       // el paño y el mazo son los del anfitrión
       table: (() => {
@@ -1144,6 +1181,8 @@ export class TrucoRoom extends DurableObject {
         mode: r.cfg.mode,
         target: r.cfg.target,
         isPublic: r.cfg.isPublic,
+        quick: !!r.quick,
+        elo: r.quick?.elo ?? null,
         status: r.status,
         players: r.seats.map((s) => s?.name ?? null),
         free: r.seats.filter((s) => !s).length,

@@ -1,7 +1,7 @@
 // Pantallas de entrada: iniciar sesión (Google o mail y contraseña), crear la cuenta y elegir el nombre.
 // main.js decide cuál se ve: sin sesión, #login; con sesión pero sin perfil, #onboard.
-import { AUTH } from './config.js';
-import { $, $$, initial } from './dom.js';
+import { AUTH, SKILL_LEVELS, DEFAULT_LEVEL, COINS } from './config.js';
+import { $, $$, esc, initial } from './dom.js';
 import { signInWithGoogle, signInWithPassword, signUp, chooseUsername, signOut } from './auth.js';
 
 const SCREENS = ['#boot', '#login', '#onboard'];
@@ -77,6 +77,10 @@ export function initAccount(done, out) {
   // elegir el nombre (una sola vez)
   const name = $('#onboard-name');
   $('#onboard-hint').textContent = AUTH.usernameHint + '.';
+  $('#onboard-levels').insertAdjacentHTML('beforeend', SKILL_LEVELS.map((l) => `<label class="a-level">
+    <input type="radio" name="level" value="${esc(l.key)}" ${l.key === DEFAULT_LEVEL ? 'checked' : ''}>
+    <span><b>${esc(l.label)}</b><small>${esc(l.desc)}</small></span><em>${l.elo}</em></label>`).join(''));
+  $('#onboard-form').insertAdjacentHTML('beforeend', `<p class="a-switch">Te regalamos ${COINS.signup} monedas para empezar.</p>`);
   name.addEventListener('input', () => {
     $('#onboard-av').textContent = initial(name.value);
     $('#onboard-msg').textContent = '';
@@ -89,7 +93,7 @@ export function initAccount(done, out) {
       return name.focus();
     }
     try {
-      await chooseUsername(v);
+      await chooseUsername(v, new FormData($('#onboard-form')).get('level'));
       await done();
     } catch (err) {
       $('#onboard-msg').textContent = err.message;

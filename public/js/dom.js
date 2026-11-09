@@ -37,6 +37,14 @@ export const savedName = () => store.get(KEYS.name) || 'Invitado';
 // Primera letra de un nombre para los avatares (sin escapar: el que la pone en innerHTML usa esc()).
 export const initial = (name) => [...String(name ?? '').trim()][0]?.toUpperCase() || '?';
 
+// Foto de perfil, o la inicial si no tiene. p: { name o username, avatar }. Devuelve HTML ya escapado.
+export function avatarHtml(p, cls = '') {
+  const name = p?.username ?? p?.name;
+  return p?.avatar
+    ? `<img class="w-av photo ${cls}" src="${esc(p.avatar)}" alt="" loading="lazy">`
+    : `<span class="w-av ${cls}">${esc(initial(name))}</span>`;
+}
+
 // Lee una vez y borra (para pasar un dato de una pantalla a otra).
 export function takeSession(key, value) {
   const hit = sessionStorage.getItem(key) === value;

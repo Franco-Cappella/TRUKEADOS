@@ -33,6 +33,11 @@ export const ROUTES = {
     config: '/api/config',
     me: '/api/me',
     matches: '/api/matches',
+    avatar: '/api/me/avatar',
+    friends: '/api/friends',
+    friendsRespond: '/api/friends/respond',
+    friendsRemove: '/api/friends/remove',
+    ranking: (mode) => `/api/ranking?mode=${mode}`,
     shop: '/api/shop',
     buy: '/api/shop/buy',
     equip: '/api/shop/equip',
@@ -116,31 +121,92 @@ export const AUTH = {
   profileTtl: 60_000, // cuánto se guarda un perfil leído en memoria del Worker
 };
 export const ELO_START = 1200;
-// ELO por modo. Solo cuentan las partidas entre personas (ningún bot sentado al empezar). En equipo se usa el
-// promedio de cada equipo y todos los del equipo suman o restan lo mismo.
+// Al registrarte elegís tu nivel y arrancás en ese ELO (en los tres modos).
+export const SKILL_LEVELS = [
+  { key: 'nuevo', elo: 400, label: 'Recién empiezo', desc: 'Estoy aprendiendo las reglas' },
+  { key: 'principiante', elo: 800, label: 'Principiante', desc: 'Sé jugar, pero me cuesta cantar y mentir' },
+  { key: 'intermedio', elo: 1200, label: 'Intermedio', desc: 'Juego seguido con amigos' },
+  { key: 'avanzado', elo: 1600, label: 'Avanzado', desc: 'Leo a los rivales y sé cuándo farolear' },
+  { key: 'experto', elo: 2000, label: 'Experto', desc: 'Gano torneos y me sé todas las señas' },
+];
+export const DEFAULT_LEVEL = 'intermedio';
+export const levelElo = (key) => (SKILL_LEVELS.find((l) => l.key === key) || SKILL_LEVELS.find((l) => l.key === DEFAULT_LEVEL)).elo;
+// ELO por modo: cuenta contra personas y en partida rápida; las mesas con bots elegidos por vos no. En equipo se
+// usa el promedio de cada equipo. K baja de kStart a kMin a medida que jugás (ver elo.js).
 export const ELO = {
-  k: 32, // cuánto se mueve por partida
-  kNew: 48, // en las primeras partidas se mueve más, para llegar rápido a tu nivel
-  newGames: 10,
+  kStart: 160, // la primera partida mueve hasta 160 puntos: el sistema todavía no sabe tu nivel
+  kMin: 14, // ya ubicado, una partida pareja mueve unos 7
+  settle: 7, // cuántas partidas tarda en calmarse (a las 20 ya se mueve ~11 por partida)
+  provisional: 15, // hasta acá se muestra como "en calibración"
+  floor: 100,
 };
-// Monedas que se ganan al terminar una partida (para la tienda). Contra bots, la mitad.
-export const COINS = { game: 10, win: 10, botFactor: 0.5 };
-// Análisis post-partida: cuántos puntos equivalentes perdiste con tu decisión respecto de la mejor.
+// Partida rápida: lo que se espera gente antes de que completen la mesa rivales automáticos.
+export const MATCH = {
+  waitMin: 6000, // primer rival: entre 6 y 22 s
+  waitRand: 16000,
+  gapMin: 1500, // los siguientes, más seguidos
+  gapRand: 4000,
+  eloSpread: 150, // qué tan lejos de tu ELO aparecen
+  joinRange: 400, // a qué mesas abiertas te manda
+  cosmeticChance: 0.35,
+};
+// Qué tan bien juega un rival automático según su ELO: cuántas manos imagina, cuánto ruido mete y qué tan
+// seguido se equivoca feo (en esa decisión casi no piensa).
+export function botSkill(elo) {
+  const t = Math.max(0, Math.min(1, (elo - 400) / 1600));
+  return { samples: Math.round(6 + 44 * t), temp: 0.9 - 0.75 * t, slip: 0.3 * (1 - t) ** 1.5 };
+}
+// Monedas: al registrarte, por partida (contra bots elegidos, la mitad) y cada escalón nuevo de ELO.
+export const COINS = { signup: 200, game: 10, win: 10, botFactor: 0.5, milestoneStep: 100, milestone: 75 };
+export const AVATAR = {
+  size: 128, // lado en píxeles de la foto guardada
+  maxChars: 24000,
+  re: /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/,
+};
+export const RANKING_SIZE = 50;
+// Análisis post-partida, como el de chess.com: cada jugada se califica por cuánta chance de ganar la partida
+// perdió frente a la mejor opción (0 a 1). `max` es hasta cuánto perdido corresponde esa calificación.
 export const ANALYSIS = {
   samples: 60, // manos imaginadas por decisión (más que un bot: acá no hay apuro)
-  // hasta cuánto perdido es cada calificación (lo que pasa del último es "error grave")
+  // de mejor a peor; glyph e icon los usa la revisión
   grades: [
-    { key: 'mejor', max: 0.05, label: 'La mejor' },
-    { key: 'buena', max: 0.35, label: 'Buena' },
-    { key: 'imprecision', max: 0.8, label: 'Imprecisión' },
-    { key: 'error', max: 1.6, label: 'Error' },
-    { key: 'grave', max: Infinity, label: 'Error grave' },
+    { key: 'mejor', max: 0.002, label: 'La mejor', glyph: '★' },
+    { key: 'excelente', max: 0.01, label: 'Excelente', glyph: '✓' },
+    { key: 'buena', max: 0.025, label: 'Buena', glyph: '✓' },
+    { key: 'imprecision', max: 0.05, label: 'Imprecisión', glyph: '?!' },
+    { key: 'error', max: 0.1, label: 'Error', glyph: '?' },
+    { key: 'insensata', max: Infinity, label: 'Jugada insensata', glyph: '??' },
   ],
-  accuracyScale: 0.8, // precisión = promedio de exp(-perdido / esto), como un porcentaje
+  // calificaciones especiales, que dependen de la situación además de lo perdido
+  special: {
+    brillante: { label: 'Mentira brillante', glyph: '!!' },
+    genial: { label: 'Gran jugada', glyph: '!' },
+    arriesgada: { label: 'Jugada arriesgada', glyph: '!?' },
+    perdida: { label: 'Oportunidad perdida', glyph: '✕' },
+  },
+  bluffStrength: 0.25, // cantar con menos que esto de chance de ganar la mano es una mentira
+  onlyMoveGap: 0.06, // "gran jugada": la única buena, las demás perdían al menos esto
+  missLoss: 0.03, // "oportunidad perdida": no cantar costó al menos esto
+  accuracyScale: 0.05, // precisión = promedio de exp(-perdido / esto), como un porcentaje
   // El modelo de base de los bots supone rivales que casi nunca aceptan una falta o un retruco: contra eso,
   // cualquier farol "conviene". Para aconsejar a una persona se supone que el rival que va ganando acepta así.
   honestAccept: 0.85,
 };
+// Todas las calificaciones, de mejor a peor (para el resumen y los íconos).
+const G = Object.fromEntries(ANALYSIS.grades.map((g) => [g.key, g]));
+const S = ANALYSIS.special;
+export const GRADES = [
+  { key: 'brillante', ...S.brillante },
+  { key: 'genial', ...S.genial },
+  G.mejor,
+  G.excelente,
+  G.buena,
+  { key: 'arriesgada', ...S.arriesgada },
+  G.imprecision,
+  G.error,
+  G.insensata,
+  { key: 'perdida', ...S.perdida },
+];
 export const HISTORY_PAGE = 20; // partidas por página en el historial
 
 // ------------------------------------------------------------------ tienda y personalización

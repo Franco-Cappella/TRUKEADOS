@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newBrain, train, BRAIN_VERSION } from '../public/js/brain.js';
+import { MATCH } from '../public/js/config.js';
 
 const MIN = 60_000;
 const MAX_LISTED = 50;
@@ -84,10 +85,11 @@ export class Lobby extends DurableObject {
     return { open: open.sort(byRecent).slice(0, MAX_LISTED), live: live.sort(byRecent).slice(0, MAX_LISTED) };
   }
 
-  // Partida rápida: la sala pública de ese modo a la que le falta menos gente.
-  async findOpen(mode) {
+  // Partida rápida: la mesa de partida rápida de ese modo y de un ELO parecido a la que le falta menos gente.
+  async findOpen(mode, elo) {
     const { open } = await this.list();
-    const r = open.filter((x) => x.mode === mode).sort((a, b) => a.free - b.free)[0];
+    const near = (x) => x.quick && (elo == null || x.elo == null || Math.abs(x.elo - elo) <= MATCH.joinRange);
+    const r = open.filter((x) => x.mode === mode && near(x)).sort((a, b) => a.free - b.free)[0];
     return r ? r.code : null;
   }
 }

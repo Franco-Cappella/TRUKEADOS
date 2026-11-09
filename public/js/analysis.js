@@ -1,9 +1,10 @@
-// Análisis post-partida, al estilo de los de ajedrez: para cada decisión de un jugador, cuánto valía cada opción
-// (con lo que él veía en ese momento: sus cartas y las de la mesa) y cuánto perdió con la que eligió. La evaluación
-// es la de los bots (bot.js, evaluateDecision), sin faroles ni ruido y con más manos imaginadas.
+// Análisis post-partida, como la revisión de chess.com. Para cada decisión: cuánto valía cada opción (con lo que el
+// jugador veía en ese momento: sus cartas y las de la mesa), cuánta chance de ganar la partida perdió con la que
+// eligió, y qué calificación le toca. Además, la chance de ganar de cada equipo a lo largo de la partida.
+// La evaluación es la de los bots (bot.js), sin faroles ni ruido y con más manos imaginadas.
 // Compartido y sin DOM: corre en un Web Worker (analysis-worker.js) y en los tests.
-import { evaluateDecision } from './bot.js';
-import { ANALYSIS } from './config.js';
+import { evaluateDecision, winChance } from './bot.js';
+import { ANALYSIS, GRADES } from './config.js';
 import { handFrames } from './replay.js';
 
 const clone = (o) => (typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o)));
@@ -32,10 +33,27 @@ function chosenOption(options, a) {
 
 export const gradeOf = (loss) => ANALYSIS.grades.find((g) => loss <= g.max);
 
+const isCall = (a) => a?.t === 'truco' || a?.t === 'envido';
+
+/**
+ * Calificación de una jugada. loss: chance de ganar perdida (0 a 1). gap: cuánto peor era la segunda opción.
+ * strength: chance de ganar lo que se está cantando (la mano o el envido), con lo que veía. folded: no se lo quisieron.
+ */
+export function classify({ a, best, loss, gap, strength, folded }) {
+  const S = ANALYSIS;
+  const bluff = isCall(a) && strength < S.bluffStrength;
+  if (bluff && (loss <= S.grades[0].max || (folded && loss <= S.grades[2].max))) return 'brillante';
+  if (bluff && loss <= S.grades[3].max) return 'arriesgada';
+  if (!isCall(a) && isCall(best) && strength >= 0.6 && loss >= S.missLoss) return 'perdida';
+  if (loss <= S.grades[0].max && gap >= S.onlyMoveGap) return 'genial';
+  return gradeOf(loss).key;
+}
+
 /**
  * Analiza las decisiones de `seats` en una mano. Devuelve una lista con un elemento por paso evaluado:
- * { frame, seat, loss, grade, chosen: {a, ev}, best: {a, ev}, options }. Las decisiones que no se evalúan
- * (cantar los tantos, flor, mostrar, irse al mazo) no aparecen.
+ * { frame, seat, loss, points, grade, chosen: {a, ev}, best: {a, ev}, options }. loss: chance de ganar perdida;
+ * points: lo mismo en puntos de la partida. Las decisiones que no se evalúan (cantar los tantos, flor, mostrar, irse al
+ * mazo) no aparecen.
  */
 export function analyzeHand(hand, seats, seed = 1) {
   const rng = seeded(seed);
@@ -49,9 +67,25 @@ export function analyzeHand(hand, seats, seed = 1) {
     const chosen = chosenOption(ev.options, f.a);
     if (!chosen) continue;
     const best = ev.options.reduce((x, y) => (y.ev > x.ev ? y : x));
-    const loss = Math.max(0, best.ev - chosen.ev);
-    out.push({ frame: i, seat: f.seat, loss, grade: gradeOf(loss).key, chosen, best, options: ev.options });
+    const points = Math.max(0, best.ev - chosen.ev);
+    const loss = points * ev.slope;
+    const others = ev.options.filter((o) => o !== chosen).map((o) => o.ev);
+    const gap = Math.max(0, (chosen.ev - Math.max(...others)) * ev.slope);
+    const folded = frames[i + 1]?.a?.t === 'noquiero';
+    const strength = f.a.t === 'envido' ? ev.envidoWin : ev.handWin;
+    const grade = classify({ a: f.a, best: best.a, loss, gap, strength, folded });
+    out.push({ frame: i, seat: f.seat, loss, points, grade, chosen, best, options: ev.options });
   }
+  return out;
+}
+
+/**
+ * Chance de ganar del equipo 0 en cada cuadro de la partida, viendo todas las cartas (para el gráfico).
+ * [{ hand, frame, p }], en orden.
+ */
+export function winSeries(handsFrames) {
+  const out = [];
+  handsFrames.forEach((frames, hand) => frames.forEach((f, frame) => out.push({ hand, frame, p: winChance(f.g, 0) })));
   return out;
 }
 
@@ -64,7 +98,7 @@ export function accuracy(results) {
 
 /** Cuántas decisiones hubo de cada calificación. */
 export function gradeCounts(results) {
-  const c = Object.fromEntries(ANALYSIS.grades.map((g) => [g.key, 0]));
+  const c = Object.fromEntries(GRADES.map((g) => [g.key, 0]));
   for (const r of results) c[r.grade]++;
   return c;
 }
