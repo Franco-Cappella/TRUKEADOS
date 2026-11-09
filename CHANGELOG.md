@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.14.6 — créditos y baraja pixel art
+- Los créditos (cartas, voces, baraja pixel art, librerías y tipografía) pasan a un solo diálogo, "Créditos y licencias", al pie del menú. La tienda ya no muestra el crédito debajo de cada cosa.
+- En la tienda, pasando el mouse por una baraja se ve la baraja abierta: el as y las figuras en abanico y del 2 al 7 abajo.
+- Arreglado: con la baraja pixel art puesta, tu mano se seguía viendo con la baraja de siempre (solo cambiaban las cartas tiradas).
+
 ## 1.14.5 — ajustes y nombre de usuario
 - El nombre de usuario se puede cambiar una vez cada 14 días, desde Ajustes.
 - Ajustes reordenado: cerrar sesión va al final, se puede probar la voz, y hay dos opciones nuevas (cartelito de las cartas y gráficos livianos).

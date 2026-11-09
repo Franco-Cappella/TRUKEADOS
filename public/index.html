@@ -257,7 +257,7 @@
         </div>
 
         <footer class="credits">
-          Cartas: “Naipes Libres” de Basquetteur (Wikimedia Commons), <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, vectorizadas por gjenkins20. Voces: <a href="/voz/LICENCIAS.txt" target="_blank" rel="noopener">Piper</a>. Baraja pixel art: <a href="https://jcanabal.itch.io/spanish-deck-pixel-art" target="_blank" rel="noopener">Spanish Deck - Pixel Art by jcanabal</a>.
+          <button type="button" class="credits-link" id="credits-open">Créditos y licencias</button>
         </footer>
       </main>
     </div>
@@ -272,6 +272,21 @@
       <fieldset><legend>Quién entra</legend><div class="dl-seg"><label><input type="radio" name="isPublic" value="0" checked><span>Con código</span></label><label><input type="radio" name="isPublic" value="1"><span>Pública</span></label></div></fieldset>
       <p class="dl-hint">La flor, la muestra y las trampas se eligen adentro.</p>
       <div class="dl-foot"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn primary" value="ok">Crear mesa</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="credits-dialog" class="dl cr-dialog" aria-labelledby="credits-title">
+    <form method="dialog">
+      <h2 id="credits-title">Créditos</h2>
+      <p class="dl-hint">Trukeados usa trabajo de otras personas. Gracias a todas.</p>
+      <dl class="cr-list" id="credits-list">
+        <div><dt>Cartas</dt><dd>“Naipes Libres” de Basquetteur (Wikimedia Commons), vectorizadas por gjenkins20. <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></dd></div>
+        <div><dt>Voces</dt><dd>Generadas con Piper y sherpa-onnx, voz davefx (CC0). <a href="/voz/LICENCIAS.txt" target="_blank" rel="noopener">Licencias</a></dd></div>
+        <div><dt>3D</dt><dd>three.js, licencia MIT. <a href="/vendor/three.LICENSE.txt" target="_blank" rel="noopener">Licencia</a></dd></div>
+        <div><dt>Cuentas</dt><dd>Supabase Auth, licencia MIT. <a href="/vendor/supabase-auth.LICENSE.txt" target="_blank" rel="noopener">Licencia</a></dd></div>
+        <div><dt>Tipografía</dt><dd>Archivo, de Omnibus-Type (Google Fonts), SIL Open Font License.</dd></div>
+      </dl>
+      <div class="dl-foot"><button class="btn primary" value="ok" autofocus>Listo</button></div>
     </form>
   </dialog>
 

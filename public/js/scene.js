@@ -1328,7 +1328,7 @@ export class TableScene {
       for (let i = 0; i < cards; i++) {
         const start = !this.spectator && seat === this.me && mine[i] ? mine[i].clone() : this.handOrigin(seat);
         setTimeout(() => {
-          const card = makeCard('back', true);
+          const card = makeCard('back', true, this.seatDecks[seat] || null);
           card.rotation.set(Math.PI / 2, 0, this.seatAngle(seat));
           card.position.copy(start);
           this.scene.add(card);
@@ -1375,7 +1375,9 @@ export class TableScene {
   }
 
   setMyCards(cards, selected) {
-    const ids = cards.join(',');
+    // tu mano también se ve con la baraja que tenés puesta (y se rearma si la cambiás)
+    const deck = this.spectator ? null : this.seatDecks[this.me] || null;
+    const ids = `${deck || ''}|${cards.join(',')}`;
     if (ids !== this.handIds) {
       this.handIds = ids;
       // guardo dónde estaba cada carta para que la mano la lleve desde ahí hasta la mesa
@@ -1391,7 +1393,7 @@ export class TableScene {
         return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
       });
       this.handCards = sorted.map((id) => {
-        const c = makeCard(id, false);
+        const c = makeCard(id, false, deck);
         c.scale.setScalar(1.1);
         c.traverse((o) => {
           if (o.material) {

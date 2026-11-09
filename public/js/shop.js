@@ -86,6 +86,105 @@ function drawDeck(target, deck) {
   });
 }
 
+// La baraja abierta (como en la imagen del autor): el as y las figuras en abanico arriba y
+// del 2 al 7 abajo (la baraja de truco no tiene 8 ni 9).
+// Se dibuja a escala 2 sin suavizar y se guarda por baraja.
+const PEEK_SCALE = 2;
+const peekCache = new Map();
+function loadImg(src) {
+  return new Promise((ok, fail) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = fail;
+    img.src = src;
+  });
+}
+function deckSpread(deck, suit = 'E') {
+  if (peekCache.has(deck)) return peekCache.get(deck);
+  const k = PEEK_SCALE;
+  const cw = 73 * k;
+  const ch = 113 * k;
+  const c = document.createElement('canvas');
+  c.width = 400 * k;
+  c.height = 262 * k;
+  const ctx = c.getContext('2d');
+  const top = ['1', '10', '11', '12'];
+  const low = ['2', '3', '4', '5', '6', '7'];
+  const ready = Promise.all([...top, ...low].map((n) => loadImg(ROUTES.deckCard(deck, n + suit)))).then((imgs) => {
+    ctx.imageSmoothingEnabled = false;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 6 * k;
+    ctx.shadowOffsetY = 2 * k;
+    // abajo: del 2 al 7 encimadas, de izquierda a derecha
+    const step = 60 * k;
+    const x0 = (c.width - (step * (low.length - 1) + cw)) / 2;
+    imgs.slice(4).forEach((img, i) => ctx.drawImage(img, x0 + i * step, c.height - ch - 4 * k, cw, ch));
+    // arriba: el as y las figuras en abanico
+    top.forEach((_, i) => {
+      const a = (i - 1.5) * 0.09;
+      ctx.save();
+      ctx.translate(c.width / 2 + (i - 1.5) * 64 * k, 6 * k + ch / 2 + Math.abs(i - 1.5) * 5 * k);
+      ctx.rotate(a);
+      ctx.drawImage(imgs[i], -cw / 2, -ch / 2, cw, ch);
+      ctx.restore();
+    });
+    return c;
+  });
+  peekCache.set(deck, ready);
+  return ready;
+}
+
+let peekEl = null;
+let peekFor = null;
+function showPeek(itemEl) {
+  const item = cosmeticById(itemEl.dataset.peek);
+  if (!item) return;
+  if (!peekEl) {
+    peekEl = document.createElement('div');
+    peekEl.className = 'sh-peek';
+    peekEl.setAttribute('aria-hidden', 'true');
+    peekEl.innerHTML = '<canvas></canvas><b></b>';
+    document.body.append(peekEl);
+  }
+  peekFor = itemEl;
+  deckSpread(item.id).then((src) => {
+    if (peekFor !== itemEl) return;
+    const cv = peekEl.querySelector('canvas');
+    cv.width = src.width;
+    cv.height = src.height;
+    cv.getContext('2d').drawImage(src, 0, 0);
+    peekEl.querySelector('b').textContent = item.name;
+    // arriba de la tarjeta si entra; si no, abajo. Sin salirse de la pantalla.
+    const r = itemEl.getBoundingClientRect();
+    const pw = peekEl.offsetWidth;
+    const ph = peekEl.offsetHeight;
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - pw / 2), window.innerWidth - pw - 8);
+    const top = r.top - ph - 10 >= 8 ? r.top - ph - 10 : Math.min(r.bottom + 10, window.innerHeight - ph - 8);
+    peekEl.style.left = `${left}px`;
+    peekEl.style.top = `${top}px`;
+    peekEl.classList.add('on');
+  }).catch(() => {});
+}
+function hidePeek(itemEl) {
+  if (itemEl && peekFor !== itemEl) return;
+  peekFor = null;
+  peekEl?.classList.remove('on');
+}
+
+// Créditos: lo fijo está en index.html; lo de la tienda (barajas de otros autores) sale de COSMETICS.
+function initCredits() {
+  const dialog = $('#credits-dialog');
+  const list = $('#credits-list');
+  for (const it of COSMETICS.filter((c) => c.credit)) {
+    if (list.querySelector(`[data-credit="${it.id}"]`)) continue;
+    const row = document.createElement('div');
+    row.dataset.credit = it.id;
+    row.innerHTML = `<dt>${esc(it.name)}</dt><dd><a href="${esc(it.credit.url)}" target="_blank" rel="noopener">${esc(it.credit.text)}</a></dd>`;
+    list.append(row);
+  }
+  $('#credits-open').addEventListener('click', () => dialog.showModal());
+}
+
 const baseLook = () => lookFor(savedName(), 0);
 
 // Vista previa de una cosa de la tienda (o de lo que tenés puesto si item es null).
@@ -108,6 +207,25 @@ function setCoins(coins) {
 
 export function initShop(paint) {
   onCoins = paint;
+  initCredits();
+  const list = $('#shop-list');
+  list.addEventListener('pointerover', (e) => {
+    const it = e.target.closest('.sh-item[data-peek]');
+    if (it && it !== peekFor) showPeek(it);
+  });
+  list.addEventListener('pointerout', (e) => {
+    const it = e.target.closest('.sh-item[data-peek]');
+    if (it && !it.contains(e.relatedTarget)) hidePeek(it);
+  });
+  list.addEventListener('focusin', (e) => {
+    const it = e.target.closest('.sh-item[data-peek]');
+    if (it) showPeek(it);
+  });
+  list.addEventListener('focusout', (e) => {
+    const it = e.target.closest('.sh-item[data-peek]');
+    if (it && !it.contains(e.relatedTarget)) hidePeek(it);
+  });
+  window.addEventListener('scroll', () => hidePeek(), true);
   $('#shop-list').addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-buy]');
     if (!b) return;
@@ -157,6 +275,7 @@ export async function loadShop(tab) {
 }
 
 function renderShop() {
+  hidePeek();
   $('#shop-coins').textContent = state.coins;
   $('#shop-list').innerHTML = COSMETIC_SLOTS.map((s) => {
     const items = COSMETICS.filter((c) => c.slot === s.key);
@@ -167,7 +286,8 @@ function renderShop() {
         const btn = owned
           ? `<span class="sh-own">${worn ? 'Puesto' : 'Ya lo tenés'}</span>`
           : `<button type="button" class="btn small ${state.coins >= it.price ? 'primary' : ''}" data-buy="${esc(it.id)}" ${state.coins >= it.price ? '' : 'disabled'}>${it.price} monedas</button>`;
-        return `<div class="sh-item ${owned ? 'owned' : ''}"><canvas width="${CHARACTER_SLOTS.includes(it.slot) ? 128 : 96}" height="${CHARACTER_SLOTS.includes(it.slot) ? 140 : 64}" data-preview="${esc(it.id)}"></canvas><b>${esc(it.name)}</b>${it.credit ? `<a class="sh-credit" href="${esc(it.credit.url)}" target="_blank" rel="noopener">${esc(it.credit.text)}</a>` : ''}${btn}</div>`;
+        const peek = it.slot === 'baraja' ? ` data-peek="${esc(it.id)}"` : '';
+        return `<div class="sh-item ${owned ? 'owned' : ''}"${peek}><canvas width="${CHARACTER_SLOTS.includes(it.slot) ? 128 : 96}" height="${CHARACTER_SLOTS.includes(it.slot) ? 140 : 64}" data-preview="${esc(it.id)}"></canvas><b>${esc(it.name)}</b>${btn}</div>`;
       })
       .join('')}</div></section>`;
   }).join('');
