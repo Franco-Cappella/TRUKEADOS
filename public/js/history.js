@@ -265,6 +265,11 @@ class Viewer {
     s.syncTable(h.table, { animate });
     s.setDealer(g.dealer);
     s.setMuestra(h.muestra);
+    const fold = f.events.find((e) => e.type === 'mazo');
+    if (fold && animate && frame) {
+      const before = this.frames[hand][frame - 1].g.h.inHand;
+      s.foldCards(before.map((c, seat) => ({ seat, cards: team(seat) === team(fold.seat) ? c.length : 0 })));
+    }
     const said = spoken(f);
     if (said && f.seat != null && f.seat !== this.me) s.speak(f.seat, 1400);
     this.paintPlates();

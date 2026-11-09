@@ -131,3 +131,35 @@ test('los rivales automáticos no hacen trampa ni se pasan las cartas', async ()
   assert.deepEqual(h.room.botCtx(1).bots, []);
   assert.ok(h.room.botCtx(1).skill);
 });
+
+test('después de tirar dos encimadas, si te cantan truco podés contestar', async () => {
+  let cases = 0;
+  for (let i = 0; i < 60 && cases < 8; i++) {
+    const h = await makeRoom({ mode: '1v1', options: { trampas: true } });
+    const ws = await h.join('u0');
+    await h.send(ws, { t: 'start', fillBots: true });
+    const r = h.room.room;
+    r.dealUntil = h.now;
+    r.botReadyAt = 0;
+    let doubled = false;
+    await h.room.scheduleAlarm();
+    for (let t = 0; t < 40_000 && r.game.h.phase === 'play'; t += 200) {
+      await h.tick(200);
+      const st = h.state(ws);
+      const a = st?.game?.actions;
+      if (!a) continue;
+      if (!doubled && a.canDouble) {
+        const [bottom, top] = r.game.h.inHand[0];
+        await h.send(ws, { t: 'act', a: { t: 'play2', bottom, top } });
+        doubled = true;
+        continue;
+      }
+      if (doubled && r.game.h.truco.pending && r.game.h.truco.pending.byTeam === 1) {
+        cases++;
+        assert.ok(h.state(ws).game.actions.quiero && h.state(ws).game.actions.noquiero, 'no te deja contestar');
+        break;
+      }
+    }
+  }
+  assert.ok(cases > 0, 'nunca cantaron truco');
+});

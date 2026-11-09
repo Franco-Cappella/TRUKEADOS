@@ -281,6 +281,7 @@ export class RoomClient {
       if (!first) this.noticeBurned(prev?.game, g);
       const evs = g.ev || [];
       const lastId = evs.length ? evs[evs.length - 1].id : 0;
+      this.prevCounts = prev?.game?.h?.handCounts;
       if (this.lastEv !== null && !first) for (const e of evs) if (e.id > this.lastEv) this.onEvent(e, g);
       this.lastEv = Math.max(this.lastEv ?? 0, lastId);
       const myTurn = (gg) => gg?.h?.phase === 'play' && gg.waiting.seats.includes(st.you);
@@ -377,6 +378,8 @@ export class RoomClient {
       case 'mazo':
         if (!shown) this.bubble(e.seat, g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', '', 2400);
         flick(0.15, 0.2);
+        // las cartas que le quedaban a todo el equipo vuelven al mazo
+        this.scene.foldCards(g.h.table.map((_, s) => s).filter((s) => team(s) === team(e.seat)).map((seat) => ({ seat, cards: this.prevCounts?.[seat] ?? 0 })));
         break;
       case 'play':
         if (!shown) flick();

@@ -458,6 +458,8 @@ const HAND_DESIGN_FOV = { landscape: 62, portrait: 78 };
 const HAND_DEPTH = 0.62; // distancia de la mano a los ojos (antes de compensar el FOV)
 const tanHalf = (deg) => Math.tan(THREE.MathUtils.degToRad(deg / 2));
 const FLY_MS = 260; // carta del mazo a cada jugador
+const FOLD_MS = 420; // irse al mazo: cada carta vuela hasta el mazo
+const FOLD_GAP = 90;
 
 // dónde quedan tus cartas en la mesa (fracción del radio desde el centro) y la mano en pantalla
 const MY_TABLE_START = 0.42;
@@ -475,6 +477,7 @@ export class TableScene {
     this.renderer.toneMapping = THREE.NoToneMapping;
     maxAniso = this.renderer.capabilities.getMaxAnisotropy();
     container.appendChild(this.renderer.domElement);
+    this.pendingLabels = true;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(SCENE.background);
@@ -490,11 +493,11 @@ export class TableScene {
     this.R = 0.9;
     this.chars = new Map(); // seat -> { mesh, canvas, ctx, tex, look, state }
     this.tableCards = new Map(); // "seat:idx" -> card
-    // cartel con el nombre de la carta de la mesa que está bajo el mouse (de lejos no se distinguen)
-    this.cardTip = document.createElement('div');
-    this.cardTip.id = 'card-tip';
-    this.cardTip.className = 'hidden';
-    document.body.appendChild(this.cardTip);
+    // cartelito con el nombre de cada carta de la mesa (de lejos no se distinguen): al pasar el mouse se va y se ve la carta
+    this.cardLabels = document.createElement('div');
+    this.cardLabels.className = 'card-labels';
+    this.cardLabelEls = new Map(); // "seat:idx" -> elemento
+    this.tipCard = null;
     this.handCards = [];
     this.selected = null;
     this.hover = null;
@@ -1219,18 +1222,76 @@ export class TableScene {
     return o || null;
   }
 
+  // La carta que se está mirando pierde su cartelito para que se vea entera. ms: en el celular, por un rato.
   showCardTip(card, ms = 0) {
-    const tip = this.cardTip;
     clearTimeout(this.cardTipT);
-    const id = card?.userData.id;
-    if (!card || !this.pointerPx) return tip.classList.add('hidden');
-    const known = id && id !== 'back' && id !== 'blank';
-    const name = known ? cardName(id) : 'Carta tapada';
-    tip.textContent = name[0].toUpperCase() + name.slice(1) + (known && card.userData.burned ? ' · quemada (vale un 4)' : '');
-    tip.style.left = this.pointerPx.x + 'px';
-    tip.style.top = this.pointerPx.y + 'px';
-    tip.classList.remove('hidden');
-    if (ms) this.cardTipT = setTimeout(() => tip.classList.add('hidden'), ms);
+    this.tipCard = card || null;
+    if (card && ms) this.cardTipT = setTimeout(() => (this.tipCard = null), ms);
+  }
+
+  // Cartelitos de las cartas de la mesa: quedan sobre la parte de la carta que no tapa la siguiente.
+  updateCardLabels() {
+    if (this.pendingLabels) {
+      this.pendingLabels = false;
+      this.container.appendChild(this.cardLabels);
+    }
+    const r = this.renderer.domElement.getBoundingClientRect();
+    const p = new THREE.Vector3();
+    for (const [key, el] of this.cardLabelEls) {
+      if (this.tableCards.has(key)) continue;
+      el.remove();
+      this.cardLabelEls.delete(key);
+    }
+    for (const [key, card] of this.tableCards) {
+      const { id, faceDown, burned } = card.userData;
+      let el = this.cardLabelEls.get(key);
+      const [seat, idx] = key.split(':').map(Number);
+      // dos encimadas: la de abajo no se ve, no lleva cartel
+      const top = this.tableCards.get(`${seat}:${idx + 1}`);
+      const covered = top && top.position.distanceTo(card.position) < CARD_H * 0.2;
+      if (!id || id === 'back' || id === 'blank' || faceDown || covered) {
+        if (el) el.style.display = 'none';
+        continue;
+      }
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'card-label';
+        this.cardLabels.appendChild(el);
+        this.cardLabelEls.set(key, el);
+      }
+      const name = cardName(id);
+      const text = name[0].toUpperCase() + name.slice(1) + (burned ? ' · quemada' : '');
+      if (el.textContent !== text) el.textContent = text;
+      p.copy(card.position).addScaledVector(this.seatDir(seat), CARD_H * TABLE_CARD_SCALE * 0.28).project(this.camera);
+      const visible = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1 && this.tipCard !== card;
+      el.style.display = visible ? '' : 'none';
+      if (visible) el.style.transform = `translate(calc(${((p.x + 1) / 2) * r.width}px - 50%), calc(${((1 - p.y) / 2) * r.height}px - 50%))`;
+    }
+  }
+
+  // Irse al mazo: las cartas que le quedaban a cada uno vuelan boca abajo hasta el mazo.
+  // list: [{ seat, cards }] (cuántas tenía); para las tuyas, salen desde donde estaban en tu mano.
+  foldCards(list) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !this.deck) return;
+    const deck = this.deck.getWorldPosition(new THREE.Vector3()).setY(TABLE_Y + 0.03);
+    const mine = Object.values(this.lastHandPos || {});
+    list.forEach(({ seat, cards }) => {
+      for (let i = 0; i < cards; i++) {
+        const start = !this.spectator && seat === this.me && mine[i] ? mine[i].clone() : this.handOrigin(seat);
+        setTimeout(() => {
+          const card = makeCard('back', true);
+          card.rotation.set(Math.PI / 2, 0, this.seatAngle(seat));
+          card.position.copy(start);
+          this.scene.add(card);
+          this.tween(FOLD_MS, (t) => {
+            const e = easeOut(t);
+            card.position.lerpVectors(start, deck, e);
+            card.position.y += Math.sin(Math.PI * e) * 0.14;
+            card.rotation.z = this.seatAngle(seat) + e * 1.4;
+          }, () => this.scene.remove(card));
+        }, i * FOLD_GAP);
+      }
+    });
   }
 
   click(e) {
@@ -1680,5 +1741,6 @@ export class TableScene {
     }
     this.onFrame?.();
     this.renderer.render(this.scene, this.camera);
+    this.updateCardLabels();
   }
 }
