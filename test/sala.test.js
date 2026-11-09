@@ -386,3 +386,20 @@ test('sala: las respuestas al "¿queremos?" le sirven al bot que preguntó', asy
   r.asks[T].answers = { 3: 'vos' };
   assert.deepEqual(h.room.askSenas(1), []);
 });
+
+test('sala: "callado" sabe si los rivales todavía pueden cantar', async () => {
+  // reparte el 0: es mano el 1 y los pies son el 0 (nosotros) y el 3 (ellos), que tira antes
+  const { h, r } = await table({ dealer: 0 });
+  const tantos = { seat: 0, kind: 'tantos' };
+  const truco = { seat: 0, kind: 'truco' };
+  assert.equal(h.room.rivalsCan(tantos), true);
+  r.game.h.rounds[0].plays.push({ seat: 3, c: '4E' }); // su pie ya tiró: se le pasó el envido
+  assert.equal(h.room.rivalsCan(tantos), false);
+  assert.equal(h.room.rivalsCan(truco), true);
+  r.game.h.truco.level = 2; // el quiero es nuestro
+  assert.equal(h.room.rivalsCan(truco), false);
+  r.game.h.truco.level = 1;
+  r.game.h.r = 2; // en tercera, si ya tiraron todos los rivales no les queda turno
+  r.game.h.rounds[2] = { plays: [{ seat: 1, c: '4C' }, { seat: 3, c: '5C' }] };
+  assert.equal(h.room.rivalsCan(truco), false);
+});

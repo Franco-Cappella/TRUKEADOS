@@ -789,6 +789,20 @@ export class TrucoRoom extends DurableObject {
     return `${g.handNo}:canto:${h.truco.pending?.level || 0}:${h.envido.calls.length}:${h.flor.level || ''}`;
   }
 
+  // ¿Los rivales del que preguntó todavía pueden cantar lo que se está consultando?
+  rivalsCan(q) {
+    const g = this.room.game;
+    const h = g.h;
+    const R = 1 - team(q.seat);
+    const notPlayed = (s) => !h.mazo[s] && !h.rounds[h.r].plays.some((p) => p.seat === s);
+    if (q.kind === 'tantos') return h.r === 0 && h.envido.state === 'none' && envidoVoices(g, R).some(notPlayed);
+    if (q.kind === 'truco') {
+      if (h.truco.level > 1) return false; // el quiero es nuestro
+      return h.r < 2 || this.room.seats.some((_, s) => team(s) === R && notPlayed(s));
+    }
+    return true;
+  }
+
   // El pie del equipo que sigue en la mano (null si se fue al mazo).
   pieOf(T) {
     const g = this.room.game;
@@ -829,7 +843,7 @@ export class TrucoRoom extends DurableObject {
     const q = this.openAsk(T);
     if (!q || q.seat === seat || q.answers[seat] != null || r.game.h.mazo[seat] || !this.answerers(q).includes(seat)) return false;
     q.answers[seat] = ans;
-    const text = talkAnswer(q.kind, ans, rng, r.game.h.truco.level);
+    const text = talkAnswer(q.kind, ans, rng, this.rivalsCan(q));
     this.teamSay(seat, text);
     if (this.answerers(q).every((s) => q.answers[s] != null)) {
       q.done = true;
@@ -1341,7 +1355,7 @@ export class TrucoRoom extends DurableObject {
     const q = this.openAsk(team(seat));
     return {
       can: { tantos: this.canAsk(seat, 'tantos'), truco: this.canAsk(seat, 'truco'), primera: this.canAsk(seat, 'primera'), canto: this.canAsk(seat, 'canto') },
-      open: q ? { seat: q.seat, kind: q.kind, answered: q.answers[seat] != null, mine: q.seat === seat, mineToAnswer: this.answerers(q).includes(seat) } : null,
+      open: q ? { rivalsCan: this.rivalsCan(q), seat: q.seat, kind: q.kind, answered: q.answers[seat] != null, mine: q.seat === seat, mineToAnswer: this.answerers(q).includes(seat) } : null,
     };
   }
 

@@ -482,12 +482,10 @@ test('"¿queremos?": el bot contesta según lo que tiene', () => {
   assert.equal(botAnswer(g, seat, 'canto', () => 0), 'nada');
 });
 
-test('"callado" al preguntar por el re no dice que lo canten ellos: el quiero es nuestro', () => {
-  for (let i = 0; i < 200; i++) {
-    assert.doesNotMatch(talkAnswer('truco', 'callado', seeded(i), 2), /ellos/);
-    assert.doesNotMatch(talkAnswer('truco', 'callado', seeded(i), 3), /ellos/);
+test('"callado": dice que lo canten ellos solo si los rivales todavía pueden', () => {
+  for (const kind of ['truco', 'tantos']) {
+    const puede = new Set(Array.from({ length: 300 }, (_, i) => talkAnswer(kind, 'callado', seeded(i), true)));
+    assert.ok([...puede].some((x) => /ellos/.test(x)), kind);
+    for (let i = 0; i < 300; i++) assert.doesNotMatch(talkAnswer(kind, 'callado', seeded(i), false), /ellos/, kind);
   }
-  const antes = new Set(Array.from({ length: 200 }, (_, i) => talkAnswer('truco', 'callado', seeded(i), 1)));
-  assert.ok([...antes].some((t) => /ellos/.test(t)), 'antes de cantar el truco sí pueden cantarlo ellos');
-  assert.ok(new Set(Array.from({ length: 200 }, (_, i) => talkAnswer('tantos', 'callado', seeded(i), 2))).size > 1);
 });

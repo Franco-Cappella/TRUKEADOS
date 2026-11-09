@@ -169,10 +169,10 @@ export function talkAsk(kind, rng = Math.random, level = 1) {
 // Con 27 o 29 justos, a veces lo dice de palabra.
 export const talkTellTantos = (rng = Math.random, tanto = 0) => (TANTO_NAMES[tanto] && pick(rng, 0.5) ? TANTO_NAMES[tanto] : sayFrom(TELL_TANTOS, rng));
 
-// level: el truco en juego. Si ya se quiso, el quiero es nuestro y los rivales no pueden cantar: "callado" a secas.
-export function talkAnswer(kind, ans, rng = Math.random, level = 1) {
+// rivalsCan: si los rivales todavía pueden cantar eso. Si no, "que lo canten ellos" no tiene sentido: "callado" a secas.
+export function talkAnswer(kind, ans, rng = Math.random, rivalsCan = true) {
   const list = ASK_TALK[kind][ans];
-  return sayFrom(kind === 'truco' && ans === 'callado' && level >= 2 ? list.filter((t) => !/ellos/.test(t)) : list, rng);
+  return sayFrom(ans === 'callado' && !rivalsCan ? list.filter((t) => !/ellos/.test(t)) : list, rng);
 }
 
 export const talkIdle = (rng = Math.random) => say('idle', rng);
