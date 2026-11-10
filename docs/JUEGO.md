@@ -107,10 +107,11 @@ por defecto), igual que **no permitir trampas**.
   contraflor y contraflor al resto. No se puede mentir: la calcula el motor.
 - **Muestra** (opción): se da vuelta una carta; las piezas de ese palo (2, 4, 5, 11 y 10) pasan a ser las
   más altas y cambian el envido.
+- **Pica-pica** (opción, 3 vs 3): una mano redonda y una mano a mano contra el de enfrente.
 - Partida a **15** o a **30** (malas y buenas).
 - Detalle y fuentes (reglamento de juegosdesalon.com): [REGLAS.md](REGLAS.md).
 
-**No tiene (todavía)**: partidas de 3 con gallo / de 8 / pica-pica, chicos (mejor de dos).
+**No tiene (todavía)**: partidas de 3 con gallo / de 8, chicos (mejor de dos).
 Importa para el copy: la flor, la muestra y las trampas dependen de la sala. Se puede decir "con flor o sin
 flor", nunca que se juega con flor siempre; y "se puede hacer trampa" vale porque es lo que viene por defecto.
 

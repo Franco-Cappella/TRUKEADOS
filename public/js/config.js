@@ -11,6 +11,11 @@ export const DEFAULT_MODE = '1v1';
 export const modeLabel = (mode) => mode.replace('v', ' vs '); // '2v2' -> '2 vs 2'
 export const TARGETS = [15, 30]; // a cuántos puntos se juega
 export const DEFAULT_TARGET = 30;
+// Pica-pica (opción de sala, solo 3 vs 3): se alterna una mano redonda y una de pica-pica, en la que cada uno
+// juega mano a mano contra el de enfrente (tres duelos, uno detrás del otro). Se juega desde que un equipo llega
+// a `from` hasta que a alguno le faltan `stopLeft` o menos (a 30: de 5 a 25, "las 10 buenas"). En el pica-pica
+// la falta envido y la contraflor al resto valen `falta`, fijo.
+export const PICA_PICA = { from: 5, stopLeft: 5, falta: 6 };
 export const MAX_NAME = 20;
 export const MAX_CHAT_TEXT = 280;
 export const MAX_CHAT_HISTORY = 120;
@@ -63,6 +68,9 @@ export const TIMING = {
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
   foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
   afk: 40_000, // humano desconectado: después de esto pierde la partida (si le queda un compañero conectado, juega un bot por él)
+  // con la pestaña oculta (sigue conectado) a los afk ms juega un bot por él, pero no pierde la partida.
+  // Si le toca cantar los tantos y no está (oculto o desconectado), a los autoTanto ms se cantan solos: lo que tiene o "son buenas".
+  autoTanto: 10_000,
   botThinkMin: 1300, // los bots "piensan" entre 1,3 y 2,3 s después de lo último que pasó
   botThinkRand: 1000,
   botAfterTalk: 500, // después de que termina de decirse un canto o una frase, antes de que un bot juegue
@@ -78,6 +86,10 @@ export const TIMING = {
 // Cuánto tarda la voz en decir un texto (aprox.): los bots esperan a que termine antes de jugar.
 export const speechMs = (text) => 500 + String(text ?? '').length * 70;
 export const dealMs = (n) => TIMING.shuffle + TIMING.cut + n * 3 * TIMING.dealStep + TIMING.dealTail;
+
+// ------------------------------------------------------------------ voces
+// La voz grabada de hombre (public/voz) suena bastante más fuerte que la del dispositivo: se la baja a esta fracción.
+export const RECORDED_VOICE_GAIN = 0.5;
 
 // ------------------------------------------------------------------ señas
 // id -> { label, expr (cara que pone el personaje), desc }. El servidor solo valida los ids.
@@ -294,8 +306,11 @@ export const ROOM_OPTIONS = [
   { key: 'flor', def: false, label: 'Jugar con flor', short: 'con flor' },
   { key: 'muestra', def: false, label: 'Jugar con muestra (las piezas del palo de la carta dada vuelta son las más altas)', short: 'con muestra' },
   { key: 'trampas', def: true, invert: true, label: 'No permitir trampas (ej.: encimar cartas o mentir en el envido)', short: 'sin trampas' },
+  { key: 'picapica', def: false, modes: ['3v3'], label: 'Jugar pica-pica (una mano redonda y una mano a mano contra el de enfrente)', short: 'con pica-pica' },
 ];
+// ¿La opción sirve en este modo? (`modes`: solo en esos; el pica-pica es de 3 vs 3)
+export const optionForMode = (o, mode) => !o.modes || !mode || o.modes.includes(mode);
 // Opciones válidas a partir de lo que mande el cliente (lo que falte o no sea booleano, por defecto).
 export const roomOptions = (src) => Object.fromEntries(ROOM_OPTIONS.map((o) => [o.key, typeof src?.[o.key] === 'boolean' ? src[o.key] : o.def]));
 // Texto corto para mostrar las opciones activas ("con flor · sin trampas").
-export const roomOptionsText = (cfg) => ROOM_OPTIONS.filter((o) => cfg[o.key] !== o.def).map((o) => o.short).join(' · ');
+export const roomOptionsText = (cfg) => ROOM_OPTIONS.filter((o) => cfg[o.key] !== o.def && optionForMode(o, cfg.mode)).map((o) => o.short).join(' · ');

@@ -1,5 +1,27 @@
 # Cambios
 
+## 1.15.1 — revancha, ausentes y arreglos
+- **Revancha**: el que la pide espera y a los demás se les pregunta ("Acepto" / "No"). Arranca cuando aceptan todos;
+  al que se le cortó la conexión se lo espera (antes contaba como que aceptaba). Si uno dice que no, se cancela.
+- **Dos encimadas**: si tu equipo gana la ronda (también si mata tu compañero), la de arriba vale y no se quema.
+- **Mostrá lo que tenías**: terminada la mano (por ejemplo, después de un no quiero), podés dar vuelta las cartas que
+  no tiraste para lucirte. No cambia ningún punto.
+- **Silenciar en el chat**: tocás el nombre de alguien y no ves más sus mensajes ni sus frases (sí sus cantos y tantos).
+- **Pestaña oculta**: si te vas a otra pestaña corre la cuenta como si te hubieras desconectado y después juega un bot
+  por vos (sin perder la partida). Si te toca cantar los tantos, a los 10 s se cantan solos: lo que tenés o "son buenas".
+- Al terminar la mano se avisa si un rival había tirado dos encimadas y qué carta jugó abajo (parecía que había perdido
+  dos rondas y la mano seguía).
+- Arreglado: al volver a una partida en la que te habían cantado algo, los botones no respondían.
+- Arreglado: "Me voy al mazo" no se escuchaba. La voz grabada de hombre suena más baja (`RECORDED_VOICE_GAIN`).
+- Arreglado: los GIF de más de 800 KB se achican en el navegador (Chrome, Edge) en vez de rechazarse.
+- Arreglado: si falta la migración del cambio de nombre, el nombre se cambia igual (y el error real queda en el log).
+
+## 1.15.0 — pica-pica
+- Nueva opción de sala para 3 vs 3: **pica-pica**. Desde que un equipo llega a 5 hasta que a alguno le faltan 5, se
+  alterna una mano redonda y una de pica-pica, en la que cada uno juega mano a mano contra el de enfrente (tres duelos
+  seguidos). Ahí no hay consultas al compañero, el truco se canta desde primera y la falta envido vale 6.
+- El anfitrión la activa en "Reglas" de la sala de espera; solo aparece si la mesa es de 3 vs 3.
+
 ## 1.14.6 — créditos y baraja pixel art
 - Los créditos (cartas, voces, baraja pixel art, librerías y tipografía) pasan a un solo diálogo, "Créditos y licencias", al pie del menú. La tienda ya no muestra el crédito debajo de cada cosa.
 - En la tienda, pasando el mouse por una baraja se ve la baraja abierta: el as y las figuras en abanico y del 2 al 7 abajo.

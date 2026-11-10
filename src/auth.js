@@ -127,13 +127,27 @@ export async function renameProfile(env, id, profile, username) {
   const free = usernameFreeAt(profile.username_changed_at);
   if (now < free) return { error: `Podés volver a cambiarlo el ${usernameFreeDay(free)}` };
   const cutoff = new Date(now - AUTH.usernameCooldown).toISOString();
-  const res = await rest(env, `profiles?id=eq.${encodeURIComponent(id)}&or=(username_changed_at.is.null,username_changed_at.lte.%22${cutoff}%22)&select=${PROFILE_FIELDS}`, {
-    method: 'PATCH',
-    headers: { prefer: 'return=representation' },
-    body: JSON.stringify({ username: name, username_changed_at: new Date(now).toISOString() }),
-  });
+  const patchName = (body, filter = '') =>
+    rest(env, `profiles?id=eq.${encodeURIComponent(id)}${filter}&select=${PROFILE_FIELDS}`, {
+      method: 'PATCH',
+      headers: { prefer: 'return=representation' },
+      body: JSON.stringify(body),
+    });
+  let res = await patchName({ username: name, username_changed_at: new Date(now).toISOString() }, `&or=(username_changed_at.is.null,username_changed_at.lte.%22${encodeURIComponent(cutoff)}%22)`);
   if (res.status === 409) return { error: 'Ese nombre ya lo usa otra persona' };
-  if (!res.ok) throw dbError(res, 'No se pudo cambiar el nombre');
+  if (!res.ok) {
+    const why = await res.text().catch(() => '');
+    // falta la migración 20261112000000_username_change (no existe la columna): se cambia igual, sin la espera
+    if (/username_changed_at/.test(why)) {
+      console.error('Falta aplicar la migración 20261112000000_username_change: el nombre se cambia sin controlar los 14 días');
+      res = await patchName({ username: name });
+      if (res.status === 409) return { error: 'Ese nombre ya lo usa otra persona' };
+    } else {
+      console.error('No se pudo cambiar el nombre:', res.status, why);
+      if (/duplicate|unique|23505/i.test(why)) return { error: 'Ese nombre ya lo usa otra persona' };
+    }
+    if (!res.ok) throw dbError(res, 'No se pudo cambiar el nombre');
+  }
   const updated = (await res.json())[0];
   if (!updated) return { error: `Solo se puede cambiar una vez cada ${AUTH.usernameCooldownDays} días` };
   cache.set(id, { profile: updated, at: now });

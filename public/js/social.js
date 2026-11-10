@@ -1,6 +1,7 @@
 // Del menú: amigos por nombre de usuario, ranking y foto de perfil.
 import { ROUTES, AVATAR, MODES, modeLabel, ELO_START } from './config.js';
 import { $, esc, api, avatarHtml, KEYS } from './dom.js';
+import { shrinkGif, canShrinkGif } from './gif.js';
 import { loadMe, currentMe } from './auth.js';
 
 const eloOf = (p, mode) => p[`elo_${mode}`] ?? ELO_START;
@@ -55,11 +56,15 @@ const readDataUrl = (file) => new Promise((ok, fail) => {
   r.readAsDataURL(file);
 });
 
-// Recorta la foto al centro, la achica y la comprime hasta que entre. Los GIF van tal cual, para que sigan moviéndose.
+// Recorta la foto al centro, la achica y la comprime hasta que entre. Los GIF siguen siendo GIF (para que se muevan):
+// si entran van tal cual; si no, se achican (tamaño y cantidad de cuadros) en el navegador.
 async function shrink(file) {
   if (file.type === 'image/gif') {
-    if (file.size > AVATAR.gifMaxBytes) throw new Error('Ese GIF pesa más de 800 KB');
-    return readDataUrl(file);
+    if (file.size <= AVATAR.gifMaxBytes) return readDataUrl(file);
+    if (!canShrinkGif()) throw new Error('Ese GIF pesa más de 800 KB y este navegador no lo puede achicar: probá desde Chrome o Edge, o con uno más liviano');
+    const url = await shrinkGif(file, AVATAR.gifMaxBytes).catch(() => null);
+    if (!url) throw new Error('Ese GIF es muy largo para la foto: probá con uno más corto');
+    return url;
   }
   const bmp = await createImageBitmap(file);
   const c = document.createElement('canvas');

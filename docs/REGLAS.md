@@ -69,11 +69,9 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
    los rivales no la ven hasta el final de la mano.
 2. La **de arriba** ya está en la mesa y no se puede levantar ([R] glosario: "una vez jugada no se puede
    retirar"): es tu jugada de la **ronda siguiente**. Cuando te toca, se juega sola.
-   - Si **la de abajo mató** (ganaste vos la ronda, así que arrancás la siguiente), la de arriba **vale
-     normal**: era tu turno de jugarla. Ej.: sos el último en primera, matás con la de abajo y ya dejás la
-     de segunda arriba.
-   - Si no, **se quema** (vale un 4): la tiraste antes de que te tocara. También si mató tu compañero o si
-     fue parda, aunque seas mano.
+   - Si **tu equipo ganó la ronda** (mataste con la de abajo, o mató tu compañero), la de arriba **vale
+     normal**. Ej.: sos el último en primera, matás con la de abajo y ya dejás la de segunda arriba.
+   - Si no, **se quema** (vale un 4): perdiste la ronda o fue parda, aunque seas mano.
 3. Mientras dura la ronda en que la tiraste **parece una carta normal para todos, también para vos** (para que la trampa sirva) y queda
    casi alineada con la de abajo. **Al terminar esa ronda se ve quemada** (si se quemó), así en la siguiente
    los rivales se dan cuenta. Los eventos de la encimada (`double`, y la jugada automática `auto` con `burned`) se filtran igual en `viewFor`: los rivales no los reciben, y a quien la tiró le avisa "se jugó sola tu carta de arriba".
@@ -89,17 +87,21 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | Irse al mazo y pedir "mostrá las dos" se puede en cualquier momento (no hace falta que sea tu turno) | `actionsFor` |
 | Si pasan 15 s sin que el ganador muestre ni nadie reclame, los tantos valen | `TIMING.showWindow` |
 | Señas: solo las ve quien te está mirando en ese momento | `TrucoRoom.deliverSena` |
+| Terminada la mano (por ejemplo, después de un no quiero), cualquiera puede mostrar las cartas que no tiró ("mostrá lo que tenías"). No cambia ningún punto | `engine.js` `lucir` |
+| Si no estás (pestaña oculta o desconectado) y te toca cantar los tantos, a los 10 s se cantan solos: lo que tenés o "son buenas" | `TIMING.autoTanto`, `honestTanto` |
+| La revancha arranca cuando la aceptan todos los de la mesa | `TrucoRoom.tryRematch` |
 | Los personajes no parpadean solos: los ojos cerrados son únicamente la seña "ciego" | `characters.js` |
 | En la charla de los bots, decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo: solo las frases de canto nombran el canto. Para hablar del tema dicen "el segundo" (truco) o "el primero", "los tantos" o "los puntos" (envido), y al no querer el envido no lo nombran | `talk.js` (`BOT_TALK`, `ASK_TALK`); test en `bots.test.js` |
 
 ## No implementadas (todavía)
 - Pedir flor al final de la mano (no hace falta: la flor es obligatoria y el juego la detecta sola). [R] §12.
-- **Partidas de 3** (con gallo), de **8**, y **pica-pica** en 3 vs 3. [R] §3.
+- **Partidas de 3** (con gallo) y de **8**. [R] §3.
 - **Chicos**: la partida termina al llegar a 15/30; no se juega "al mejor de dos chicos". [R] §2.
 - Corte con mínimo de tres cartas por mitad, "golpear el mazo" sin cortar. [R] §17.
 - Carta que cae boca arriba en el reparto (el que la recibe puede pedir nuevo reparto). [R] §17.
 - Expresiones ambiguas ("quieto", "envido mi truco"…): el juego usa botones, no hay ambigüedad. [R] §16.
-- Penalidades por hablar de más / señas indebidas en pica-pica.
+- Penalidades por hablar de más / señas indebidas en pica-pica (el juego no deja consultar al compañero en el duelo).
+- Pica-pica simultáneo: acá los tres duelos se juegan uno detrás del otro.
 
 ### Flor (opción de la sala)
 Tres del mismo palo (con muestra, las piezas sirven de cualquier palo). Obligatoria: en primera, antes de tirar
@@ -114,3 +116,14 @@ con dos piezas, 20 + las dos. (`cards.js` `piezaOf`, `rank`, `tanto`). Fuente: p
 
 ### No permitir trampas (opción de la sala)
 Sin dos encimadas ni mentir en el envido (no hay fase de mostrar) y se ve quién ganó cada ronda.
+
+### Pica-pica (opción de la sala, solo 3 vs 3)
+Desde que un equipo llega a 5 hasta que a alguno le faltan 5 o menos (a 30: hasta las 10 buenas; a 15: de 5 a 10)
+se alterna una mano **redonda** y una de **pica-pica** (`PICA_PICA` en `config.js`, `picaDue` en `engine.js`).
+- En la de pica-pica cada uno juega **mano a mano contra el de enfrente** (asiento + 3): tres duelos, uno detrás del
+  otro (`picaDuel`, `h.duel`). Reparte el mismo en los tres; es mano el primero a su derecha, después el
+  segundo, después el tercero. Los puntos de cada duelo son del equipo. Después viene una redonda y el mazo pasa.
+- En el duelo se reparte solo a los dos; los demás miran (para el motor están "al mazo"). Cada uno canta su
+  envido, el truco se canta desde primera (aunque la mesa juegue "truco desde segunda"), no se puede tirar fuera
+  de turno y no hay consultas al compañero.
+- La **falta envido** (y la contraflor al resto) vale **6** fija. [R] §3; fuente de la falta: laps4.com.

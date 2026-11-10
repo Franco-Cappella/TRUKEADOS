@@ -802,11 +802,19 @@ export function stackDeck(g, seat, rng = Math.random) {
   if (!good.length) return false;
   const give = good[Math.floor(rng() * good.length)];
   const mine = h.cards[seat];
+  if (!mine.length) return false; // en un duelo de pica-pica el que reparte puede no jugar
   const worst = mine.slice().sort((x, y) => R(x) - R(y))[0];
   if (R(worst) >= R(give)) return false;
   h.cards[seat] = mine.map((c) => (c === worst ? give : c));
   h.inHand[seat] = h.inHand[seat].map((c) => (c === worst ? give : c));
   return true;
+}
+
+// Los tantos de alguien que no está (se le venció la cuenta): lo que tiene de verdad, o "son buenas" si no le gana.
+export function honestTanto(g, seat) {
+  const best = g.h.envido.declare?.best;
+  const v = tanto(g.h.cards[seat], g.h.muestra).value;
+  return !best || v > best.value ? { t: 'cantar', value: v } : { t: 'buenas' };
 }
 
 // Seña que hace un bot para su compañero al principio de la mano.

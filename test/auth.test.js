@@ -25,7 +25,10 @@ globalThis.fetch = async (url, init) => {
   if (String(url).includes('/rest/v1/profiles')) restCalls.push({ url: String(url), init });
   if (String(url).endsWith('/jwks.json')) return new Response(JSON.stringify({ keys: [jwk] }));
   if (String(url).endsWith('/auth/v1/user')) return new Response('{}', { status: 401 });
-  if (String(url).includes('/rest/v1/profiles')) return new Response(restReply.body, { status: restReply.status });
+  if (String(url).includes('/rest/v1/profiles')) {
+    const r = Array.isArray(restReply) ? restReply.shift() : restReply; // una lista: una respuesta por pedido
+    return new Response(r.body, { status: r.status });
+  }
   throw new Error('fetch inesperado: ' + url);
 };
 
@@ -73,6 +76,26 @@ test('cambiar el nombre: la primera vez se puede y queda la fecha', async () => 
   const sent = JSON.parse(init.body);
   assert.equal(sent.username, 'Nuevo');
   assert.ok(Date.parse(sent.username_changed_at));
+  restReply = { status: 200, body: '[]' };
+});
+
+test('cambiar el nombre: si falta la columna de la fecha (migración sin aplicar), se cambia igual', async () => {
+  restCalls = [];
+  restReply = [
+    { status: 400, body: JSON.stringify({ code: 'PGRST204', message: "Could not find the 'username_changed_at' column of 'profiles' in the schema cache" }) },
+    { status: 200, body: JSON.stringify([{ id: 'u-3', username: 'Nuevo' }]) },
+  ];
+  const r = await renameProfile(env, 'u-3', { username: 'Viejo' }, 'Nuevo');
+  assert.equal(r.profile?.username, 'Nuevo');
+  assert.equal(restCalls.length, 2);
+  assert.deepEqual(JSON.parse(restCalls[1].init.body), { username: 'Nuevo' });
+  restReply = { status: 200, body: '[]' };
+});
+
+test('cambiar el nombre: si la base dice que el nombre está repetido, se avisa eso', async () => {
+  restReply = { status: 400, body: '{"code":"23505","message":"duplicate key value violates unique constraint"}' };
+  const r = await renameProfile(env, 'u-3', { username: 'Viejo' }, 'Nuevo');
+  assert.equal(r.error, 'Ese nombre ya lo usa otra persona');
   restReply = { status: 200, body: '[]' };
 });
 

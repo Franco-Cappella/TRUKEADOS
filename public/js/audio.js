@@ -1,5 +1,6 @@
 // Sonidos sintetizados (sin archivos) y voz que canta los cantos.
 import { store, KEYS } from './dom.js';
+import { RECORDED_VOICE_GAIN } from './config.js';
 import { VOICES, voiceFor, womanVoice, manVoice, VOICE_MANIFEST, VOICE_URL, voiceKey } from './voices.js';
 
 let actx = null;
@@ -141,7 +142,7 @@ loadClips();
 
 function clipItem(key, voice) {
   const a = new Audio(VOICE_URL(voice, key));
-  a.volume = volume;
+  a.volume = volume * RECORDED_VOICE_GAIN;
   return {
     start(done) {
       a.onended = done;

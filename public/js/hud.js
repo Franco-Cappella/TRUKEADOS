@@ -78,6 +78,7 @@ export function helpHtml() {
       <li><b>Flor</b>: tres cartas del mismo palo. Es obligatorio cantarla en primera, antes de tirar (también contestando un envido o un truco). Anula el envido. Si el otro equipo no tiene flor: 3 puntos. Si tiene, contesta: <i>con flor quiero</i> (gana la mejor, 3), <i>con flor me achico</i> (3 para el que cantó), <i>contraflor</i> (6) o <i>contraflor al resto</i>.</li>
       <li><b>Muestra</b>: después de repartir se da vuelta una carta. Las <b>piezas</b> (2, 4, 5, 11 y 10 de ese palo) son las más altas, por encima del ancho de espada; si la muestra es pieza, el 12 toma su lugar. En el envido valen 30, 29, 28, 27 y 27 (más la carta más alta de las otras) y sirven de cualquier palo para la flor.</li>
       <li><b>No permitir trampas</b>: no se pueden tirar dos encimadas ni mentir en el envido (y no hace falta mostrar). Se ve quién ganó cada ronda.</li>
+      <li><b>Pica-pica</b> (3 vs 3): desde que un equipo llega a 5 hasta que a alguno le faltan 5, se alterna una mano redonda y una de pica-pica. En la de pica-pica cada uno juega mano a mano contra el de enfrente, uno detrás del otro (empieza el de la derecha del que reparte); los puntos van al equipo. Ahí no hay consultas al compañero, el truco se canta desde primera y la falta envido vale 6.</li>
     </ul>
     <h3>Puntos</h3>
     <ul>
@@ -86,7 +87,7 @@ export function helpHtml() {
       <li>Los puntos se anotan al terminar la mano. El que gana el envido tiene que <b>mostrar las cartas</b>: si no las muestra y le reclaman, o si cantó un número falso, pierde los puntos del envido (el truco no cambia).</li>
       <li>En equipo, irse al mazo es por todo el equipo: termina la mano. En primera sin envido cantado, el rival suma 1 de envido + lo del truco.</li>
       <li><b>Cartas quemadas</b>: valen como un 4 en la ronda en que cuentan (el envido no cambia). Se quema la carta tapada, la que tirás <b>fuera de turno</b> (es tu jugada de esa ronda: cuando te toca, se te saltea) y la de arriba de dos encimadas si la de abajo no mató.</li>
-      <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente. Si la de abajo mata, la de arriba vale normal (arrancás vos la siguiente); si no mata (perdés, mata tu compañero o es parda), se quema. Mientras dura la ronda parece una carta normal; al terminar, si se quemó, se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
+      <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente. Si tu equipo gana esa ronda (mata la de abajo o tu compañero), la de arriba vale normal; si la perdés o es parda, se quema. Mientras dura la ronda parece una carta normal; al terminar, si se quemó, se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
     </ul>
     <div class="help-ok"><button class="btn primary" data-close>Entendido</button></div>
   </div>`;

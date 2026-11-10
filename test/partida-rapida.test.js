@@ -179,11 +179,27 @@ test('revancha: arranca recién cuando quieren todos', async () => {
   assert.deepEqual(h.state(a).room.rematch, []);
 });
 
-test('revancha: si el que faltaba se va, no se lo espera', async () => {
+test('revancha: si el que faltaba se va de la mesa, no se lo espera', async () => {
+  const { h, a, b, r } = await endedTable();
+  await h.send(a, { t: 'rematch' });
+  await h.send(b, { t: 'leave' });
+  await h.disconnect(b);
+  assert.equal(r.status, 'playing');
+});
+
+test('revancha: si al otro solo se le cortó, se lo espera hasta que acepte', async () => {
   const { h, a, b, r } = await endedTable();
   await h.send(a, { t: 'rematch' });
   await h.disconnect(b);
-  assert.equal(r.status, 'playing');
+  assert.equal(r.status, 'ended', 'arrancó sin que el otro acepte');
+});
+
+test('revancha: si uno dice que no, se cancela el pedido', async () => {
+  const { h, a, b, r } = await endedTable();
+  await h.send(a, { t: 'rematch' });
+  await h.send(b, { t: 'rematch-no' });
+  assert.equal(r.status, 'ended');
+  assert.deepEqual(h.state(a).room.rematch, []);
 });
 
 test('revancha: los rivales automáticos aceptan un ratito después', async () => {

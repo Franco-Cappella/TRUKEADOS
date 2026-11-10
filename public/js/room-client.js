@@ -1,6 +1,6 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, APP_NAME, MODES, modeLabel } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
@@ -12,6 +12,17 @@ const MAZO_CONFIRM_MS = 3500;
 const PREDICT_MS = 4000;
 const VOICED_MS = 3000; // la frase de un bot que ya dijo su canto tapa el globo del canto que llega enseguida
 const DEAL_MARGIN_MS = 80; // margen sobre el fin del reparto del servidor (por la latencia) // un evento propio dentro de este tiempo ya se mostró por adelantado
+function loadMuted() {
+  try {
+    const v = JSON.parse(store.get(KEYS.muted, '[]'));
+    return Array.isArray(v) ? v.map((x) => String(x).toLowerCase()) : [];
+  } catch {
+    return [];
+  }
+}
+
+// en equipo uno se va al mazo por todos (salvo en un duelo de pica-pica)
+const mazoText = (g) => (g.n > 2 && !g.h?.duel ? 'Nos vamos al mazo' : 'Me voy al mazo');
 const cardImg = (c, alt = '') => `<img src="${ROUTES.card(c)}" alt="${esc(alt)}">`;
 
 export class RoomClient {
@@ -39,12 +50,30 @@ export class RoomClient {
     $('#room-code').textContent = code;
     $('#chat-log').innerHTML = '';
     $('#labels').innerHTML = '';
+    // Los botones del panel son de la sala anterior (sus clics van a esa conexión, ya cerrada): se borran. Si no,
+    // al volver a una partida con el mismo canto pendiente quedaban los viejos y no se podía jugar.
+    $('#actions').replaceChildren();
+    delete $('#actions').dataset.key;
+    // Silenciar a alguien: tocás su nombre en el chat. No ves sus mensajes ni sus frases (sí sus cantos y tantos).
+    this.muted = new Set(loadMuted());
+    $('#chat-log').onclick = (e) => {
+      const b = e.target.closest('[data-mute]');
+      if (b) this.toggleMute(b.dataset.mute);
+    };
+    $('#chat-muted').onclick = (e) => {
+      const b = e.target.closest('[data-unmute]');
+      if (b) this.toggleMute(b.dataset.unmute);
+    };
+    this.renderMuted();
     document.title = `${APP_NAME} · Sala ${code}`;
     scene.onLook = (t) => this.sendLook(t);
     scene.onCardClick = (id) => this.clickCard(id);
     scene.onCardDouble = (id) => this.playCard(id, 'normal');
     scene.onFrame = () => this.updateLabels();
     this.zoomTip = store.get(KEYS.zoomTip) !== '1'; // se muestra al empezar la partida, no en la sala de espera
+    // te fuiste a otra pestaña: el servidor cuenta como si no estuvieras (y a la cuenta juega un bot por vos)
+    this.onVisibility = () => this.send({ t: 'away', on: document.hidden });
+    document.addEventListener('visibilitychange', this.onVisibility);
     this.connect();
   }
 
@@ -64,6 +93,7 @@ export class RoomClient {
     this.ws = ws;
     ws.onopen = async () => {
       this.send({ t: 'join', token: await sessionToken(), spectate: this.spectate, invited: this.teamInvited, voice: myVoice() || null });
+      if (document.hidden) this.send({ t: 'away', on: true });
       this.retry = 0;
     };
     ws.onmessage = (e) => {
@@ -89,6 +119,8 @@ export class RoomClient {
   }
 
   close() {
+    this.send({ t: 'leave' }); // se fue de la mesa: la revancha ya no lo espera
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.closed = true;
     clearInterval(this.pinger);
     clearInterval(this.afkTick);
@@ -135,8 +167,8 @@ export class RoomClient {
       cantar: () => ['tanto', `${a.value ?? g.h.myTanto}`, `${a.value ?? g.h.myTanto}`],
       buenas: () => ['tanto', 'Son buenas', 'Son buenas'],
       flor: () => ['call', `¡${FLOR_NAMES[a.kind]}!`, FLOR_NAMES[a.kind]],
-      mazo: () => ['mazo', g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', null],
-      nomostrar: () => ['nomuestra', 'Me voy al mazo', null],
+      mazo: () => ['mazo', mazoText(g), mazoText(g)],
+      nomostrar: () => ['nomuestra', 'Me voy al mazo', 'Me voy al mazo'],
     }[a.t]?.();
     if (said) {
       const [type, bubble, voice] = said;
@@ -335,7 +367,7 @@ export class RoomClient {
 
   // Mientras se reparte no hay botones ni se puede tirar: el servidor rechazaría la jugada.
   // Termina cuando terminan la animación y el tiempo de reparto del servidor (`left` ms), lo último.
-  startDeal(g, left = dealMs(g.n)) {
+  startDeal(g, left = dealMs(g.h.duel ? 2 : g.n)) {
     const counts = Array(g.n).fill(0);
     const deal = { counts, anim: false, server: false };
     this.dealing = deal;
@@ -361,6 +393,7 @@ export class RoomClient {
       cutter: g.h.cutter,
       mano: g.h.mano,
       n: g.n,
+      seats: g.h.duel?.seats, // pica-pica: solo se les reparte a los dos del duelo
       onCard: (seat) => {
         if (this.dealing !== deal) return;
         counts[seat]++;
@@ -394,7 +427,10 @@ export class RoomClient {
         this.toast(`${esc(name(e.seat))} se rindió`, 'bad', 4000);
         break;
       case 'mazo':
-        if (!shown) this.bubble(e.seat, g.n > 2 ? 'Nos vamos al mazo' : 'Me voy al mazo', '', 2400);
+        if (!shown) {
+          this.bubble(e.seat, mazoText(g), '', 2400);
+          say(mazoText(g), e.seat);
+        }
         flick(0.15, 0.2);
         // las cartas que le quedaban a todo el equipo vuelven al mazo
         this.scene.foldCards(g.h.table.map((_, s) => s).filter((s) => team(s) === team(e.seat)).map((seat) => ({ seat, cards: this.prevCounts?.[seat] ?? 0 })));
@@ -419,8 +455,8 @@ export class RoomClient {
           const nth = ['primera', 'segunda', 'tercera'][e.round];
           const next = ['primera', 'segunda', 'tercera'][e.round + 1];
           const U = (c) => esc(cardName(c));
-          const msg = e.seat === me
-            ? `Mataste ${nth} con el ${U(mine.c)} (el de abajo). Arrancás ${next} y el ${U(over.c)} de arriba juega solo y vale.`
+          const msg = e.result === team(me)
+            ? `${e.seat === me ? 'Mataste' : 'Ganaron'} ${nth} (jugaste el ${U(mine.c)} de abajo). El ${U(over.c)} de arriba juega solo en ${next} y vale.`
             : `En ${nth} jugaste el ${U(mine.c)} (el de abajo)${e.result === 'parda' ? ' e hiciste parda' : ''}. El ${U(over.c)} de arriba juega solo en ${next} y se quema (vale un 4).`;
           this.toast(msg, e.seat === me ? 'good' : '', 5500);
           break;
@@ -441,6 +477,13 @@ export class RoomClient {
         const why = { noquiero: 'no quisieron', mazo: 'se fueron al mazo' }[e.reason] || '';
         const us = me != null && e.team === team(me);
         this.toast(`${this.teamLabel(e.team)} ${us ? 'ganamos' : 'ganan'} la mano ${why} (${e.pts} del truco)`, us ? 'good' : '');
+        // si alguien tiró dos encimadas, la de abajo es la que jugó: se avisa, porque mirando la mesa parecía otra cosa
+        g.h.table.forEach((list, s) => {
+          if (s === me) return;
+          for (const p of list) {
+            if (p.under && p.c) this.toast(`${name(s)} había tirado dos encimadas: en ${['primera', 'segunda', 'tercera'][p.round] || 'esa ronda'} jugó el ${esc(cardName(p.c))} de abajo`, 'bad', 6000);
+          }
+        });
         break;
       }
       case 'show': {
@@ -471,8 +514,15 @@ export class RoomClient {
         this.toast(`Envido para ${this.teamLabel(e.team).toLowerCase()} (${name(e.seat)} con ${e.value}). ${parts}`, us ? 'good' : '', 5000);
         break;
       }
+      case 'lucir':
+        this.bubble(e.seat, '¡Mirá lo que tenía!', 'call', 2600);
+        if (e.seat !== me) say('¡Mirá lo que tenía!', e.seat);
+        break;
       case 'nomuestra':
-        if (!shown) this.bubble(e.seat, 'Me voy al mazo', '', 2400);
+        if (!shown) {
+          this.bubble(e.seat, 'Me voy al mazo', '', 2400);
+          say('Me voy al mazo', e.seat);
+        }
         flick(0.15, 0.2);
         break;
       case 'reclamo':
@@ -485,7 +535,8 @@ export class RoomClient {
       case 'deal':
         flick(0.12, 0.25);
         this.selected = null;
-        this.toast(`Mano ${e.hand}: reparte ${name(e.seat)} y corta ${name(e.cutter)}`, '', 2200);
+        if (e.duel) this.toast(`Pica-pica ${e.duel.k + 1} de ${e.duel.of}: ${name(e.duel.seats[0])} contra ${name(e.duel.seats[1])}`, '', 2600);
+        else this.toast(`Mano ${e.hand}: reparte ${name(e.seat)} y corta ${name(e.cutter)}`, '', 2200);
         break;
       case 'points':
         if (e.why.startsWith('envido')) this.toast(`Envido: ${e.pts} para ${this.teamLabel(e.team)}`, '', 2500);
@@ -617,18 +668,49 @@ export class RoomClient {
     for (const b of $('#chat-tabs').children) b.classList.toggle('on', b.dataset.chat === view);
   }
 
+  isMuted(name) {
+    return this.muted.has(String(name ?? '').toLowerCase());
+  }
+
+  toggleMute(name) {
+    const k = String(name ?? '').toLowerCase();
+    if (!k || k === savedName().toLowerCase()) return;
+    const on = !this.muted.has(k);
+    if (on) this.muted.add(k);
+    else this.muted.delete(k);
+    store.set(KEYS.muted, JSON.stringify([...this.muted]));
+    for (const el of $('#chat-log').querySelectorAll('[data-from]')) el.classList.toggle('hidden', this.isMuted(el.dataset.from));
+    this.renderMuted();
+    this.toast(on ? `Silenciaste a <b>${esc(name)}</b>: no vas a ver sus mensajes ni sus frases. Sus cantos y tantos, sí.` : `Volviste a escuchar a <b>${esc(name)}</b>`, '', 3500);
+  }
+
+  // Arriba del chat, los silenciados (tocá uno para volver a escucharlo).
+  renderMuted() {
+    const el = $('#chat-muted');
+    el.classList.toggle('hidden', !this.muted.size);
+    el.innerHTML = this.muted.size
+      ? `Silenciados: ${[...this.muted].map((n) => `<button type="button" class="chip" data-unmute="${esc(n)}" title="Volver a escucharlo">${esc(n)} ✕</button>`).join(' ')}`
+      : '';
+  }
+
   addChat(msg, live) {
     const log = $('#chat-log');
     const div = document.createElement('div');
+    const mutedNow = !msg.system && msg.seat != null && this.isMuted(msg.name);
+    if (mutedNow) div.classList.add('hidden');
+    if (!msg.system && msg.seat != null) div.dataset.from = msg.name;
     if (msg.system) {
       div.className = 'sys';
       div.textContent = msg.text;
     } else {
       const t = msg.seat == null ? '' : `t${team(msg.seat)}`;
-      div.innerHTML = `<b class="${t}">${esc(msg.name)}:</b> ${esc(msg.text)}`;
+      const self = String(msg.name).toLowerCase() === savedName().toLowerCase();
+      div.innerHTML = self
+        ? `<b class="${t}">${esc(msg.name)}:</b> ${esc(msg.text)}`
+        : `<b class="${t} mute-name" data-mute="${esc(msg.name)}" title="Tocá para silenciarlo">${esc(msg.name)}:</b> ${esc(msg.text)}`;
       // lo que escribe cada uno (bots incluidos) sale en un globo y se lee en voz alta, como si lo dijera.
       // Si la frase de un bot ya dice su canto (msg.call), reemplaza a la voz del canto (el globo del canto sale igual).
-      if (live && msg.seat != null) {
+      if (live && msg.seat != null && !mutedNow) {
         this.bubble(msg.seat, msg.text, 'chat', Math.max(3500, Math.min(8000, 1500 + msg.text.length * 70)));
         // la frase de un bot que dice su canto es un canto; lo demás es charla (se corta si pasa algo en la mesa).
         // Lo tuyo también se escucha: si no, parece que tu personaje está mudo.
@@ -638,7 +720,7 @@ export class RoomClient {
     }
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
-    if (live && $('#chat').classList.contains('hidden') && !msg.system) $('#chat-badge').classList.remove('hidden');
+    if (live && $('#chat').classList.contains('hidden') && !msg.system && !mutedNow) $('#chat-badge').classList.remove('hidden');
   }
 
   // ---------------------------------------------------- HUD
@@ -731,6 +813,8 @@ export class RoomClient {
     } else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
     else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
     else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
+    else if (g.h.duel && !g.h.duel.seats.includes(me)) hint = `Pica-pica ${g.h.duel.k + 1} de ${g.h.duel.of}: juegan ${who(g.h.duel.seats[0])} y ${who(g.h.duel.seats[1])} mano a mano. Esperá tu turno.`;
+    else if (g.h.duel) hint = `Pica-pica ${g.h.duel.k + 1} de ${g.h.duel.of}: mano a mano contra el de enfrente.`;
     else if (g.n > 2 && w.kind === 'play' && g.h.r === 0 && g.h.pies?.includes(me) && g.h.envido.state === 'none') hint = 'Sos pie: el envido lo cantás vos, en tu turno.';
     el.innerHTML = esc(t) + (hint ? `<small>${esc(hint)}</small>` : '');
     el.classList.toggle('mine', mine);
@@ -840,6 +924,7 @@ export class RoomClient {
     // mismo color que "Irme al mazo": que no se note cuál conviene
     if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', '', acting({ t: 'mostrar' }), 'Si cantaste otro número y mostrás, perdés los puntos del envido');
     if (a.nomostrar) add('mostrar', 'Envido', 'Irme al mazo', '', acting({ t: 'nomostrar' }), 'Si nadie te reclama en unos segundos, los tantos valen; si te reclaman, los perdés');
+    if (a.lucir) add('mostrar', 'Fin de la mano', 'Mostrar lo que tenía', '', acting({ t: 'lucir' }), 'Das vuelta las cartas que no tiraste: no cambia ningún punto');
     if (a.reclamar) add('mostrar', 'Envido', 'A ver esos tantos', 'call', acting({ t: 'reclamar' }), 'Si no los muestra, pierde los puntos del envido');
     if (a.quiero) add('resp', 'Responder', 'Quiero', 'good', acting({ t: 'quiero' }));
     if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', acting({ t: 'noquiero' }));
@@ -948,25 +1033,29 @@ export class RoomClient {
       if (g?.h) {
         if (g.dealer === seat) chips.push('reparte');
         if (g.h.mano === seat) chips.push('mano');
-        if (g.n > 2 && g.h.pies?.includes(seat)) chips.push('pie');
-        if (g.h.mazo[seat]) chips.push('al mazo');
+        if (g.n > 2 && !g.h.duel && g.h.pies?.includes(seat)) chips.push('pie');
+        if (g.h.duel) chips.push(g.h.duel.seats.includes(seat) ? 'mano a mano' : 'mira');
+        else if (g.h.mazo[seat]) chips.push('al mazo');
       }
       if (p.bot) chips.unshift('bot');
       if (this.you != null && team(seat) === team(this.you)) chips.unshift('compañero');
       const looking = this.you != null && this.gaze[seat] === this.you ? '<span class="chip eye">te mira</span>' : '';
       const turn = g && st.room.status === 'playing' && g.waiting.seats.includes(seat);
       l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''}`;
-      l.plate.innerHTML = `${esc(p.name)} ${p.elo ? `<span class="chip">${esc(p.elo)}</span>` : ''} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
+      l.plate.innerHTML = `${esc(p.name)} ${p.elo ? `<span class="chip">${esc(p.elo)}</span>` : ''} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online && !p.away ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
     });
   }
 
   // "desconectado · bot en 32 s" mientras corre la cuenta; después, que ya juega el bot por él
   offText(seat) {
+    const p = this.st?.room.seats[seat];
+    const what = p?.online && p.away ? 'no está mirando' : 'desconectado';
     const at = this.afkAt[seat];
-    if (at == null) return 'desconectado';
+    if (at == null) return what;
     const left = Math.ceil((at - Date.now()) / 1000);
-    if (this.st?.room.seats[seat]?.forfeit) return left > 0 ? `desconectado · pierde en ${left} s` : 'desconectado';
-    return left > 0 ? `desconectado · bot en ${left} s` : 'desconectado · juega el bot';
+    if (p?.tantoIn) return left > 0 ? `${what} · se cantan solos en ${left} s` : what;
+    if (p?.forfeit) return left > 0 ? `${what} · pierde en ${left} s` : what;
+    return left > 0 ? `${what} · bot en ${left} s` : `${what} · juega el bot`;
   }
 
   renderWaiting() {
@@ -1015,7 +1104,7 @@ export class RoomClient {
       `<div class="seg" data-cfg="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const pill = (attr, on, text, title) =>
       `<label class="w-pill" title="${esc(title)}"><input type="checkbox" ${attr} ${on ? 'checked' : ''}><span>${esc(text)}</span></label>`;
-    const pills = ROOM_OPTIONS.map((o) => pill(`data-opt="${o.key}"`, o.invert ? cfg[o.key] === false : cfg[o.key] === true, o.short[0].toUpperCase() + o.short.slice(1), o.label));
+    const pills = ROOM_OPTIONS.filter((o) => optionForMode(o, cfg.mode)).map((o) => pill(`data-opt="${o.key}"`, o.invert ? cfg[o.key] === false : cfg[o.key] === true, o.short[0].toUpperCase() + o.short.slice(1), o.label));
     if (cfg.mode !== '1v1') pills.push(pill('data-trucoseg', cfg.trucoDesdeSegunda, 'Truco desde segunda', 'En equipos, el truco se canta recién desde la segunda ronda'));
     const settings = host && this.showRules
       ? `<div class="w-settings">
@@ -1163,15 +1252,22 @@ export class RoomClient {
       </div></div>`;
   }
 
-  // La revancha se juega si quieren todos: lo que falta se ve en el botón.
+  // La revancha se juega cuando la aceptan todos los de la mesa: el que la pide espera, a los demás se les pregunta.
   rematchButton() {
     const st = this.st;
     if (this.you == null) return '';
     const votes = st.room.rematch || [];
-    const people = st.room.seats.map((p, i) => (p && !p.bot && p.online ? i : -1)).filter((i) => i >= 0);
+    const people = st.room.seats.map((p, i) => (p && !p.bot ? i : -1)).filter((i) => i >= 0);
     const yes = people.filter((i) => votes.includes(i)).length;
-    if (votes.includes(this.you)) return `<button class="btn big" disabled>Esperando a los demás · ${yes}/${people.length}</button>`;
-    return `<button class="btn primary big" data-rematch="1">${yes ? `Revancha · ${yes}/${people.length} quieren` : 'Pedir revancha'}</button>`;
+    if (!votes.length) return '<button class="btn primary big" data-rematch="1">Pedir revancha</button>';
+    if (votes.includes(this.you)) {
+      const missing = people.filter((i) => !votes.includes(i)).map((i) => esc(this.nameOf(i)));
+      return `<button class="btn big" disabled>Esperando ${missing.length ? `a ${missing.join(', ')}` : 'a los demás'} · ${yes}/${people.length}</button>`;
+    }
+    const by = esc(this.nameOf(votes[0]));
+    return `<p class="r-ask"><b>${by}</b> pide revancha · ${yes}/${people.length} aceptaron</p>
+      <button class="btn primary big" data-rematch="1">Acepto</button>
+      <button class="btn big" data-rematchno="1">No</button>`;
   }
 
   // html: el que llama escapa lo que venga de otros jugadores.

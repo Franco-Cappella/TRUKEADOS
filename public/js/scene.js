@@ -1637,7 +1637,8 @@ export class TableScene {
   // Animación de una mano nueva (dura lo mismo que la pausa del servidor):
   // el mazo pasa al que reparte, se mezcla, corta el de la izquierda y se reparte de a una
   // hacia la derecha empezando por la mano. onCard(asiento) se llama cuando llega cada carta.
-  dealAnim({ dealer, cutter, mano, n, onCard, onDone }) {
+  // seats: a quiénes se reparte (todos, salvo en un duelo de pica-pica)
+  dealAnim({ dealer, cutter, mano, n, seats = null, onCard, onDone }) {
     if (!this.deck) return;
     this.dealingAnim = true;
     const d = this.deck;
@@ -1682,9 +1683,10 @@ export class TableScene {
         d.position.copy(D.pos);
         this.resetDeck();
         // 3) reparte de a una, hacia la derecha, empezando por la mano
-        const total = n * 3;
+        const order = Array.from({ length: n }, (_, k) => (mano + k) % n).filter((s) => !seats || seats.includes(s));
+        const total = order.length * 3;
         for (let k = 0; k < total; k++) {
-          const seat = (mano + (k % n)) % n;
+          const seat = order[k % order.length];
           setTimeout(() => this.flyCard(D.pos, seat, () => onCard?.(seat)), k * TIMING.dealStep);
         }
         setTimeout(() => {

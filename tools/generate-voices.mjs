@@ -25,7 +25,7 @@ const OUT = path.resolve('public/voz');
 const flat = (x) => (typeof x === 'string' ? [x] : Array.isArray(x) ? x.flatMap(flat) : x && typeof x === 'object' ? Object.values(x).flatMap(flat) : []);
 const phrases = flat(BOT_TALK);
 phrases.push(...PHRASE_WHEEL.flatMap((c) => c.phrases), ...flat(ASK_TALK), ...TELL_TANTOS, ...flat(TRUCO_NAMES), ...flat(ENVIDO_NAMES), ...flat(FLOR_NAMES));
-phrases.push('Quiero', 'No quiero', 'Son buenas', 'A ver, mostrá las dos', '¡No mostraste!', 'Truco', 'Envido', 'Real envido', 'Falta envido', 'Flor');
+phrases.push('Me voy al mazo', 'Nos vamos al mazo', '¡Mirá lo que tenía!', 'Quiero', 'No quiero', 'Son buenas', 'A ver, mostrá las dos', '¡No mostraste!', 'Truco', 'Envido', 'Real envido', 'Falta envido', 'Flor');
 for (let n = 0; n <= 39; n++) phrases.push(String(n), `${n} en mesa`, `¡Cantaste ${n}!`);
 
 const byKey = new Map();

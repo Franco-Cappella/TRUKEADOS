@@ -219,6 +219,7 @@ function bindGameUI() {
     const b = e.target.closest('button');
     if (!b || !room) return;
     if (b.dataset.rematch) room.send({ t: 'rematch' });
+    if (b.dataset.rematchno) room.send({ t: 'rematch-no' });
     if (b.dataset.tolobby) room.send({ t: 'to-lobby' });
     if (b.dataset.exit) goHome();
     if (b.dataset.replay) openMatch(b.dataset.replay);

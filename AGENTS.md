@@ -56,6 +56,7 @@ public/css/truco.css      todo el estilo; colores y tamaños en variables de :ro
 public/cards/             cartas WebP (id = número + palo: 1E, 7O, 12C… y back)
 test/truco.test.js        tests del motor y partidas completas entre bots
 test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
+test/pica-pica.test.js    pica-pica (3 vs 3): cuándo toca, los duelos, la falta fija y partidas entre bots
 test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 test/auth.test.js         verificación del token de Supabase y validación del nombre
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
@@ -98,7 +99,7 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 ## Protocolo WebSocket (`/api/rooms/CÓDIGO/ws`)
 Cliente → servidor: `join {token,spectate}` (el token de Supabase: el servidor saca de ahí el id y el nombre), `sit {seat}`, `stand`, `addbot {seat}`, `removebot {seat}`,
 `kick {seat}`, `move {from, to}` (anfitrión: cambia o intercambia lugares en la sala de espera), `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
-`rematch`, `to-lobby`, `ping`.
+`rematch` (pedir o aceptar la revancha), `rematch-no`, `leave` (tocó "Salir": la revancha ya no lo espera), `away {on}` (pestaña oculta), `to-lobby`, `ping`.
 
 Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
@@ -107,7 +108,7 @@ Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLef
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
 `truco`, `envido {kind}`, `flor {kind: flor|quiero|achico|contraflor|resto|noquiero}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
-`mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`.
+`mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`, `lucir` (terminada la mano, dar vuelta las cartas que no tiró).
 
 ## Probar
 ```bash
@@ -161,6 +162,10 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   farolean casi siempre se hacen los guapos. Como mucho uno cada `TIMING.botChatGap` ms. Ninguna frase nombra el truco ni el envido salvo que sea el canto: decir una de esas palabras en una frase es cantarla (o subirla), así que la charla dice "el segundo", "el primero" o "los tantos" ([reglas](docs/REGLAS.md)).
 
 ## Interfaz
+- Al abrir una sala, `RoomClient` borra los botones del panel: si no, al volver a una partida con el mismo canto
+  pendiente quedaban los de la conexión vieja (sus clics no llegaban a ningún lado).
+- Chat: tocar el nombre de alguien lo silencia (`KEYS.muted`, por nombre de usuario): no se ven sus mensajes ni sus
+  frases, sí sus cantos y tantos (son eventos del juego, no chat).
 - Pantalla de partida: arriba la barra (salir, código, voz, zoom, ayuda, chat), "Mirar a" al centro y el
   anotador a la izquierda; abajo a la izquierda Señas y "Mostrá las dos"; **abajo a la derecha el panel**
   (`#panel`: estado + carta elegida + acciones). El centro de abajo es de la mano: no pongas nada ahí.
@@ -169,6 +174,12 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   y 375×812.
 - Movimiento: la cámara y las cabezas usan `damp()` (suavizado por tiempo, no por cuadro). Para mover la
   cámara cambiá `tYaw`/`tPitch` (objetivo), nunca `yaw`/`pitch` directo.
+
+## Pica-pica
+Opción de sala de 3 vs 3 (`picapica`). La mano de pica-pica son tres manos seguidas del motor, una por duelo:
+`g.h.duel = { k, of, seats }` y los que no juegan quedan con `h.mazo[s] = true` (así el turno, el envido, la flor
+y los bots ya los saltean). `nextHand` arma la vuelta (`picaDue`, `picaDuel`). Una opción que solo vale para
+algunos modos lleva `modes` en `ROOM_OPTIONS` y se filtra con `optionForMode`.
 
 ## Cómo agregar cosas
 - **Algo para la tienda**: una entrada en `COSMETICS` (config.js: id, ranura, nombre, precio) y cómo se ve en
@@ -189,6 +200,9 @@ la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la car
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
 
 ## Abandonar una partida
+Con la pestaña oculta (`away`) corre la misma cuenta, pero no se pierde: juega un bot hasta que vuelva. Si le toca
+cantar los tantos y no está (oculto o desconectado), a los `TIMING.autoTanto` (10 s) se cantan solos y sin mentir
+(`honestTanto`). Todo sale de `awayDeadline` en truco-room.js.
 Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y no le queda un compañero persona conectado, su equipo pierde (`forfeitDue` en truco-room.js, también con la sala vacía: `scheduleAlarm` deja la alarma). Si le queda un compañero, juega un bot por él. El menú muestra el cartel de reconectar (`rejoin.js`, ruta `/api/rooms/CÓDIGO/me`).
 
 ## Plantel, espectadores e invitaciones

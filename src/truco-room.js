@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie, tanto } from '../public/js/engine.js';
-import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos } from '../public/js/bot.js';
+import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
 import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH } from '../public/js/config.js';
@@ -189,6 +189,9 @@ export class TrucoRoom extends DurableObject {
           }
           delete r.afkSince[seat];
           if (r.afkBot) delete r.afkBot[seat];
+          if (r.hidden) delete r.hidden[seat]; // si sigue con la pestaña oculta, el navegador lo vuelve a avisar
+          if (r.hiddenNoted) delete r.hiddenNoted[seat];
+          if (r.rematchLeft) delete r.rematchLeft[seat]; // volvió a la mesa: se lo vuelve a esperar
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.openSeat(!!msg.invited);
           if (free != null) {
@@ -300,6 +303,24 @@ export class TrucoRoom extends DurableObject {
         return this.commit();
       }
 
+      // La pestaña quedó oculta (o volvió a verse): mientras no mira, corre la cuenta y después juega un bot por él.
+      case 'away': {
+        if (seat == null || r.status !== 'playing') return;
+        r.hidden ||= {};
+        if (msg.on) {
+          if (r.hidden[seat]) return;
+          r.hidden[seat] = Date.now();
+        } else {
+          if (!r.hidden[seat]) return;
+          delete r.hidden[seat];
+          if (r.hiddenNoted?.[seat]) {
+            delete r.hiddenNoted[seat];
+            this.addSystemChat(`${r.seats[seat].name} volvió: deja de jugar el bot en su lugar`);
+          }
+        }
+        return this.commit();
+      }
+
       case 'look': {
         if (seat == null) return;
         const tgt = msg.target === 'table' ? 'table' : Number.isInteger(msg.target) && msg.target >= 0 && msg.target < r.seats.length ? msg.target : null;
@@ -354,17 +375,36 @@ export class TrucoRoom extends DurableObject {
       }
 
       case 'rematch': {
-        if (seat == null || r.status !== 'ended') return;
+        if (seat == null || r.status !== 'ended' || r.rematch?.[seat]) return;
+        if (!Object.keys(r.rematch || {}).length) this.addSystemChat(`${r.seats[seat].name} pide revancha`);
+        else this.addSystemChat(`${r.seats[seat].name} acepta la revancha`);
         (r.rematch ||= {})[seat] = true;
         // los rivales automáticos la aceptan como cualquiera: un ratito después
         if (r.seats.some((s) => s?.disguised) && !r.rematchBotAt) r.rematchBotAt = Date.now() + MATCH.rematchMin + Math.floor(rng() * MATCH.rematchRand);
         return this.tryRematch();
       }
 
+      // No quiere la revancha: se cancela el pedido (para todos).
+      case 'rematch-no': {
+        if (seat == null || r.status !== 'ended' || !Object.keys(r.rematch || {}).length) return;
+        r.rematch = null;
+        r.rematchBotAt = 0;
+        this.addSystemChat(`${r.seats[seat].name} no quiere la revancha`);
+        return this.commit();
+      }
+
+      // Se fue de la mesa (tocó "Salir"): la revancha ya no lo espera. Si solo se le cortó, sí lo espera.
+      case 'leave': {
+        if (seat == null || r.status !== 'ended') return;
+        (r.rematchLeft ||= {})[seat] = true;
+        return this.tryRematch(ws);
+      }
+
       case 'to-lobby': {
         if (!isHost || r.status !== 'ended' || r.quick) return;
         r.rematch = null;
         r.rematchBotAt = 0;
+        r.rematchLeft = null;
         r.status = 'lobby';
         r.game = null;
         r.lastMatch = null;
@@ -493,7 +533,13 @@ export class TrucoRoom extends DurableObject {
         changed = true;
       } else if (actor != null && !mustAnswer && !tells) {
         try {
-          a = botAction(g, actor, rng, ctx);
+          // una persona que no está: sus tantos se cantan sin mentir (lo que tiene o "son buenas")
+          a = !r.seats[actor].bot && before.kind === 'declare' ? honestTanto(g, actor) : botAction(g, actor, rng, ctx);
+          // con la pestaña oculta: se avisa una vez que juega un bot en su lugar
+          if (!r.seats[actor].bot && r.hidden?.[actor] && !r.hiddenNoted?.[actor] && before.kind !== 'declare') {
+            (r.hiddenNoted ||= {})[actor] = true;
+            this.addSystemChat(`${r.seats[actor].name} no está mirando: juega un bot en su lugar hasta que vuelva`);
+          }
         } catch (e) {
           console.error('bot failed', e);
         }
@@ -534,14 +580,16 @@ export class TrucoRoom extends DurableObject {
     else await this.scheduleAlarm();
   }
 
-  // La revancha arranca cuando quieren todos los que siguen en la mesa (los bots elegidos por el anfitrión no opinan).
+  // La revancha arranca cuando la aceptaron todos los de la mesa (los bots elegidos por el anfitrión no opinan).
+  // Al que se le cortó la conexión se lo espera; al que se fue con "Salir" (`leave`), no.
   async tryRematch(exclude) {
     const r = this.room;
     const online = this.online(exclude);
-    const agreed = (s, i) => r.rematch?.[i] || (s.bot && !s.disguised) || (!s.bot && !online.has(s.pid));
+    const agreed = (s, i) => !s || r.rematch?.[i] || (s.bot && !s.disguised) || r.rematchLeft?.[i];
     if (!online.size || !Object.keys(r.rematch || {}).length || !r.seats.every(agreed)) return this.commit();
     r.rematch = null;
     r.rematchBotAt = 0;
+    r.rematchLeft = null;
     rematch(r.game, rng);
     r.lastMatch = null;
     await this.rec.start(r);
@@ -614,7 +662,7 @@ export class TrucoRoom extends DurableObject {
     r.handEndedAt = 0;
     r.showSince = 0;
     r.botClaimAt = 0;
-    r.dealUntil = Date.now() + dealMs(r.game.n);
+    r.dealUntil = Date.now() + dealMs(r.game.h?.duel ? 2 : r.game.n); // en el pica-pica se reparte a dos
     r.botSenaDue = {};
     r.senaSeen = {}; // señas que vio cada bot en esta mano
     r.claimWatch = null;
@@ -758,7 +806,8 @@ export class TrucoRoom extends DurableObject {
   canAsk(seat, kind) {
     const r = this.room;
     const g = r.game;
-    if (seat == null || r.status !== 'playing' || !g?.h || g.h.phase !== 'play' || g.n <= 2 || g.h.mazo[seat]) return false;
+    // en el pica-pica cada uno juega solo: no hay a quién consultar
+    if (seat == null || r.status !== 'playing' || !g?.h || g.h.phase !== 'play' || g.n <= 2 || g.h.mazo[seat] || g.h.duel) return false;
     const T = team(seat);
     if (this.openAsk(T) || (r.asked?.[T] || []).includes(this.askKey(kind)) || !this.partnersOf(seat).length) return false;
     // te cantaron algo: lo pregunta el que tiene que contestar
@@ -1036,13 +1085,26 @@ export class TrucoRoom extends DurableObject {
     return false;
   }
 
-  // Bot, o humano desconectado hace más de TIMING.afk: juega el servidor por él.
-  isAway(seat, now = Date.now()) {
+  // Cuándo empieza a jugar el servidor por una persona que no está (desconectada, o conectada con la pestaña
+  // oculta), o null si está. Si le toca cantar los tantos, se le esperan TIMING.autoTanto desde que le tocó.
+  awayDeadline(seat, now = Date.now(), online = this.online()) {
     const r = this.room;
     const p = r.seats[seat];
+    if (!p || p.bot) return null;
+    const since = online.has(p.pid) ? r.hidden?.[seat] : r.afkSince?.[seat];
+    if (!since) return null;
+    const g = r.game;
+    const w = g?.h ? waitingFor(g) : null;
+    if (w?.kind === 'declare' && w.seats.includes(seat)) return Math.max(since, r.waitSince || since) + TIMING.autoTanto;
+    return since + TIMING.afk;
+  }
+
+  // Bot, o humano que no está hace más de la cuenta: juega el servidor por él.
+  isAway(seat, now = Date.now()) {
+    const p = this.room.seats[seat];
     if (!p || p.bot) return !!p;
-    if (this.online().has(p.pid)) return false;
-    return now - (r.afkSince[seat] || now) >= TIMING.afk;
+    const at = this.awayDeadline(seat, now);
+    return at != null && now >= at;
   }
 
   // Los bots no juegan hasta que se terminó de decir lo que empieza en `at` (más un respiro).
@@ -1079,7 +1141,14 @@ export class TrucoRoom extends DurableObject {
     }
     this.botReact();
     // momento en que se cantó lo que está esperando respuesta (para el compañero bot que contesta)
-    if (['truco', 'envido', 'flor'].includes(waitingFor(g).kind)) r.callAt = Date.now();
+    const w = waitingFor(g);
+    if (['truco', 'envido', 'flor'].includes(w.kind)) r.callAt = Date.now();
+    // desde cuándo se espera a los que tienen que actuar ahora (la cuenta de los tantos de un ausente)
+    const wk = `${g.handNo}:${w.kind}:${w.seats}:${g.h?.envido?.declare?.said?.length ?? ''}`;
+    if (wk !== r.waitKey) {
+      r.waitKey = wk;
+      r.waitSince = Date.now();
+    }
     if (g.status === 'ended') {
       r.status = 'ended';
       this.matchDue = true;
@@ -1166,7 +1235,7 @@ export class TrucoRoom extends DurableObject {
       if (now < at) continue;
       const seat = Number(k);
       delete due[k];
-      if (r.game.h.phase !== 'play' || r.game.h.mazo[seat]) continue;
+      if (r.game.h.phase !== 'play' || r.game.h.mazo[seat] || r.game.h.duel) continue; // en el pica-pica no hay compañero en juego
       // el bot mira a un compañero antes de hacer la seña
       const partners = r.seats.map((_, j) => j).filter((j) => j !== seat && team(j) === team(seat));
       const p = partners[Math.floor(rng() * partners.length)];
@@ -1277,7 +1346,10 @@ export class TrucoRoom extends DurableObject {
     } else if (now < (r.dealUntil || 0)) at = Math.min(at, r.dealUntil + 50);
     else if (this.autoActor() != null) at = Math.min(at, Math.max(now + 100, r.botReadyAt || now + TIMING.botThinkMin));
     else if (this.partnerAt() != null) at = Math.min(at, Math.max(now + 100, this.partnerAt()));
-    else for (const s of waitingFor(g).seats) if (r.afkSince[s]) at = Math.min(at, Math.max(now + 200, r.afkSince[s] + TIMING.afk));
+    else for (const s of waitingFor(g).seats) {
+      const d = this.awayDeadline(s, now);
+      if (d != null) at = Math.min(at, Math.max(now + 200, d));
+    }
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
     for (const [s, since] of Object.entries(r.afkSince || {})) if (!r.afkBot?.[s]) at = Math.min(at, Math.max(now + 100, since + TIMING.afk));
     if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
@@ -1338,11 +1410,14 @@ export class TrucoRoom extends DurableObject {
       seats: r.seats.map((s, i) => {
         if (!s) return null;
         const on = s.bot || online.has(s.pid);
-        // desconectado en partida: cuánto falta (ms) para que juegue un bot por él (0 = ya juega el bot)
+        // desconectado (o con la pestaña oculta) en partida: cuánto falta (ms) para que juegue un bot por él (0 = ya juega)
         const since = !on && r.status === 'playing' ? r.afkSince?.[i] : null;
-        const botIn = since ? Math.max(0, since + TIMING.afk - Date.now()) : null;
+        const away = on && !s.bot && r.status === 'playing' && !!r.hidden?.[i];
+        const dl = r.status === 'playing' ? this.awayDeadline(i, Date.now(), online) : null;
+        const botIn = dl != null ? Math.max(0, dl - Date.now()) : null;
+        const tantoIn = dl != null && r.game?.h && waitingFor(r.game).kind === 'declare' && waitingFor(r.game).seats.includes(i);
         // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
-        return { forfeit: !!since && !this.partnerOnline(i, online), name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, voice: s.voice || null, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
+        return { forfeit: !!since && !this.partnerOnline(i, online), away, tantoIn: !!tantoIn, name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, voice: s.voice || null, cos: s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
       }),
       // el paño y el mazo son los del anfitrión
       table: (() => {

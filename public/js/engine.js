@@ -5,7 +5,7 @@
 // Asientos 0..n-1 en orden de juego ("hacia la derecha"). Equipo = asiento % 2.
 // Reparte `dealer`, corta el de su izquierda (dealer - 1) y se reparte empezando por la mano
 // (dealer + 1). En la mano siguiente reparte el que fue mano.
-import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS } from './config.js';
+import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, PICA_PICA } from './config.js';
 import { newDeck, shuffle, rank, tanto, flor as florOf, validTanto, maxTanto, LOWEST_RANK } from './cards.js';
 
 // Lo de cards.js que usan otros módulos se reexporta para tener una sola puerta de entrada.
@@ -41,16 +41,18 @@ export const playValue = (p, g = null) => (p.burned ? BURNED_VALUE : rank(p.c, g
 export const burnVisible = (h, p) => !!p.burned && (p.thrownIn === undefined || h.r > p.thrownIn || h.rounds[p.thrownIn]?.result != null);
 
 export const cutter = (g) => (g.dealer - 1 + g.n) % g.n;
-// "Pies" (los últimos de cada equipo): el que reparte y el que corta.
-export const pies = (g) => (g.n === 2 ? [0, 1] : [g.dealer, cutter(g)]);
+// "Pies" (los últimos de cada equipo): el que reparte y el que corta. En un duelo de pica-pica, los dos que juegan.
+export const pies = (g) => (g.h?.duel ? g.h.duel.seats.slice() : g.n === 2 ? [0, 1] : [g.dealer, cutter(g)]);
 export const isPie = (g, seat) => pies(g).includes(seat);
 // Regla de la mesa: en equipos el truco recién se canta desde segunda.
-const trucoBlocked = (g) => g.trucoDesdeSegunda && g.h.r === 0;
+// (en el pica-pica se juega mano a mano: el truco se canta desde primera)
+const trucoBlocked = (g) => g.trucoDesdeSegunda && g.h.r === 0 && !g.h.duel;
 
 // ---------------------------------------------------------------- partida
 
-// Opciones: mode, target, dealer, trucoDesdeSegunda, flor, muestra, trampas (false = "no permitir trampas").
-export function newGame({ mode = DEFAULT_MODE, target = DEFAULT_TARGET, dealer = 0, trucoDesdeSegunda = false, flor = false, muestra = false, trampas = true } = {}, rng = Math.random) {
+// Opciones: mode, target, dealer, trucoDesdeSegunda, flor, muestra, trampas (false = "no permitir trampas"),
+// picapica (solo 3 vs 3).
+export function newGame({ mode = DEFAULT_MODE, target = DEFAULT_TARGET, dealer = 0, trucoDesdeSegunda = false, flor = false, muestra = false, trampas = true, picapica = false } = {}, rng = Math.random) {
   const n = MODES[mode] || MODES[DEFAULT_MODE];
   const g = {
     mode: MODES[mode] ? mode : DEFAULT_MODE,
@@ -60,6 +62,7 @@ export function newGame({ mode = DEFAULT_MODE, target = DEFAULT_TARGET, dealer =
     flor: !!flor,
     muestra: !!muestra,
     trampas: trampas !== false,
+    picapica: !!picapica && n === 6,
     score: [0, 0],
     dealer: dealer % n,
     handNo: 0,
@@ -73,7 +76,20 @@ export function newGame({ mode = DEFAULT_MODE, target = DEFAULT_TARGET, dealer =
   return g;
 }
 
-const gameOptions = (g) => ({ mode: g.mode, target: g.target, trucoDesdeSegunda: g.trucoDesdeSegunda, flor: g.flor, muestra: g.muestra, trampas: g.trampas });
+const gameOptions = (g) => ({ mode: g.mode, target: g.target, trucoDesdeSegunda: g.trucoDesdeSegunda, flor: g.flor, muestra: g.muestra, trampas: g.trampas, picapica: !!g.picapica });
+
+// ---- pica-pica
+// ¿Toca una vuelta de pica-pica? Con la opción, entre PICA_PICA.from y cuando a alguien le faltan stopLeft o menos.
+export function picaDue(g) {
+  if (!g.picapica) return false;
+  const top = Math.max(...g.score);
+  return top >= PICA_PICA.from && g.target - top > PICA_PICA.stopLeft;
+}
+// Duelo k (0..2) de la vuelta: el k-ésimo a la derecha del que reparte (es mano) contra el de enfrente.
+export function picaDuel(g, k) {
+  const a = (g.dealer + 1 + k) % g.n;
+  return { k, of: g.n / 2, seats: [a, (a + g.n / 2) % g.n] };
+}
 
 function event(g, e) {
   g.evId++;
@@ -81,12 +97,15 @@ function event(g, e) {
   if (g.ev.length > MAX_EVENTS) g.ev.splice(0, g.ev.length - MAX_EVENTS);
 }
 
-export function deal(g, rng = Math.random) {
+// duel: un duelo de pica-pica ({ k, of, seats }); solo se les reparte a esos dos y los demás miran (quedan como
+// "al mazo" para el resto del motor: no juegan, no cantan y no cuentan en el envido ni en la flor).
+export function deal(g, rng = Math.random, duel = null) {
   const n = g.n;
   const d = shuffle(newDeck(), rng);
   const cards = Array.from({ length: n }, () => []);
-  const mano = (g.dealer + 1) % n;
-  for (let r = 0; r < 3; r++) for (let k = 0; k < n; k++) cards[(mano + k) % n].push(d.pop());
+  const mano = duel ? duel.seats[0] : (g.dealer + 1) % n;
+  const order = Array.from({ length: n }, (_, k) => (mano + k) % n).filter((s) => !duel || duel.seats.includes(s));
+  for (let r = 0; r < 3; r++) for (const s of order) cards[s].push(d.pop());
   g.handNo++;
   g.h = {
     cards, // las 3 cartas originales (para el envido y la flor)
@@ -99,7 +118,8 @@ export function deal(g, rng = Math.random) {
     rounds: [{ plays: [], result: null, starter: mano }],
     r: 0,
     turn: mano,
-    mazo: Array(n).fill(false),
+    mazo: Array.from({ length: n }, (_, s) => !!duel && !duel.seats.includes(s)),
+    duel,
     envido: { calls: [], by: null, bySeat: null, state: 'none', declare: null, winner: null, winnerSeat: null, points: 0, needsShow: false, shown: false },
     // state: none | pending (esperando respuesta de `awaiting`) | done. level: flor | contraflor | resto
     flor: { state: 'none', level: null, by: null, bySeat: null, awaiting: null, declined: 0, result: null },
@@ -109,14 +129,20 @@ export function deal(g, rng = Math.random) {
     show: null,
     result: null,
   };
-  event(g, { type: 'deal', seat: g.dealer, cutter: cutter(g), mano, hand: g.handNo, muestra: g.h.muestra });
+  event(g, { type: 'deal', seat: g.dealer, cutter: cutter(g), mano, hand: g.handNo, muestra: g.h.muestra, duel });
 }
 
-// El que reparte la mano siguiente es el que fue mano (el mazo pasa a la derecha).
+// El que reparte la mano siguiente es el que fue mano (el mazo pasa a la derecha). Con pica-pica: después de una
+// mano redonda, si toca, vienen los tres duelos (reparte el mismo en los tres) y después otra redonda.
 export function nextHand(g, rng = Math.random) {
   if (g.status !== 'playing' || g.h?.phase !== 'ended') return false;
+  const duel = g.h.duel;
+  if (duel && duel.k + 1 < duel.of) {
+    deal(g, rng, picaDuel(g, duel.k + 1));
+    return true;
+  }
   g.dealer = (g.dealer + 1) % g.n;
-  deal(g, rng);
+  deal(g, rng, !duel && picaDue(g) ? picaDuel(g, 0) : null);
   return true;
 }
 
@@ -207,6 +233,7 @@ function envidoNextOptions(calls) {
 }
 
 function faltaPoints(g, winnerTeam) {
+  if (g.h?.duel) return PICA_PICA.falta; // en el pica-pica la falta vale fijo
   const leader = g.score[0] >= g.score[1] ? 0 : 1;
   if (g.score[0] === g.score[1] || winnerTeam === leader) return g.target - g.score[winnerTeam];
   return g.target - g.score[leader];
@@ -243,8 +270,9 @@ export function actionsFor(g, seat) {
   const out = {
     play: false, canDouble: false, canDown: false, truco: null, envido: [], flor: [], quiero: false, noquiero: false,
     cantar: false, buenas: false, minTanto: 0, lie: false, mazo: false, denunciar: [], mostrar: false, nomostrar: false,
-    reclamar: false, throwOut: false, rendirse: false,
+    reclamar: false, throwOut: false, rendirse: false, lucir: false,
   };
+  if (h && h.phase === 'ended' && seat != null) out.lucir = hiddenOf(g, seat).length > 0;
   if (!h || g.status !== 'playing' || seat == null) return out;
   out.rendirse = true;
   if (h.phase === 'show') {
@@ -291,7 +319,7 @@ export function actionsFor(g, seat) {
   }
   // fase de juego normal
   out.mazo = true;
-  if (g.trampas) out.denunciar = teamSeats(g, otherTeam(team(seat)));
+  if (g.trampas) out.denunciar = teamSeats(g, otherTeam(team(seat))).filter((s) => !h.duel || h.duel.seats.includes(s));
   if (h.turn !== seat) {
     out.throwOut = !outOfTurnBlock(g, seat); // tirar fuera de turno: la carta se quema
     return out;
@@ -342,15 +370,34 @@ function revealTanto(g, seat, cards) {
   }
 }
 
+// Cartas de `seat` que todavía no vio nadie (las que le quedaron en la mano, o todas si se fue al mazo).
+function hiddenOf(g, seat) {
+  const h = g.h;
+  return h.cards[seat].filter((c) => !h.table[seat].some((p) => p.c === c));
+}
+
+// "Mostrá lo que tenías": terminada la mano (por ejemplo, después de un no quiero), cualquiera puede dar vuelta las
+// cartas que no tiró, para lucirse o cargar al rival. No cambia ningún punto.
+function lucir(g, seat) {
+  const h = g.h;
+  const cards = hiddenOf(g, seat);
+  if (!cards.length) return { error: 'No te quedan cartas para mostrar' };
+  h.inHand[seat] = h.inHand[seat].filter((c) => !cards.includes(c));
+  for (const c of cards) h.table[seat].push({ c, faceDown: false, round: null, shown: true });
+  event(g, { type: 'lucir', seat, cards });
+  return { ok: true };
+}
+
 function actInner(g, seat, a) {
   const h = g.h;
+  if (a?.t === 'lucir' && h?.phase === 'ended' && seat != null && seat >= 0 && seat < g.n) return lucir(g, seat);
   if (g.status !== 'playing') return { error: 'La partida terminó' };
   if (!h) return { error: 'Esperá la próxima mano' };
   if (seat == null || seat < 0 || seat >= g.n) return { error: 'No estás sentado' };
   if (a?.t === 'rendirse') return surrender(g, seat);
   if (h.phase === 'show') return actShow(g, seat, a);
   if (h.phase !== 'play') return { error: 'Esperá la próxima mano' };
-  if (!active(h, seat)) return { error: 'Te fuiste al mazo' };
+  if (!active(h, seat)) return { error: h.duel && !h.duel.seats.includes(seat) ? 'Es pica-pica: esperá tu mano a mano' : 'Te fuiste al mazo' };
   const w = waitingFor(g);
   const mine = w.seats.includes(seat);
   const T = team(seat);
@@ -382,9 +429,9 @@ function actInner(g, seat, a) {
     }
 
     // Dos cartas encimadas (trampa). La de abajo juega esta ronda (los rivales no la ven). La de
-    // arriba ya está en la mesa y no se puede levantar: es tu jugada de la ronda SIGUIENTE. Si la de
-    // abajo mata (y entonces arrancás vos la ronda siguiente), la de arriba vale normal: era tu turno.
-    // Si no (perdiste, mató tu compañero o fue parda), se quema (vale un 4) y al terminar la ronda se ve quemada; ahí los rivales pueden
+    // arriba ya está en la mesa y no se puede levantar: es tu jugada de la ronda SIGUIENTE. Si tu equipo
+    // gana la ronda (mataste vos o tu compañero), la de arriba vale normal.
+    // Si no (perdiste o fue parda), se quema (vale un 4) y al terminar la ronda se ve quemada; ahí los rivales pueden
     // pedir "mostrá las dos". Ver docs/REGLAS.md.
     case 'play2': {
       if (!g.trampas) return { error: 'En esta mesa no se permiten trampas' };
@@ -509,7 +556,7 @@ function actInner(g, seat, a) {
     // para que todos vean la de abajo. No suma ni resta puntos.
     case 'denuncia': {
       const target = a.target;
-      if (!Number.isInteger(target) || target < 0 || target >= g.n || team(target) === T) return { error: 'Denuncia inválida' };
+      if (!Number.isInteger(target) || target < 0 || target >= g.n || team(target) === T || (h.duel && !h.duel.seats.includes(target))) return { error: 'Denuncia inválida' };
       const under = h.table[target].filter((p) => p.under && !p.revealed);
       for (const p of under) p.revealed = true;
       event(g, { type: 'denuncia', seat, target, ok: under.length > 0, cards: under.map((p) => p.c) });
@@ -598,7 +645,7 @@ function checkPlayTurn(g, w, seat) {
 // Por qué no se puede tirar fuera de turno ahora (null = se puede, y la carta se quema).
 function outOfTurnBlock(g, seat) {
   const h = g.h;
-  if (g.n === 2) return 'Esperá que juegue tu rival'; // de a dos, tirar antes de tiempo es regalar la ronda
+  if (g.n === 2 || h.duel) return 'Esperá que juegue tu rival'; // de a dos, tirar antes de tiempo es regalar la ronda
   if (h.phase !== 'play' || waitingFor(g).kind !== 'play') return 'Hay que contestar el canto primero';
   if (played(h, seat)) return 'Ya jugaste en esta ronda';
   if (h.pre[seat]) return 'Tu carta de esta ronda ya está en la mesa';
@@ -758,13 +805,13 @@ function resolveRound(g) {
   R.winnerSeat = teams.size === 1 ? tops[0].seat : null;
   event(g, { type: 'round', round: h.r, result: R.result, seat: R.winnerSeat });
 
-  // la de arriba de dos encimadas solo vale si el que la tiró MATÓ esta ronda con la de abajo (entonces arranca
-  // él la siguiente: es su turno). Si perdió, si mató el compañero o si fue parda, se quema. Se marca al cerrar la
+  // la de arriba de dos encimadas vale si el equipo del que la tiró GANÓ esta ronda (mató él con la de abajo o su
+  // compañero). Si perdió o si fue parda, se quema. Se marca al cerrar la
   // ronda, también si la mano termina acá: así queda bien al cerrar la mano.
   h.table.forEach((list, s) => {
     if (!h.pre[s]) return;
     const top = list.find((p) => p.over && p.c === h.pre[s]);
-    if (top) top.burned = R.winnerSeat !== s;
+    if (top) top.burned = R.result !== team(s);
   });
   const winner = handWinner(h.rounds, team(h.mano));
   if (winner !== null) return endHand(g, winner, h.truco.level, 'cartas');
@@ -865,7 +912,8 @@ export function viewFor(g, seat) {
     cutter: cutter(g),
     handCounts: h.inHand.map((c) => c.length),
     myCards: seat != null ? h.inHand[seat] : [],
-    myTanto: seat != null ? myTanto(g, seat).value : null,
+    myTanto: seat != null && h.cards[seat].length ? myTanto(g, seat).value : null,
+    duel: h.duel,
     myFlor: seat != null ? florFor(g, seat)?.value ?? null : null,
     table: h.table.map((list, s) =>
       list.map(({ thrownIn, ...p }) => {
@@ -896,6 +944,7 @@ export function viewFor(g, seat) {
   };
   return {
     ...gameOptions(g),
+    picaNext: !!h && !h.duel && picaDue(g), // con el tanteador de ahora, después de esta mano viene el pica-pica
     n: g.n,
     score: g.score,
     dealer: g.dealer,

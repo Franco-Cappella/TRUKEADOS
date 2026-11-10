@@ -54,6 +54,9 @@ export function describe(frame, names) {
         if (e.double) out.push(`${n(e.seat)} tiró dos encimadas (arriba, el ${cardName(e.c)})`);
         else out.push(`${n(e.seat)} tiró ${e.faceDown ? 'una carta tapada' : `el ${cardName(e.c)}`}${e.burned ? ' (quemada)' : ''}`);
         break;
+      case 'lucir':
+        out.push(`${n(e.seat)} mostró lo que tenía: ${e.cards.map(cardName).join(', ')}`);
+        break;
       case 'call':
         out.push(`${n(e.seat)}: «${e.text}»`);
         break;

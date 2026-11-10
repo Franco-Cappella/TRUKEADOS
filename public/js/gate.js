@@ -1,5 +1,5 @@
 // Antes de sentarte en una mesa ajena: cómo se juega ahí (por ELO o sin puntuar, puntos, flor, muestra, trampas).
-import { ROOM_OPTIONS, modeLabel } from './config.js';
+import { ROOM_OPTIONS, optionForMode, modeLabel } from './config.js';
 import { $, esc } from './dom.js';
 
 const row = (k, v) => `<div class="gt-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
@@ -14,7 +14,7 @@ export function showGate(info, code, enter, leave) {
     row('Puntuación', rated ? 'Por ELO' : 'Sin puntuar'),
     row('Jugadores', modeLabel(c.mode)),
     row('Se juega', `a ${c.target} puntos`),
-    ...ROOM_OPTIONS.map((o) => row(title(o), c[o.key] ? 'Sí' : 'No')),
+    ...ROOM_OPTIONS.filter((o) => optionForMode(o, c.mode)).map((o) => row(title(o), c[o.key] ? 'Sí' : 'No')),
     ...(c.mode === '1v1' ? [] : [row('Truco desde segunda', c.trucoDesdeSegunda ? 'Sí' : 'No')]),
   ].join('');
   box.innerHTML = `<div class="m-wrap gt">
