@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { drawCharacter, lookFor, dressed, sleeveOf, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
+import { loadModel, Rig } from './models.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
@@ -470,6 +471,12 @@ const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 // Acerca `cur` a `target` de forma suave e independiente de los FPS (rate: cuán rápido, en 1/s).
 const damp = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
 const CAM_RATE = 14; // suavizado de la cámara
+const CAM_MODES = ['first', 'back', 'front']; // primera, tercera (desde atrás) y segunda persona (de frente)
+const CAM_BACK = { dist: 1.25, up: 0.32 };
+const CAM_FRONT = { dist: 1.05, up: 0.05 };
+const RIG_BACK = 0.42; // los personajes 3D: cuánto más atrás del borde de la mesa se sientan
+const SELF_NECK = { back: 0.16, down: 0.16 }; // tu personaje 3D en primera persona: el cuello, respecto de los ojos
+const SELF_HAND_REACH = 0.6; // tu mano izquierda: qué parte del camino de los ojos a las cartas
 const HEAD_RATE = 9; // suavizado del giro de cabeza de los personajes
 const THROW_MS = 360; // carta de la mano a la mesa
 // Campo de visión (grados, vertical). Más amplio = ves más mesa y a los costados.
@@ -533,6 +540,9 @@ export class TableScene {
 
     this.handGroup = new THREE.Group();
     this.camera.add(this.handGroup);
+    // vista: 'first' (primera persona), 'back' (tercera: desde atrás) o 'front' (segunda: de frente, te ves la cara)
+    this.camMode = CAM_MODES.includes(store.get(KEYS.camMode)) ? store.get(KEYS.camMode) : 'first';
+    this.headPos = new THREE.Vector3(0, EYE_Y, 1);
 
     this.buildRoom();
     this.tableGroup = new THREE.Group();
@@ -717,7 +727,7 @@ export class TableScene {
     this.tableBuilt = true;
     const g = this.tableGroup;
     while (g.children.length) g.remove(g.children[0]);
-    for (const c of this.chars.values()) this.scene.remove(c.mesh, c.chair);
+    for (const c of this.chars.values()) this.dropCharacter(c);
     this.chars.clear();
     for (const c of this.tableCards.values()) this.scene.remove(c);
     this.tableCards.clear();
@@ -860,11 +870,8 @@ export class TableScene {
     mate.traverse((o) => (o.castShadow = true));
     g.add(mate);
 
-    // personajes (todos menos yo, salvo que sea espectador)
-    for (let s = 0; s < n; s++) {
-      if (!this.spectator && s === this.me) continue;
-      this.addCharacter(s);
-    }
+    // personajes: todos (el tuyo solo se ve en tercera o segunda persona, o con un personaje 3D)
+    for (let s = 0; s < n; s++) this.addCharacter(s);
     this.placeCamera();
   }
 
@@ -912,8 +919,158 @@ export class TableScene {
     chair.position.set(d.x * cr, 0, d.z * cr);
     chair.rotation.y = this.seatAngle(seat);
     this.scene.add(chair);
-    const c = { seat, mesh, chair, canvas, ctx, tex, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, cards: 0 }, gaze: 'table', exprUntil: 0, talkUntil: 0, dirty: true };
+    const self = !this.spectator && seat === this.me;
+    const c = { seat, self, mesh, chair, canvas, ctx, tex, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, cards: 0 }, gaze: 'table', exprUntil: 0, talkUntil: 0, dirty: true, present: false, skin: null, rig: null };
+    if (self) mesh.visible = false;
     this.chars.set(seat, c);
+  }
+
+  dropCharacter(c) {
+    this.scene.remove(c.mesh, c.chair);
+    this.setRig(c, null);
+  }
+
+  // ------------------------------------------------------------ personajes 3D (tienda, ranura "personaje")
+  // id: el del personaje (COSMETIC_LOOK[id].model) o null. Mientras baja el modelo se ve el de siempre.
+  setRig(c, id) {
+    if (c.skin === id) return;
+    c.skin = id;
+    if (c.rig) {
+      this.scene.remove(c.rig.root);
+      c.rig.dispose();
+      c.rig = null;
+      c.handBacks = null;
+      c.dirty = true;
+    }
+    const spec = id && COSMETIC_LOOK[id]?.model;
+    if (!spec) return;
+    loadModel(spec.url)
+      .then((tpl) => {
+        if (c.skin !== id || this.chars.get(c.seat) !== c) return;
+        c.rig = new Rig(tpl, { scale: spec.scale });
+        this.scene.add(c.rig.root);
+        this.shadowDirty = true;
+      })
+      .catch((e) => console.warn('personaje 3D', id, e));
+  }
+
+  // Dónde está tu cabeza (aunque la cámara esté atrás o adelante).
+  myHead() {
+    return this.headPos.clone();
+  }
+
+  // Las cartas que tiene en la mano un personaje 3D (de dorso: es lo que ven los demás).
+  syncHandBacks(c) {
+    const n = c.state.cards;
+    const deck = this.seatDecks[c.seat] || null;
+    if (c.handBacks && c.handBacks.n === n && c.handBacks.deck === deck) return;
+    if (c.handBacks) c.rig.root.remove(c.handBacks.group);
+    const group = new THREE.Group();
+    for (let i = 0; i < n; i++) {
+      const card = makeCard('back', true, deck);
+      const a = ((n - 1) / 2 - i) * 0.28;
+      card.position.set(-Math.sin(a) * 0.05, Math.cos(a) * 0.05, i * 0.002);
+      card.rotation.set(0, 0, a);
+      card.traverse((o) => (o.castShadow = true));
+      group.add(card);
+    }
+    c.rig.root.add(group);
+    c.handBacks = { group, n, deck };
+  }
+
+  updateRig(c, now, dt) {
+    const r = c.rig;
+    const d = this.seatDir(c.seat);
+    r.root.visible = c.present;
+    if (!c.present) return;
+    r.root.position.set(d.x * (this.R + RIG_BACK), 0, d.z * (this.R + RIG_BACK));
+    // el tuyo, en primera persona, sigue a la cámara (cuello justo abajo de los ojos, también al inclinarte). Ese
+    // cuerpo lo ves solo vos: los demás te ven sentado en tu silla.
+    if (c.self) {
+      c.selfOff ||= new THREE.Vector3();
+      if (this.camMode !== 'first') c.selfOff.multiplyScalar(0.8);
+      r.root.position.add(c.selfOff);
+    }
+    r.root.rotation.y = Math.atan2(-d.x, -d.z); // mira al centro de la mesa
+    r.root.updateMatrixWorld(true);
+    const first = c.self && this.camMode === 'first';
+    // a dónde mira: la cabeza sigue a la cámara (el tuyo) o a quien mira (los demás)
+    let yaw = 0;
+    let down = 0;
+    if (c.self) {
+      yaw = this.yaw;
+      down = THREE.MathUtils.clamp(-this.pitch, 0, 1);
+    } else {
+      const t = c.gaze;
+      let target = null;
+      if (t === 'table' || t == null) down = 1;
+      else if (!this.spectator && t === this.me) target = this.myHead();
+      else if (this.chars.get(t)) target = this.chars.get(t).mesh.position.clone();
+      if (target) {
+        // el ángulo del objetivo visto desde el personaje (positivo = a su izquierda)
+        const local = r.root.worldToLocal(target.clone());
+        yaw = Math.atan2(local.x, local.z);
+      }
+    }
+    c.hy = c.hy === undefined ? yaw : damp(c.hy, yaw, HEAD_RATE, dt);
+    c.hd = c.hd === undefined ? down : damp(c.hd, down, HEAD_RATE, dt);
+    // manos: la izquierda con las cartas, la derecha tira
+    let left = null;
+    let right = null;
+    if (first && this.handCards.length && this.palm) {
+      // la mano va en la misma dirección (vista desde los ojos) que las cartas, pero al alcance del brazo:
+      // las cartas se dibujan encima de todo, así que se ve sosteniéndolas
+      const cam = this.camera.position;
+      const palm = this.palm.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, -0.05, 0));
+      left = cam.clone().lerp(palm, SELF_HAND_REACH);
+      // la derecha, al lado de las cartas (lista para tirar)
+      const side = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+      right = cam.clone().lerp(palm.clone().addScaledVector(side, 0.17).add(new THREE.Vector3(0, -0.06, 0)), SELF_HAND_REACH);
+    }
+    const rch = c.reach;
+    if (rch && now < rch.until) {
+      const t = THREE.MathUtils.clamp((now - rch.t0) / (rch.until - rch.t0), 0, 1);
+      const to = rch.follow ? rch.follow.getWorldPosition(new THREE.Vector3()) : rch.to.clone();
+      const rest = right ? right.clone() : r.local(-0.2, TABLE_Y + 0.03, 0.4);
+      const k = rch.follow ? Math.min(1, t * 3) * (t < 0.8 ? 1 : (1 - t) / 0.2) : Math.sin(Math.PI * t);
+      right = rest.lerp(to.setY(Math.max(to.y, TABLE_Y + 0.02)), k);
+    } else c.reach = null;
+    r.pose({ tableY: TABLE_Y, headYaw: c.hy, headDown: c.hd, left, right, hideHead: first, breathe: Math.sin(now / 900 + c.seat) });
+    if (c.self && first) {
+      // cuánto le falta al cuello para quedar justo abajo y atrás de los ojos: se corrige de a poco
+      const flat = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+      const want = this.camera.position.clone().addScaledVector(flat, -SELF_NECK.back).add(new THREE.Vector3(0, -SELF_NECK.down, 0));
+      c.selfOff.addScaledVector(want.sub(r.at('Neck')), 0.5);
+      if (c.selfOff.length() > 1) c.selfOff.setLength(1);
+    }
+    // las cartas en la mano (no en la tuya en primera persona: esas son las de abajo de la pantalla)
+    if (!first) {
+      this.syncHandBacks(c);
+      const g = c.handBacks.group;
+      g.position.copy(r.root.worldToLocal(r.at('LeftHand'))).add(new THREE.Vector3(0, 0.04, 0.02));
+      g.rotation.set(-0.35, 0, 0);
+      g.visible = c.state.cards > 0;
+    } else if (c.handBacks) {
+      r.root.remove(c.handBacks.group);
+      c.handBacks = null;
+    }
+    // señas en la cara
+    const expr = now < c.exprUntil ? c.state.expr : 'neutral';
+    const talking = now < c.talkUntil && Math.floor(now / 130) % 2 === 0;
+    r.face?.set(expr, talking, expr === 'bite' ? biteAt(now) : 1);
+  }
+
+  // ------------------------------------------------------------ vistas (primera, tercera y segunda persona)
+  setCamMode(mode) {
+    if (!CAM_MODES.includes(mode)) return;
+    this.camMode = mode;
+    store.set(KEYS.camMode, mode);
+    this.applyCamera();
+  }
+
+  cycleCamMode() {
+    this.setCamMode(CAM_MODES[(CAM_MODES.indexOf(this.camMode) + 1) % CAM_MODES.length]);
+    return this.camMode;
   }
 
   // La baraja de cada asiento (tienda): las cartas que tira se ven con esa.
@@ -938,7 +1095,9 @@ export class TableScene {
         c.look = dressed(lookFor(name, seat), p?.cos);
         c.dirty = true;
       }
-      c.mesh.visible = !!p;
+      c.present = !!p;
+      c.mesh.visible = !!p && !c.self;
+      this.setRig(c, COSMETIC_LOOK[p?.cos?.personaje]?.model ? p.cos.personaje : null);
       const cards = handCounts ? handCounts[seat] ?? 0 : 0;
       if (cards !== c.state.cards) {
         c.state.cards = cards;
@@ -1031,9 +1190,9 @@ export class TableScene {
     let down = 0;
     if (t === 'table' || t === null || t === undefined) {
       down = 1;
-    } else if (!this.spectator && t === this.me) {
-      target = this.camera.position.clone();
-    } else if (this.chars.get(t)) {
+    } else if (!this.spectator && t === this.me && t !== c.seat) {
+      target = this.myHead();
+    } else if (this.chars.get(t) && t !== c.seat) {
       target = this.chars.get(t).mesh.position.clone();
     }
     let headYaw = bodyYaw;
@@ -1107,6 +1266,17 @@ export class TableScene {
     // al mirar para abajo te inclinás sobre la mesa, como en la vida real
     const lean = THREE.MathUtils.smoothstep(-this.pitch, 0.3, 1.0);
     this.camera.position.set(-Math.sin(this.yaw) * 0.12 * lean, EYE_Y + 0.2 * lean, this.R + 0.24 - 0.42 * lean);
+    this.headPos.set(0, EYE_Y, this.R + 0.24);
+    if (this.camMode === 'back') {
+      // tercera persona: atrás y un poco arriba de tu cabeza, mirando para el mismo lado
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+      this.camera.position.copy(this.headPos).addScaledVector(fwd, -CAM_BACK.dist).add(new THREE.Vector3(0, CAM_BACK.up, 0));
+    } else if (this.camMode === 'front') {
+      // segunda persona: adelante tuyo, mirándote a la cara
+      const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+      this.camera.position.copy(this.headPos).addScaledVector(fwd, CAM_FRONT.dist).add(new THREE.Vector3(0, CAM_FRONT.up, 0));
+      this.camera.lookAt(this.headPos.clone().add(new THREE.Vector3(0, -0.12, 0)));
+    }
   }
 
   // Límites de hacia dónde se puede mirar (sentado no se da vuelta del todo).
@@ -1127,7 +1297,7 @@ export class TableScene {
     }
     const c = this.chars.get(seat);
     if (!c) return;
-    const p = c.mesh.position.clone().sub(this.camera.position);
+    const p = c.mesh.position.clone().sub(this.headPos);
     const yaw = Math.atan2(-p.x, -p.z);
     this.animateView(yaw, -0.12);
   }
@@ -1142,14 +1312,12 @@ export class TableScene {
   computeLookTarget() {
     if (this.spectator) return null;
     if (this.pitch < -0.55) return 'table';
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-    fwd.y = 0;
-    fwd.normalize();
+    const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     let best = null;
     let bestA = 0.34;
     for (const [seat, c] of this.chars) {
-      if (!c.mesh.visible) continue;
-      const d = c.mesh.position.clone().sub(this.camera.position);
+      if (c.self || !c.present) continue;
+      const d = c.mesh.position.clone().sub(this.headPos);
       d.y = 0;
       d.normalize();
       const a = Math.acos(THREE.MathUtils.clamp(fwd.dot(d), -1, 1));
@@ -1437,7 +1605,10 @@ export class TableScene {
       c.traverse((o) => (o.renderOrder = 10 + i));
     });
     if (this.palm) {
+      // con un personaje 3D, tus manos son las del modelo: las dibujadas no se ven (pero siguen marcando dónde va la mano)
+      const rigHands = !this.spectator && !!this.chars.get(this.me)?.rig;
       this.palm.visible = this.thumb.visible = n > 0;
+      this.palm.material.opacity = this.thumb.material.opacity = rigHands ? 0 : 1;
       this.palm.position.set(pivot.x - 0.035, pivot.y - 0.035, pivot.z - 0.01);
       this.thumb.position.set(pivot.x - 0.05, pivot.y + 0.0, pivot.z + 0.01);
       this.thumb.rotation.z = 0.1;
@@ -1446,7 +1617,13 @@ export class TableScene {
 
   // Mano derecha que acompaña a la carta hasta la mesa y después se retira.
   reachWith(card, ms) {
-    if (!this.reachTex) return;
+    const mine = this.spectator ? null : this.chars.get(this.me);
+    if (mine?.rig) {
+      const now = performance.now();
+      mine.reach = { t0: now, until: now + ms + 260, follow: card };
+      return;
+    }
+    if (!this.reachTex || this.camMode !== 'first') return;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: this.reachTex, transparent: true, alphaTest: 0.05, depthTest: false }));
     m.renderOrder = 50;
     this.scene.add(m);
@@ -1501,6 +1678,13 @@ export class TableScene {
             const mine = !this.spectator && seat === this.me;
             const start = (mine && this.lastHandPos?.[p.c]) || this.handOrigin(seat);
             if (mine) this.reachWith(card, THROW_MS);
+            else {
+              const ch = this.chars.get(seat);
+              if (ch?.rig) {
+                const now = performance.now();
+                ch.reach = { t0: now - 120, until: now + THROW_MS + 200, to: pose.pos.clone() };
+              }
+            }
             const q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, this.seatAngle(seat), 0));
             card.position.copy(start);
             card.quaternion.copy(q0);
@@ -1585,6 +1769,8 @@ export class TableScene {
   }
 
   handOrigin(seat) {
+    const ch = this.chars.get(seat);
+    if (ch?.rig && ch.present && !(ch.self && this.camMode === 'first')) return ch.rig.at('RightHand');
     if (!this.spectator && seat === this.me) {
       return new THREE.Vector3(0, 1.0, this.R + 0.25);
     }
@@ -1724,6 +1910,11 @@ export class TableScene {
     if (!this.spectator && seat === this.me) return null;
     const c = this.chars.get(seat);
     if (!c) return null;
+    if (c.rig) {
+      const p = c.rig.at('HeadTop_End').add(new THREE.Vector3(0, 0.08, 0)).project(this.camera);
+      const behind = p.z > 1;
+      return { x: ((p.x + 1) / 2) * this.viewW, y: ((1 - p.y) / 2) * this.viewH, behind, visible: !behind && Math.abs(p.x) < 1.15 && Math.abs(p.y) < 1.2 };
+    }
     const p = c.mesh.position.clone();
     p.y = 1.66; // un poco arriba de la cabeza
     p.project(this.camera);
@@ -1783,10 +1974,20 @@ export class TableScene {
       this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 12);
       this.camera.updateProjectionMatrix();
     }
-    this.handGroup.visible = this.camera.fov > baseFov * 0.7;
+    this.handGroup.visible = this.camera.fov > baseFov * 0.7 && this.camMode !== 'front';
     this.layoutHand(dt);
     this.redrawsLeft = 1;
     for (const c of this.chars.values()) {
+      if (c.rig) {
+        c.mesh.visible = false;
+        this.updateRig(c, now, dt);
+        continue;
+      }
+      // el tuyo (dibujado) solo se ve en tercera o segunda persona
+      if (c.self) {
+        c.mesh.visible = c.present && this.camMode !== 'first';
+        if (!c.mesh.visible) continue;
+      }
       // billboard: el recorte siempre mira a la cámara (solo gira en Y)
       c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
       // respira un poquito

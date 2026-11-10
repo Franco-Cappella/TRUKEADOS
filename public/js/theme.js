@@ -138,6 +138,9 @@ export const PALETTE = {
 
 // Cómo se ve cada cosa de la tienda (COSMETICS en config.js, misma clave).
 export const COSMETIC_LOOK = {
+  // personajes 3D (public/models, armados con tools/build-skin.mjs). scale: tamaño en la mesa
+  volcho: { model: { url: '/models/volcho.glb', scale: 1.04 }, thumb: '/models/volcho.webp' },
+  olcho: { model: { url: '/models/olcho.glb', scale: 1.1 }, thumb: '/models/olcho.webp' },
   'remera-celeste': { shirt: 'tee', cloth: '#7b9cb5' },
   'chomba-verde': { shirt: 'polo', cloth: '#35594a' },
   'pulover-bordo': { shirt: 'sweater', cloth: '#5f2a31' },

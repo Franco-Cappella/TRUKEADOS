@@ -122,6 +122,21 @@ function bindGameUI() {
     room?.act({ t: 'rendirse' });
   };
 
+  // vista: primera persona, tercera (desde atrás) y segunda (de frente), como en los juegos de bloques (botón o V)
+  const cb = $('#cam-btn');
+  const CAM_LABEL = { first: 'Vista: 1ª', back: 'Vista: 3ª', front: 'Vista: 2ª' };
+  const paintCam = () => (cb.textContent = CAM_LABEL[scene.camMode] || CAM_LABEL.first);
+  paintCam();
+  cb.onclick = () => {
+    scene.cycleCamMode();
+    paintCam();
+  };
+  addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 'v' || e.repeat || e.target.closest('input, textarea, select') || !room || room.you == null) return;
+    scene.cycleCamMode();
+    paintCam();
+  });
+
   const zb = $('#zoom-btn');
   zb.addEventListener('pointerdown', (e) => {
     e.preventDefault();

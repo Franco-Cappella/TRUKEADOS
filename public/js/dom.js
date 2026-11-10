@@ -38,6 +38,7 @@ export const KEYS = {
   spectate: 'truco-spectate', // sessionStorage
   autostart: 'truco-autostart', // sessionStorage
   lastMode: 'truco-last-mode', // último modo elegido (para armar la mesa)
+  camMode: 'truco-cam-mode', // vista: first, back o front
   muted: 'truco-muted', // nombres de usuario silenciados en el chat (JSON)
 };
 

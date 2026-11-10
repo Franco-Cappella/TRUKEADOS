@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesa de prueba</title>
+<link rel="stylesheet" href="/css/truco.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #111; }
+  #stage { position: fixed; inset: 0; }
+  #ui { position: fixed; top: 6px; left: 6px; z-index: 5; display: flex; gap: 4px; flex-wrap: wrap; font: 13px system-ui; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="ui">
+  <button id="cam">vista</button>
+  <button id="throw">tira el 1</button>
+  <button id="mythrow">tiro yo</button>
+  <button id="sena">seña ciego (1)</button>
+  <button id="look">1 me mira</button>
+  <select id="mode"><option>1v1</option><option selected>2v2</option><option>3v3</option></select>
+  <select id="me"><option value="">yo: dibujado</option><option value="volcho" selected>yo: volcho</option><option value="olcho">yo: olcho</option></select>
+</div>
+<script type="module">
+import { TableScene } from '/js/scene.js';
+import { lookFor } from '/js/characters.js';
+const scene = new TableScene(document.getElementById('stage'));
+window.scene = scene;
+const $ = (id) => document.getElementById(id);
+let n = 4;
+let table = [];
+function seats() {
+  const mine = $('me').value;
+  return Array.from({ length: n }, (_, i) => ({
+    name: ['Theo', 'Volcho', 'Olcho', 'Tito', 'Coca', 'Beto'][i],
+    cos: i === 0 ? (mine ? { personaje: mine } : {}) : i === 1 ? { personaje: 'volcho' } : i === 2 ? { personaje: 'olcho' } : {},
+  }));
+}
+function setup() {
+  n = { '1v1': 2, '2v2': 4, '3v3': 6 }[$('mode').value];
+  scene.setLayout({ n, me: 0, spectator: false });
+  table = Array.from({ length: n }, () => []);
+  refresh();
+  scene.setMyLook(lookFor('Theo', 0));
+  scene.setMyCards(['1E', '7O', '3C'], null);
+}
+function refresh() {
+  const s = seats();
+  scene.setDecks(s);
+  scene.setPlayers(s, s.map(() => 3));
+  scene.syncTable(table, { animate: true });
+}
+$('mode').onchange = setup;
+$('me').onchange = refresh;
+$('cam').onclick = () => ($('cam').textContent = scene.cycleCamMode());
+$('throw').onclick = () => {
+  table[1].push({ c: ['4B', '5C', '12O'][table[1].length % 3], faceDown: false, round: table[1].length });
+  scene.syncTable(table, { animate: true });
+};
+$('mythrow').onclick = () => {
+  const c = ['1E', '7O', '3C'][table[0].length % 3];
+  table[0].push({ c, faceDown: false, round: table[0].length });
+  scene.setMyCards(['1E', '7O', '3C'].slice(table[0].length), null);
+  scene.syncTable(table, { animate: true });
+};
+$('sena').onclick = () => scene.showSena(1, 'ciego', 3000);
+$('look').onclick = () => scene.setGaze(1, 0);
+setup();
+</script>
+</body>
+</html>

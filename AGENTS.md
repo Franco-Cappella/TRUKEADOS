@@ -50,12 +50,15 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
   characters.js           personajes 2D dibujados en canvas (caras y señas)
+  models.js               personajes 3D de la tienda (GLB con esqueleto): lector propio, pose sentada y señas en la cara
+  gif.js                  achicar GIF de perfil en el navegador (codificador GIF propio)
   hands.js                tus manos en primera persona
   main.js                 arranque (sesión), rutas (/ y /sala/CÓDIGO) y eventos fijos de la UI
 public/css/truco.css      todo el estilo; colores y tamaños en variables de :root
 public/cards/             cartas WebP (id = número + palo: 1E, 7O, 12C… y back)
 test/truco.test.js        tests del motor y partidas completas entre bots
 test/opciones.test.js     tests de flor, muestra y "no permitir trampas" (+ partidas entre bots con opciones)
+test/personajes.test.js   personajes 3D: tienda, bots que los usan y modelos preparados
 test/pica-pica.test.js    pica-pica (3 vs 3): cuándo toca, los duelos, la falta fija y partidas entre bots
 test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 test/auth.test.js         verificación del token de Supabase y validación del nombre
@@ -180,6 +183,21 @@ Opción de sala de 3 vs 3 (`picapica`). La mano de pica-pica son tres manos segu
 `g.h.duel = { k, of, seats }` y los que no juegan quedan con `h.mazo[s] = true` (así el turno, el envido, la flor
 y los bots ya los saltean). `nextHand` arma la vuelta (`picaDue`, `picaDuel`). Una opción que solo vale para
 algunos modos lleva `modes` en `ROOM_OPTIONS` y se filtra con `optionForMode`.
+
+## Personajes 3D y vistas
+- Ranura `personaje` de la tienda (Volcho y Olcho). Los modelos viven en `public/models/<id>.glb` y se arman con
+  `node tools/build-skin.mjs <archivo.glb> <id>`: deja solo la malla con su esqueleto (estilo Mixamo, sin animaciones),
+  achica la textura y busca en la cara los ojos, la boca y el color de piel (`extras.face`). La foto de la tienda
+  (`<id>.webp`) sale del visor: `node tools/serve.mjs` y abrir `/tools/model-viewer.html` ("guardar foto").
+  `/tools/scene-test.html` arma la mesa de verdad con datos de mentira (personajes, tiros, señas y vistas).
+- `models.js` (`Rig`) los posa por código con cinemática inversa de dos huesos: sentado, la izquierda con las cartas,
+  la derecha que tira (`reach` en scene.js), la cabeza que mira. Las señas son capas dibujadas pegadas a la cabeza
+  (`FaceLayer`): párpados, cejas, boca, cachetes y nariz, en el lugar que encontró la herramienta.
+- Los bots que se llaman como un personaje lo usan (`BOT_PERSONAJES`, `botCos` en config.js; lo agrega `publicRoom`).
+- Vistas (botón "Vista" arriba o tecla V): primera persona, tercera (desde atrás) y segunda (de frente). En primera
+  persona tu personaje 3D sigue a la cámara (solo lo ves vos) y sus manos sostienen y tiran las cartas.
+- Una cara nueva: correr build-skin, revisar en el visor que las señas caigan bien, agregar el ítem en `COSMETICS` y
+  el modelo en `COSMETIC_LOOK` (url, escala y foto).
 
 ## Cómo agregar cosas
 - **Algo para la tienda**: una entrada en `COSMETICS` (config.js: id, ranura, nombre, precio) y cómo se ve en

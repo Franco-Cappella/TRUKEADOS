@@ -260,7 +260,8 @@ export class RoomClient {
         return this.setGaze(m.seat, m.target);
       case 'sena':
         // Sin carteles: la seña solo se ve en la cara del que la hace (si lo estabas mirando).
-        if (SENAS[m.sena] && !m.self) this.scene.showSena(m.seat, m.sena);
+        // la tuya también: se ve en tu personaje en tercera o segunda persona
+        if (SENAS[m.sena]) this.scene.showSena(m.self ? this.you : m.seat, m.sena);
         return;
     }
   }
@@ -740,6 +741,7 @@ export class RoomClient {
     this.showChat();
     const playing = !!st.game && st.room.status === 'playing';
     $('#tools').classList.toggle('hidden', this.you == null || !playing);
+    $('#cam-btn').classList.toggle('hidden', this.you == null);
     $('#trampa-dd').classList.toggle('hidden', !st.game?.trampas); // sin trampas no hay dos encimadas que denunciar
     const panel = $('#panel');
     panel.classList.toggle('hidden', !playing);

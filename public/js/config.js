@@ -130,6 +130,10 @@ export const BOT = {
   tellBluff: 0.12, // ... y cuántas lo dice sin tener nada (hasta 23 de tantos), para asustar a los rivales
 };
 
+// Bots que juegan con un personaje 3D de la tienda (por su nombre).
+export const BOT_PERSONAJES = { Volcho: 'volcho', Olcho: 'olcho' };
+/** Lo que tiene puesto un bot: si su nombre tiene personaje 3D, ese. */
+export const botCos = (name, cos = {}) => (BOT_PERSONAJES[name] ? { ...cos, personaje: BOT_PERSONAJES[name] } : cos);
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 
 // ------------------------------------------------------------------ cuentas (Supabase Auth)
@@ -257,6 +261,7 @@ export const HISTORY_PAGE = 20; // partidas por página en el historial
 // el gorro, los anteojos y lo que tenés delante, siempre; el paño y el mazo, en las mesas donde sos anfitrión.
 // Los colores y las formas de cada cosa están en theme.js (COSMETIC_LOOK), con la misma clave.
 export const COSMETIC_SLOTS = [
+  { key: 'personaje', label: 'Personaje', where: 'Un personaje en 3D en vez del dibujado: lo ven todos' },
   { key: 'ropa', label: 'Ropa', where: 'Tu personaje' },
   { key: 'gorro', label: 'Gorro', where: 'Tu personaje' },
   { key: 'anteojos', label: 'Anteojos', where: 'Tu personaje' },
@@ -266,6 +271,8 @@ export const COSMETIC_SLOTS = [
   { key: 'baraja', label: 'Baraja', where: 'Las cartas que tirás vos: las ven todos' },
 ];
 export const COSMETICS = [
+  { id: 'volcho', slot: 'personaje', name: 'Volcho', price: 2500 },
+  { id: 'olcho', slot: 'personaje', name: 'Olcho', price: 2500 },
   { id: 'remera-celeste', slot: 'ropa', name: 'Remera celeste', price: 40 },
   { id: 'chomba-verde', slot: 'ropa', name: 'Chomba verde', price: 60 },
   { id: 'pulover-bordo', slot: 'ropa', name: 'Pulóver bordó', price: 60 },

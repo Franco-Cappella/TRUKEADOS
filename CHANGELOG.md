@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.16.0 — personajes 3D y vistas
+- **Volcho y Olcho**: personajes en 3D en la tienda (ranura "Personaje", 2500 monedas cada uno). Se sientan a la mesa,
+  sostienen las cartas, estiran la mano para tirar y giran la cabeza hacia quien miran. Las señas se hacen en su cara:
+  cierran los ojos, guiñan, levantan las cejas, tuercen la boca, se muerden el labio, inflan los cachetes...
+- Con un personaje 3D puesto, **tus manos son las del modelo** en primera persona.
+- Los bots que se llaman Volcho y Olcho juegan con esos personajes.
+- **Vistas**: botón "Vista" arriba (o tecla V) para pasar de primera persona a tercera (desde atrás) y a segunda (de
+  frente, te ves la cara). Sirve con cualquier personaje.
+
 ## 1.15.1 — revancha, ausentes y arreglos
 - **Revancha**: el que la pide espera y a los demás se les pregunta ("Acepto" / "No"). Arranca cuando aceptan todos;
   al que se le cortó la conexión se lo espera (antes contaba como que aceptaba). Si uno dice que no, se cancela.
