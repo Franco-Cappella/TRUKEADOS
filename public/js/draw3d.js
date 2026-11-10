@@ -48,5 +48,7 @@ export function toon(color, extra = {}) {
     toonRamp.minFilter = toonRamp.magFilter = THREE.NearestFilter;
     toonRamp.needsUpdate = true;
   }
-  return new THREE.MeshToonMaterial({ ...(color ? { color } : {}), gradientMap: toonRamp, ...extra });
+  // flatShading no existe en el material por escalones (las caras ya se ven planas): se ignora sin avisar
+  const { flatShading, ...rest } = extra;
+  return new THREE.MeshToonMaterial({ ...(color ? { color } : {}), gradientMap: toonRamp, ...rest });
 }

@@ -568,6 +568,7 @@ function wetStone() {
 // ------------------------------------------------------------------ el barrio
 
 export function chinatown(g) {
+  BLOSSOM = []; // materiales propios de este armado (la escena libera los ambientes de a uno)
   // cielo de noche con el resplandor rosado de la ciudad sobre el horizonte y la luna
   sky(g, [[0, hsl(250, 0.55, 0.05)], [0.3, hsl(262, 0.5, 0.12)], [0.46, hsl(300, 0.45, 0.26)], [0.5, hsl(330, 0.55, 0.36)], [0.52, C.night], [1, C.night]], {
     stars: 220,

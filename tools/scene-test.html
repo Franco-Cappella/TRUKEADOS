@@ -88,6 +88,31 @@ window.shoot = async (name, { amb, mode = 'back', yaw = 0, pitch = -0.3 } = {}) 
   await fetch(`/tools/shots/${name}.png`, { method: 'PUT', body: blob });
   return name;
 };
+// La foto de cada mapa para la tienda (public/img/mapas/<ambiente>.webp): la mesa vacía, mirando al fondo del lugar.
+window.mapShots = async (ids = [...$('amb').options].map((o) => o.value), { yaw = 0, pitch = 0.08 } = {}) => {
+  // sin nadie sentado ni cartas: se ve el lugar
+  scene.setPlayers(seats().map(() => null), null);
+  scene.setMyCards([], null);
+  scene.syncTable(seats().map(() => []), { animate: false });
+  for (const id of ids) {
+    scene.setAmbiente(id);
+    scene.setCamMode('back');
+    scene.yaw = scene.tYaw = yaw;
+    scene.pitch = scene.tPitch = pitch;
+    scene.renderer.setPixelRatio(1);
+    scene.renderer.setSize(640, 400, false);
+    scene.camera.aspect = 640 / 400;
+    scene.camera.updateProjectionMatrix();
+    scene.applyCamera();
+    for (let i = 0; i < 3; i++) scene.frame();
+    scene.renderer.shadowMap.needsUpdate = true;
+    scene.renderer.render(scene.scene, scene.camera);
+    const blob = await new Promise((ok) => scene.renderer.domElement.toBlob(ok, 'image/webp', 0.86));
+    await fetch(`/img/mapas/${id}.webp`, { method: 'PUT', body: blob });
+  }
+  refresh();
+  return ids;
+};
 </script>
 </body>
 </html>

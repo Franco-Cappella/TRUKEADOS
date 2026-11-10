@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { loadModel, Rig } from './models.js';
 import { COSMETIC_LOOK } from './theme.js';
+import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
 import { drawCharacter, lookFor, dressed, W as CW, H as CH } from './characters.js';
 
 const TEAM_COLOR = ['#5ec8ff', '#ff8a3d']; // los aros y las luces de cada equipo
@@ -81,6 +82,39 @@ export class PartyStage {
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     s.add(floor);
+    this.floor = floor;
+  }
+
+  /** De fondo, el mapa donde se va a jugar (ambientes.js): las tarimas quedan paradas en el medio, donde va la mesa. */
+  setAmbiente(id) {
+    this.setup();
+    const want = AMBIENTE_IDS.includes(id) ? id : null;
+    if (this.ambiente === want) return;
+    this.ambiente = want;
+    if (this.env) {
+      this.scene.remove(this.env.group);
+      disposeAmbiente(this.env.group);
+      this.env = null;
+    }
+    // el piso oscuro queda apenas abajo: se ve donde termina el salón (la cámara está más atrás que la mesa)
+    this.floor.position.y = want ? -0.03 : 0;
+    if (!want) {
+      this.scene.background = null;
+      this.scene.fog = null;
+      return;
+    }
+    try {
+      this.env = buildAmbiente(want);
+    } catch (err) {
+      console.error('ambiente', err);
+      this.floor.position.y = 0;
+      return;
+    }
+    this.scene.add(this.env.group);
+    this.scene.background = new THREE.Color(this.env.background);
+    // la niebla, un poco más lejos: la cámara de la sala de espera está más atrás que la de la mesa
+    const [c, near, far] = this.env.fog;
+    this.scene.fog = new THREE.Fog(c, near + 4, far + 8);
   }
 
   /**
@@ -215,6 +249,12 @@ export class PartyStage {
       requestAnimationFrame(tick);
       if (!this.host.offsetParent) return; // la sala de espera no está a la vista
       this.resize();
+      try {
+        this.env?.update?.(now, Math.min(0.05, (now - (this.lastNow || now)) / 1000));
+      } catch (err) {
+        console.error('ambiente', err);
+      }
+      this.lastNow = now;
       for (const a of this.actors.values()) {
         if (a.rig) {
           a.rig.root.updateMatrixWorld(true);

@@ -8,7 +8,7 @@ import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile, renameProfile } from './auth.js';
 import { listMatches, getMatch, shareMatch, getShared } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
-import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
+import { areFriends, setAvatar, setLook, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
 import { recentMatches } from './matches.js';
 import { exportData, deleteAccount } from './account.js';
 import { fakeRecent } from './matchmaking.js';
@@ -112,6 +112,15 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     const body = await request.json().catch(() => ({}));
     const r = await setAvatar(env, auth.user.id, body.avatar ?? null);
+    return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+
+  // tu personaje dibujado (el creador de personaje)
+  if (path === '/api/me/look' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await setLook(env, auth.user.id, body.look);
     return r.error ? json({ error: r.error }, 400) : json(r);
   }
 

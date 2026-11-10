@@ -14,10 +14,12 @@ http.createServer((req, res) => {
   // el visor guarda la foto de un personaje para la tienda: PUT /models/<id>.webp
   // (y capturas para revisar a mano, que no van al juego: PUT /tools/shots/<nombre>.png)
   if (req.method === 'PUT') {
+    // (y la foto de cada mapa de la tienda: PUT /img/mapas/<ambiente>.webp, desde tools/scene-test.html con mapShots())
     const m = url.match(/^\/models\/([a-z0-9-]+)\.webp$/);
     const shot = url.match(/^\/tools\/shots\/([a-z0-9-]+)\.png$/);
-    if (!m && !shot) return void res.writeHead(400).end('no');
-    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
+    const mapa = url.match(/^\/img\/mapas\/([a-z0-9-]+)\.webp$/);
+    if (!m && !shot && !mapa) return void res.writeHead(400).end('no');
+    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : mapa ? path.join(ROOT, 'public', 'img', 'mapas', `${mapa[1]}.webp`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
     const parts = [];
     req.on('data', (d) => parts.push(d));
     req.on('end', () => {

@@ -27,9 +27,11 @@ function hash(str) {
   return h >>> 0;
 }
 
-// El personaje con lo que tiene puesto de la tienda (cos = { ropa, gorro, anteojos }).
+// El personaje con lo que tiene puesto de la tienda (cos = { ropa, gorro, anteojos }). cos.look: el personaje que
+// armó en el creador (va primero; la ropa de la tienda, encima).
 export function dressed(look, cos) {
-  const out = { ...look };
+  const c = cos?.look && !look.custom ? cleanLook(cos.look) : null;
+  const out = c ? applyLook(look, c) : { ...look };
   for (const id of [cos?.ropa, cos?.gorro, cos?.anteojos]) if (COSMETIC_LOOK[id]) Object.assign(out, COSMETIC_LOOK[id]);
   return out;
 }

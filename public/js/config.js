@@ -24,6 +24,7 @@ export const ROOM_REUSE_MS = 3 * 60 * 60 * 1000; // una sala vacía e inactiva h
 
 // ------------------------------------------------------------------ ambientes
 // Dónde se juega cada partida (uno al azar, distinto del anterior; los dibuja public/js/ambientes.js).
+// shop: solo de la tienda (ranura "mapa"): no sale en el sorteo, se ve cuando juega el que lo tiene puesto.
 export const AMBIENTES = [
   { id: 'bar', name: 'Bar notable' },
   { id: 'cafe', name: 'Café porteño' },
@@ -32,11 +33,14 @@ export const AMBIENTES = [
   { id: 'quincho', name: 'Quincho' },
   { id: 'club', name: 'Club de barrio' },
   { id: 'campo', name: 'Estancia' },
-  { id: 'chinatown', name: 'Barrio Chino' },
+  { id: 'chinatown', name: 'Barrio Chino', shop: true },
 ];
-/** Otro ambiente al azar (distinto del anterior, prev). */
+// Los mapas que quedan armados en la escena (el de cada turno) y cuánto dura el fundido al cambiar de uno a otro.
+export const AMBIENTE_CACHE = 5;
+export const AMBIENTE_FADE_MS = 560;
+/** Otro ambiente al azar (distinto del anterior, prev). Los de la tienda no salen. */
 export function pickAmbiente(rng = Math.random, prev = null) {
-  const pool = AMBIENTES.filter((a) => a.id !== prev);
+  const pool = AMBIENTES.filter((a) => a.id !== prev && !a.shop);
   return pool[Math.floor(rng() * pool.length)].id;
 }
 
@@ -61,6 +65,7 @@ export const ROUTES = {
     me: '/api/me',
     matches: '/api/matches',
     avatar: '/api/me/avatar',
+    look: '/api/me/look',
     exportMe: '/api/me/export',
     deleteMe: '/api/me/delete',
     username: '/api/me/username',
@@ -83,6 +88,7 @@ export const ROUTES = {
   },
   card: (id) => `/cards/${id}.webp`,
   deckCard: (deck, id) => `/cards/${deck}/${id}.png`, // las barajas de la tienda
+  mapaThumb: (amb) => `/img/mapas/${amb}.webp`, // la foto de cada mapa de la tienda (tools/scene-test.html: mapShots())
 };
 
 // ------------------------------------------------------------------ tiempos (ms)
@@ -223,6 +229,22 @@ export function randomLook(rng = Math.random) {
     scowl: inRange(LOOK_OPTS.face.scowl),
   });
 }
+// El creador (creator.js): adónde va la cámara en cada parte ({ x, y } en píxeles del personaje dibujado, x desde el
+// medio; zoom 1 = el personaje entero), qué tan rápido llega, dónde están los pies y cuánto "habla" al cambiar algo.
+export const CREATOR = {
+  cam: {
+    todo: { x: 0, y: 700, zoom: 0.8 },
+    cuerpo: { x: 0, y: 690, zoom: 0.86 },
+    cara: { x: 0, y: 235, zoom: 2.7 },
+    pelo: { x: 0, y: 200, zoom: 2.5 },
+    barba: { x: 0, y: 270, zoom: 3.3 },
+    ropa: { x: 0, y: 600, zoom: 1.25 },
+    bandera: { x: -60, y: 430, zoom: 2.9 },
+  },
+  camRate: 4.5,
+  feetY: 1186,
+  reactMs: 650,
+};
 
 export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
 // Antitrampas (los aplica la sala; ver "Antitrampas" en AGENTS.md). Las señas viajan solo a los que miran al que la
@@ -420,7 +442,8 @@ export const PRESENCE = { ping: 20_000, ttl: 70_000, dmKeep: 60, chatPoll: 3000 
 
 // ------------------------------------------------------------------ tienda y personalización
 // Se compra con las monedas que se ganan jugando (COINS). Lo que tenés puesto lo ven todos en la mesa: la ropa,
-// el gorro, los anteojos y lo que tenés delante, siempre; el paño y el mazo, en las mesas donde sos anfitrión.
+// el gorro, los anteojos y lo que tenés delante, siempre; el paño, el mazo y el mapa, cuando es tu turno (la mesa
+// entera se vuelve la tuya: ver tableLook).
 // Los colores y las formas de cada cosa están en theme.js (COSMETIC_LOOK), con la misma clave.
 export const COSMETIC_SLOTS = [
   { key: 'personaje', label: 'Personaje', where: 'Un personaje en 3D en vez del dibujado: lo ven todos' },
@@ -428,8 +451,9 @@ export const COSMETIC_SLOTS = [
   { key: 'gorro', label: 'Gorro', where: 'Tu personaje' },
   { key: 'anteojos', label: 'Anteojos', where: 'Tu personaje' },
   { key: 'objeto', label: 'En la mesa', where: 'Delante tuyo' },
-  { key: 'pano', label: 'Paño', where: 'La mesa, cuando sos anfitrión' },
-  { key: 'dorso', label: 'Mazo', where: 'El dorso de las cartas, cuando sos anfitrión' },
+  { key: 'mapa', label: 'Mapa', where: 'Dónde se juega: lo ven todos en tu turno, y vos siempre' },
+  { key: 'pano', label: 'Paño', where: 'La mesa: la ven todos en tu turno' },
+  { key: 'dorso', label: 'Mazo', where: 'El dorso de las cartas: lo ven todos en tu turno' },
   { key: 'baraja', label: 'Baraja', where: 'Las cartas que tirás vos: las ven todos' },
 ];
 export const COSMETICS = [
@@ -456,8 +480,39 @@ export const COSMETICS = [
   { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
   { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },
   { id: 'baraja-pixel', slot: 'baraja', name: 'Baraja pixel art', price: 300, credit: { text: 'Spanish Deck - Pixel Art by jcanabal', url: 'https://jcanabal.itch.io/spanish-deck-pixel-art' } },
+  // mapas (ambiente: el id de AMBIENTES). El Barrio Chino es solo de la tienda; los demás también salen en el sorteo.
+  { id: 'mapa-chinatown', slot: 'mapa', name: 'Barrio Chino', price: 480, ambiente: 'chinatown' },
+  { id: 'mapa-bar', slot: 'mapa', name: 'Bar notable', price: 250, ambiente: 'bar' },
+  { id: 'mapa-cafe', slot: 'mapa', name: 'Café porteño', price: 250, ambiente: 'cafe' },
+  { id: 'mapa-parrilla', slot: 'mapa', name: 'Parrilla de barrio', price: 250, ambiente: 'parrilla' },
+  { id: 'mapa-parque', slot: 'mapa', name: 'Bosques de Palermo', price: 280, ambiente: 'parque' },
+  { id: 'mapa-quincho', slot: 'mapa', name: 'Quincho', price: 280, ambiente: 'quincho' },
+  { id: 'mapa-club', slot: 'mapa', name: 'Club de barrio', price: 250, ambiente: 'club' },
+  { id: 'mapa-campo', slot: 'mapa', name: 'Estancia', price: 280, ambiente: 'campo' },
 ];
 export const cosmeticById = (id) => COSMETICS.find((c) => c.id === id) || null;
+/** El ambiente de un mapa de la tienda (o null). */
+export const mapaAmbiente = (itemId) => cosmeticById(itemId)?.ambiente || null;
+/**
+ * De quién es la mesa ahora: en la partida, del que tiene el turno (h.turn); antes de repartir o sin partida, de nadie.
+ * game: lo que manda la sala (viewFor) o el estado completo del motor.
+ */
+export const tableOwner = (game) => (game?.h && Number.isInteger(game.h.turn) ? game.h.turn : null);
+/**
+ * Cómo se ve la mesa: el paño, el mazo y el mapa del dueño de la mesa (tableOwner). Si el dueño no tiene mapa, cada
+ * uno ve el suyo (me: tu asiento o null si mirás), y si tampoco, el que eligió la sala (ambiente). Sin dueño (sala de
+ * espera, cargando la partida), el paño y el mazo del anfitrión y tu mapa.
+ */
+export function tableLook(seats, { owner = null, me = null, ambiente = 'bar', host = null } = {}) {
+  const cosOf = (s) => (s != null && seats[s] ? seats[s].cos || {} : {});
+  const who = owner != null ? cosOf(owner) : host != null ? cosOf(host) : {};
+  const mine = cosOf(me);
+  return {
+    pano: who.pano || null,
+    dorso: who.dorso || null,
+    ambiente: (owner != null && mapaAmbiente(cosOf(owner).mapa)) || mapaAmbiente(mine.mapa) || ambiente,
+  };
+}
 /** Lo que tiene puesto, limpio: solo ids que existen, cada uno en su ranura (y, si se pasa, solo lo comprado). */
 export function cleanEquipped(eq, owned = null) {
   const out = {};

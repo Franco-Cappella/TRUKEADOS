@@ -9,8 +9,14 @@ import { makeRoom } from './helpers/room-harness.mjs';
 
 test('ambientes: hay varios, todos dibujados, y se elige otro distinto del anterior', () => {
   assert.ok(AMBIENTES.length >= 6);
-  const src = fs.readFileSync(new URL('../public/js/ambientes.js', import.meta.url), 'utf8');
-  for (const a of AMBIENTES) assert.match(src, new RegExp(`\\n  ${a.id}\\(g\\) \\{`), `falta dibujar ${a.id}`);
+  // cada uno está en el registro de ambientes.js y dibujado (export function id(g)) en alguno de los amb-*.js
+  const read = (f) => fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8');
+  const build = read('ambientes.js').match(/const BUILD = \{([^}]*)\}/)?.[1] || '';
+  const drawn = ['amb-interiores.js', 'amb-afuera.js', 'barrio-chino.js'].map(read).join('\n');
+  for (const a of AMBIENTES) {
+    assert.match(build, new RegExp(`\\b${a.id}\\b`), `falta registrar ${a.id}`);
+    assert.match(drawn, new RegExp(`export function ${a.id}\\(g\\) \\{`), `falta dibujar ${a.id}`);
+  }
   for (let i = 0; i < 50; i++) {
     const prev = AMBIENTES[i % AMBIENTES.length].id;
     const next = pickAmbiente(Math.random, prev);

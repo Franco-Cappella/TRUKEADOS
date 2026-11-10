@@ -1,6 +1,6 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES, tableOwner, tableLook, mapaAmbiente } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml, DEFAULT_AVATAR } from './dom.js';
@@ -331,16 +331,27 @@ export class RoomClient {
       for (const [s, t] of Object.entries(this.gaze)) scene.setGaze(Number(s), t);
     }
     if (st.you != null && seats[st.you]) scene.setMyLook(this.myLook());
-    scene.setTable(st.room.table || {});
-    // el lugar de la partida (lo elige el servidor; en la sala de espera, el bar)
-    const amb = st.room.status === 'lobby' ? 'bar' : st.room.ambiente;
+    // la mesa (paño, mazo y mapa) es la del que tiene el turno; si él no tiene mapa, cada uno ve el suyo (tableLook)
+    const owner = st.room.status === 'playing' ? tableOwner(g) : null;
+    const host = seats.findIndex((p) => p?.host);
+    const look = tableLook(seats, { owner, me: st.you, ambiente: st.room.ambiente || 'bar', host: host >= 0 ? host : null });
+    scene.setTable(look);
+    // en la sala de espera, la mesa es el bar (de fondo se ve el escenario con el mapa que va a tocar)
+    const amb = st.room.status === 'lobby' ? 'bar' : look.ambiente;
     if (amb && amb !== this.ambiente) {
-      const first = this.ambiente === undefined;
       this.ambiente = amb;
-      scene.setAmbiente(amb);
-      const name = AMBIENTES.find((a) => a.id === amb)?.name;
-      if (!first && name && st.room.status === 'playing') this.toast(`Esta partida se juega en: <b>${esc(name)}</b>`, '', 3200);
+      scene.setAmbiente(amb, { fade: !first && st.room.status === 'playing' });
     }
+    // un cartel cuando arranca una partida en otro lugar (el de la sala; no cada vez que cambia el turno)
+    const roomAmb = st.room.status === 'playing' ? st.room.ambiente : null;
+    if (roomAmb && roomAmb !== this.roomAmbiente) {
+      const was = this.roomAmbiente;
+      this.roomAmbiente = roomAmb;
+      const name = AMBIENTES.find((a) => a.id === roomAmb)?.name;
+      if (was !== undefined && name) this.toast(`Esta partida se juega en: <b>${esc(name)}</b>`, '', 3200);
+    }
+    // se arman de antemano los mapas de todos (así cambiar de turno no traba la mesa)
+    if (st.room.status !== 'lobby') scene.prepareAmbientes(seats.map((p) => mapaAmbiente(p?.cos?.mapa)).filter(Boolean));
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
@@ -1136,6 +1147,8 @@ export class RoomClient {
     const stage = partyStage();
     stage.onFrame = (pos) => this.placePlates(pos);
     stage.set(r.seats.map((p, i) => ({ seat: i, team: team(i), kind: p ? 'player' : searching ? 'search' : 'empty', name: p?.name, cos: p?.cos, me: i === st.you })));
+    // de fondo, el mapa que va a tocar (el tuyo si tenés uno puesto)
+    stage.setAmbiente(tableLook(r.seats, { me: st.you, ambiente: r.ambiente || 'bar' }).ambiente);
     if (searching) return this.renderSearching();
     const cfg = r.cfg;
     const host = st.isHost;

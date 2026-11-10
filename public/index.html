@@ -60,6 +60,29 @@
     </div>
   </section>
 
+  <!-- ============ CREADOR DE PERSONAJE (creator.js) ============ -->
+  <section id="creator" class="cr hidden" aria-labelledby="cr-title">
+    <div class="cr-stage">
+      <canvas id="cr-canvas" aria-label="Tu personaje en la tarima (arrastralo para girarlo)"></canvas>
+      <div class="cr-bigname" id="cr-name" aria-hidden="true"></div>
+      <p class="cr-hint">Arrastralo para girarlo</p>
+    </div>
+    <div class="cr-panel">
+      <header class="cr-head">
+        <h2 id="cr-title">Armá tu personaje</h2>
+        <p id="cr-sub"></p>
+      </header>
+      <nav class="cr-tabs" id="cr-tabs" role="tablist" aria-label="Partes del personaje"></nav>
+      <div class="cr-opts" id="cr-opts"></div>
+      <p class="a-msg" id="cr-msg" role="status"></p>
+      <footer class="cr-acts">
+        <button type="button" class="btn" id="cr-random">Aleatorio</button>
+        <button type="button" class="btn ghost" id="cr-skip">Después</button>
+        <button type="button" class="btn primary" id="cr-save">Listo</button>
+      </footer>
+    </div>
+  </section>
+
   <!-- ============ MENÚ ============ -->
   <section id="menu" class="screen hidden">
     <div class="ap">
@@ -181,6 +204,7 @@
             <header class="lk-head">
               <h3>Taquilla</h3>
               <span class="lk-coins"><b id="lk-coins">0</b> monedas</span>
+              <button type="button" class="btn small" id="lk-creator">Tu personaje</button>
               <button type="button" class="btn small" id="lk-shop">Ir a la tienda</button>
             </header>
             <div id="cu-slots" class="lk-slots"></div>

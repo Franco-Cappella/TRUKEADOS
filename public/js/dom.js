@@ -51,6 +51,7 @@ export const KEYS = {
   noteReqs: 'truco-note-reqs', // 0: sin carteles de solicitudes de amistad
   lessMotion: 'truco-less-motion', // 1: menos animaciones
   bigText: 'truco-big-text', // 1: letra más grande
+  creatorLater: 'truco-creator-later', // 1: al registrarte dijiste "Después" en el creador de personaje (no se vuelve a abrir solo)
   friendSeen: 'truco-friend-seen', // solicitudes de amistad a las que dijiste "Ahora no" (JSON de ids) // nombres de usuario silenciados en el chat (JSON)
 };
 

@@ -1,5 +1,22 @@
 # Cambios
 
+## 1.25.0 — tu personaje, tu mesa y lugares nuevos
+- **Creador de personaje**: al registrarte armás tu personaje parte por parte (piel, forma de la cara, pelo y su color,
+  barba y bigote, anteojos, ropa y sus colores, y la bandera de tu país en un pin del pecho). Está parado en una
+  tarima y la cámara se acerca a lo que estás eligiendo; se gira arrastrándolo y hay botón **Aleatorio**. Después se
+  cambia desde la Taquilla ("Tu personaje"). En la mesa lo ven todos.
+- **Tu mesa en tu turno**: el paño, el dorso del mazo y el mapa son los del que tiene el turno. Cuando te toca, todos
+  ven tus cosas; cuando le toca a otro, las suyas (con un fundido corto al cambiar de lugar).
+- **Mapas en la tienda**: nueva ranura "Mapa". El **Barrio Chino** ahora es solo de la tienda; los demás lugares
+  también se pueden comprar para tenerlos puestos. Tu mapa lo ves siempre que el que juega no tenga uno, y es el
+  fondo de la sala de espera mientras se arma la partida (detrás de las tarimas se ve el lugar donde se va a jugar).
+- **Lugares rehechos, al nivel del Barrio Chino**: el bar notable de noche (vitral, columnas, la barra con espejo y la
+  cafetera que humea, ventanales a la calle con autos que pasan), el café porteño a la mañana (sol por los ventanales,
+  vitrina de medialunas, reloj que anda), la parrilla con el fuego y el humo de verdad y la tele con el partido, el
+  club con la cancha, el aro, las gradas, el metegol y el ping-pong, Palermo con el lago, los patos, los botes, el
+  puente blanco y los jacarandás, el quincho con la pileta iluminada y la pérgola con lamparitas, y la estancia con el
+  casco, el molino que gira, los caballos, la paja brava que se mece y el fogón.
+
 ## 1.24.0 — paños con imagen
 - **Paños nuevos en la tienda** (450 monedas): **alfombra persa** y **almendro en flor**. La imagen cubre toda la
   mesa, con los bordes un poco más oscuros y la costura alrededor; mientras carga se ve un paño liso de sus colores.

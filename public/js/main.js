@@ -5,7 +5,8 @@ import { TableScene, preloadCards } from './scene.js';
 import { lookFor } from './characters.js';
 import { SENAS, ROUTES, APP_NAME } from './config.js';
 import { FONT } from './theme.js';
-import { $, $$, esc, savedName, api, KEYS } from './dom.js';
+import { $, $$, esc, savedName, api, KEYS, store } from './dom.js';
+import { initCreator, openCreator, creatorOpen } from './creator.js';
 import { showGate } from './gate.js';
 import { isVoiceOn, toggleVoice } from './audio.js';
 import { helpHtml, drawFace, readOptionChecks } from './hud.js';
@@ -61,6 +62,13 @@ function route() {
   }
   showEntry(null);
   $('#gate').classList.add('hidden');
+  // recién registrado (o sin personaje todavía): primero se arma el personaje; después sigue a donde iba
+  if (!me.profile.look && store.get(KEYS.creatorLater) !== '1') {
+    if (creatorOpen()) return;
+    room?.close();
+    room = null;
+    return openCreator({ first: true, onDone: () => route() });
+  }
   const m = location.pathname.match(ROUTES.roomRe);
   if (m) return hideReplay(), openRoom(m[1].toUpperCase());
   room?.close();
@@ -333,7 +341,7 @@ function buildSenasMenu() {
   const m = $('#senas-menu');
   const tgt = scene.lookTarget;
   const who = tgt === 'table' ? 'la mesa' : tgt != null && room?.st ? room.nameOf(tgt, true) : 'nadie';
-  const look = room ? room.myLook() : lookFor(savedName(), 0);
+  const look = room ? room.myLook() : lookFor(savedName(), 0, currentMe()?.profile?.look);
   m.innerHTML = `<div class="tip">La seña <b>solo la ven los que te están mirando</b> en ese momento (fijate quién dice “te mira” en los nombres). Ahora estás mirando a: <b>${esc(who)}</b>.</div>`;
   for (const [id, s] of Object.entries(SENAS)) {
     const b = document.createElement('button');
@@ -391,6 +399,7 @@ initHistory(openMatch, () => {
   goHome();
 });
 initAccount(refresh, route);
+initCreator();
 window.addEventListener('popstate', route);
 // la sesión venció o la cerraron en otra pestaña (si ya se sabe que no hay sesión, no se vuelve a preguntar)
 addEventListener('trukeados:logout', () => currentMe() && refresh());

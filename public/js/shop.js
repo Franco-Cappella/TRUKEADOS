@@ -7,6 +7,7 @@ import { $, esc, api, savedName } from './dom.js';
 import { currentMe } from './auth.js';
 import { LockerStage } from './locker.js';
 import { poster } from './poster.js';
+import { openCreator } from './creator.js';
 
 let state = { owned: [], coins: 0, equipped: {} };
 let stage = null; // la tarima de la Taquilla (se arma la primera vez que se abre)
@@ -18,7 +19,7 @@ let rotT = null; // el reloj de "cambia en …"
 
 // Rareza según el precio (en blanco y negro: se nota por el estilo del casillero).
 export const rarity = (it) => (!it ? null : it.price >= 1000 ? ['leg', 'Legendario'] : it.price >= 120 ? ['epi', 'Épico'] : it.price >= 60 ? ['raro', 'Raro'] : ['com', 'Común']);
-const DEFAULT_NAME = { personaje: 'El dibujado', pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre', baraja: 'La de siempre' };
+const DEFAULT_NAME = { personaje: 'El dibujado', pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre', baraja: 'La de siempre', mapa: 'El que toque' };
 let onCoins = () => {};
 
 const CHARACTER_SLOTS = ['ropa', 'gorro', 'anteojos'];
@@ -178,7 +179,8 @@ function initCredits() {
   $('#credits-open').addEventListener('click', () => dialog.showModal());
 }
 
-const baseLook = () => lookFor(savedName(), 0);
+// tu personaje dibujado (el del creador; sin elegir, el que sale de tu nombre)
+const baseLook = () => lookFor(savedName(), 0, currentMe()?.profile?.look);
 
 // Vista previa de una cosa de la tienda (o de lo que tenés puesto si item es null).
 // Personaje 3D: la foto (public/models/<id>.webp), recortada al centro.
@@ -208,6 +210,8 @@ function preview(canvas, item) {
       ctx.drawImage(src, x, (canvas.height - h) / 2, w, h);
     });
   }
+  // mapa: la foto del lugar (public/img/mapas/<ambiente>.webp, sale de tools/scene-test.html con mapShots())
+  if (item.slot === 'mapa') return drawThumb(canvas, ROUTES.mapaThumb(item.ambiente));
   const L = COSMETIC_LOOK[item.id];
   if (CHARACTER_SLOTS.includes(item.slot)) drawBust(canvas, dressed(baseLook(), { ...state.equipped, [item.slot]: item.id }));
   else if (item.slot === 'pano') drawFelt(canvas, L.felt, L);
@@ -256,6 +260,7 @@ export function initShop(paint) {
   });
   const goShop = () => document.querySelector('[data-tab="tienda"]')?.click();
   $('#lk-shop').addEventListener('click', goShop);
+  $('#lk-creator').addEventListener('click', () => openCreator({ onDone: () => renderCustomize() }));
   $('#cu-slots').addEventListener('click', async (e) => {
     const t = e.target.closest('button[data-tile]');
     if (t) {
@@ -298,10 +303,12 @@ const SHOP_CATS = [
   { key: 'todo', label: 'Todo' },
   { key: 'personajes', label: 'Personajes', slots: ['personaje'] },
   { key: 'ropa', label: 'Ropa', slots: ['ropa', 'gorro', 'anteojos'] },
+  { key: 'mapas', label: 'Mapas', slots: ['mapa'] },
   { key: 'mesa', label: 'En la mesa', slots: ['objeto', 'pano'] },
   { key: 'cartas', label: 'Cartas', slots: ['dorso', 'baraja'] },
 ];
 const DAY_PICKS = 4; // cuántas cosas trae "Del día"
+const FEATURED_MAP = 'mapa-chinatown'; // el mapa que va en grande en la vidriera
 const slotLabel = (slot) => COSMETIC_SLOTS.find((x) => x.key === slot)?.label || '';
 
 // "Del día": unas cosas que no tenés, elegidas con la fecha (todos ven las mismas; cambia a la medianoche).
@@ -347,8 +354,8 @@ function renderShop() {
   let html = '';
   if (!cat.slots) {
     // la vidriera: los personajes en grande y lo del día
-    const stars = COSMETICS.filter((c) => c.slot === 'personaje');
-    html += `<section class="sh-sec" data-label="Destacados"><h4>Destacados <small>Personajes en 3D: los ven todos en la mesa</small></h4><div class="sh-feat">${stars.map((it) => card(it, true)).join('')}</div></section>`;
+    const stars = COSMETICS.filter((c) => c.slot === 'personaje' || c.id === FEATURED_MAP);
+    html += `<section class="sh-sec" data-label="Destacados"><h4>Destacados <small>Personajes en 3D y mapas: los ven todos en la mesa</small></h4><div class="sh-feat">${stars.map((it) => card(it, true)).join('')}</div></section>`;
     html += `<section class="sh-sec" data-label="Del día"><h4>Del día <small>Cambia en <span id="sh-rot">${untilMidnight()}</span></small></h4><div class="sh-grid">${dayPicks().map((it) => card(it)).join('')}</div></section>`;
   }
   const slots = cat.slots || COSMETIC_SLOTS.map((x) => x.key).filter((k) => k !== 'personaje');
@@ -357,7 +364,8 @@ function renderShop() {
     // primero lo que no tenés, de lo más caro a lo más barato
     const items = COSMETICS.filter((c) => c.slot === key).sort((a, b) => state.owned.includes(a.id) - state.owned.includes(b.id) || b.price - a.price);
     if (!items.length) continue;
-    html += `<section class="sh-sec" data-label="${esc(s.label)}"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-grid ${key === 'personaje' ? 'feat' : ''}">${items.map((it) => card(it, key === 'personaje')).join('')}</div></section>`;
+    const wide = key === 'personaje' || key === 'mapa'; // los mapas, con foto grande
+    html += `<section class="sh-sec" data-label="${esc(s.label)}"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-grid ${wide ? 'feat' : ''}">${items.map((it) => card(it, wide)).join('')}</div></section>`;
   }
   $('#shop-list').innerHTML = html;
   renderDots();
@@ -408,7 +416,13 @@ function openDetail(id) {
   } else {
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
-    if (it.slot === 'baraja') {
+    if (it.slot === 'mapa') {
+      loadImg(ROUTES.mapaThumb(it.ambiente)).then((img) => {
+        if (detailId !== id) return;
+        const k = Math.max(cv.width / img.width, cv.height / img.height);
+        ctx.drawImage(img, (cv.width - img.width * k) / 2, (cv.height - img.height * k) / 2, img.width * k, img.height * k);
+      }).catch(() => {});
+    } else if (it.slot === 'baraja') {
       deckSpread(it.id).then((src) => {
         if (detailId !== id) return;
         const k = Math.min(cv.width / src.width, cv.height / src.height);
@@ -497,6 +511,17 @@ function previewSlot(canvas, slot, id) {
   if (slot === 'pano') return drawFelt(canvas, SCENE.felt);
   if (slot === 'dorso') return drawBack(canvas, null);
   const ctx = canvas.getContext('2d');
+  if (slot === 'mapa') {
+    // sin mapa: el que toque en cada partida (un signo de pregunta sobre gris)
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#9a9a9a';
+    ctx.font = `800 ${Math.round(canvas.height * 0.5)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', canvas.width / 2, canvas.height / 2);
+    return;
+  }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 

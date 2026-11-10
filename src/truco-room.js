@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, cleanLook, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -53,6 +53,7 @@ export class TrucoRoom extends DurableObject {
       host: pid,
       status: 'lobby', // lobby | playing | ended
       game: null,
+      ambiente: pickAmbiente(rng), // el lugar de la primera partida: ya se ve de fondo en la sala de espera
       handEndedAt: 0,
       afkSince: {},
       createdAt: Date.now(),
@@ -165,7 +166,9 @@ export class TrucoRoom extends DurableObject {
       // sin caché: lo que tiene puesto de la tienda puede haber cambiado recién
       const profile = user && (await getProfile(this.env, user.id, { fresh: true }).catch(() => null));
       if (!profile) return this.send(ws, { t: 'auth' });
-      account = { pid: user.id, name: profile.username, cos: cleanEquipped(profile.equipped), elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
+      // cos.look: tu personaje dibujado (el creador de personaje); viaja junto con lo que tenés puesto de la tienda
+      const look = cleanLook(profile.look);
+      account = { pid: user.id, name: profile.username, cos: { ...cleanEquipped(profile.equipped), ...(look ? { look } : {}) }, elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
       // el ELO de cada modo (para el desplegable del cartel)
       account.elos = Object.fromEntries(Object.keys(MODES).map((m) => [m, profile[`elo_${m}`] ?? ELO_START]));
       // las últimas 3 partidas, para el cartel de la mesa (si la base no contesta, sin historial)
@@ -437,6 +440,7 @@ export class TrucoRoom extends DurableObject {
         r.status = 'lobby';
         r.game = null;
         r.lastMatch = null;
+        r.ambiente = pickAmbiente(rng, r.ambiente); // la próxima, en otro lugar (ya se ve en la sala de espera)
         return this.commit();
       }
     }
@@ -656,7 +660,7 @@ export class TrucoRoom extends DurableObject {
     r.status = 'playing';
     const { mode, target, trucoDesdeSegunda } = r.cfg;
     r.game = newGame({ mode, target, trucoDesdeSegunda, ...roomOptions(r.cfg), dealer: Math.floor(rng() * r.seats.length) }, rng);
-    r.ambiente = pickAmbiente(rng, r.ambiente);
+    r.ambiente ||= pickAmbiente(rng); // el que ya se veía en la sala de espera
     await this.rec.start(r);
     await this.loadBrains();
     this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);

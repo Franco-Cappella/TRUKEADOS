@@ -39,6 +39,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   dom.js                  $, esc, store (localStorage seguro), KEYS, api() (manda el token de la sesión)
   auth.js                 Supabase Auth en el navegador: iniciar sesión, perfil (loadMe), cerrar sesión
   account.js              pantallas de entrada: iniciar sesión / crear cuenta y elegir el nombre
+  creator.js              creador de personaje: tu dibujado en una tarima, la cámara va a cada parte, Aleatorio
   audio.js                sonidos sintetizados y voces: audios de public/voz y, para lo escrito a mano, la voz del dispositivo
   voices.js *             qué voz usa cada asiento y cómo se llama el audio de cada frase
   wheel.js                ruleta de frases de la partida (botón Frases o tecla F)
@@ -49,6 +50,9 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   shop.js                 pestañas Tienda y Personalizar
   room-client.js          una sala abierta: WebSocket, estado, botones y carteles
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
+  ambientes.js            registro de los lugares (cada uno en amb-interiores.js, amb-afuera.js o barrio-chino.js)
+  amb-kit.js / amb-piezas.js  piezas de los lugares: luces con halo, fuego, humo, ventanas a la calle, agua, pasto; muebles y texturas
+  paisaje.js              cielo pintado, nubes, capas de distancia, pétalos, luciérnagas
   characters.js           personajes 2D dibujados en canvas (caras y señas)
   models.js               personajes 3D de la tienda (GLB con esqueleto): lector propio, pose sentada y señas en la cara
   poster.js               el póster de cada personaje 3D en la tienda (se arma con el modelo; colores en COSMETIC_LOOK.poster)
@@ -194,13 +198,35 @@ Opción de sala de 3 vs 3 (`picapica`). La mano de pica-pica son tres manos segu
 y los bots ya los saltean). `nextHand` arma la vuelta (`picaDue`, `picaDuel`). Una opción que solo vale para
 algunos modos lleva `modes` en `ROOM_OPTIONS` y se filtra con `optionForMode`.
 
-## Ambientes
-Cada partida se juega en un lugar distinto (`AMBIENTES` en config.js; los dibuja `public/js/ambientes.js`): bar
-notable, café porteño, parrilla, Bosques de Palermo, quincho, club de barrio y estancia. El servidor elige uno al
-empezar y otro distinto en la revancha (`pickAmbiente`, `r.ambiente`, va en `publicRoom`); en la sala de espera
-se ve el bar. Uno nuevo: una función en `BUILD` de ambientes.js (arma el grupo con luces y devuelve fondo y niebla)
-y una entrada en `AMBIENTES`. Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en
-`tools/shots/`).
+## Ambientes (mapas)
+Cada partida se juega en un lugar distinto (`AMBIENTES` en config.js): bar notable, café porteño, parrilla, club de
+barrio (en `amb-interiores.js`), Bosques de Palermo, quincho, estancia (`amb-afuera.js`) y el Barrio Chino
+(`barrio-chino.js`, solo de la tienda: `shop: true`, no sale en el sorteo). La sala elige uno al crearse (se ve de
+fondo en la sala de espera, `party.js` → `setAmbiente`), lo mantiene al empezar, y cambia en la revancha y al volver a
+la sala (`pickAmbiente`, `r.ambiente`, va en `publicRoom`).
+- Cada lugar es un salón grande o un paisaje con profundidad: ventanas a la calle (`streetOutside`), varias luces con
+  halo, y cosas que se mueven (fuego, humo, ventiladores, el reloj, la tele, agua, pasto, pájaros) registradas con
+  `tick()`. Del lado de +z (atrás de tu silla) el centro queda libre y bajo: por ahí mira la cámara de la sala de espera.
+- Uno nuevo: `export function id(g)` en un `amb-*.js` (arma el grupo y devuelve `{ background, fog }`), en `BUILD` de
+  ambientes.js y en `AMBIENTES`; si es de la tienda, un ítem `mapa-<id>` en `COSMETICS` con `ambiente` y su foto.
+- Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en `tools/shots/`; con `mapShots()`, las
+  fotos de la tienda en `public/img/mapas/<id>.webp`).
+
+## La mesa de cada turno
+El paño, el dorso del mazo y el mapa son **los del que tiene el turno** (`tableOwner`, `tableLook` en config.js; lo
+aplica room-client.js en cada `state`): cuando te toca, todos ven tu mesa. Si el que juega no tiene mapa puesto, cada
+uno ve el suyo (y si tampoco, el que eligió la sala). En la sala de espera y cargando la partida, de fondo, tu mapa.
+La escena guarda armados hasta `AMBIENTE_CACHE` lugares (`envFor`; `prepareAmbientes` arma de antemano los de la mesa
+cuando la página está libre) y cambia con un fundido corto (`AMBIENTE_FADE_MS`).
+
+## Creador de personaje
+`public/js/creator.js` (pantalla `#creator`): tu personaje dibujado en una tarima con un cono de luz; cada parte (piel,
+cara, pelo, barba, ropa, bandera) lleva la cámara a otro lugar (`CREATOR.cam` en config.js). Se gira arrastrando y
+"Aleatorio" arma uno al azar (`randomLook`). Al registrarte (o si todavía no armaste uno) aparece solo antes del menú
+(`route` en main.js; "Después" lo deja para otro momento: `KEYS.creatorLater`); después, desde la Taquilla ("Tu
+personaje"). Se guarda con `POST /api/me/look` (`setLook` en src/social.js, limpio con `cleanLook`) en `profiles.look`
+(migración `20261118000000_personaje_2d`). En la mesa viaja dentro de lo que tenés puesto (`cos.look`) y lo aplica
+`dressed()` (characters.js). Para probarlo sin cuenta: `/tools/creator-test.html`.
 
 ## Cartel de cada jugador
 Foto, nombre, ELO y estado; al pasarle el mouse (o tocarlo) muestra sus últimas 3 partidas (`recent` de cada

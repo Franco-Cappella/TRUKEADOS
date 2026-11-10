@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba del creador</title>
+<!-- El creador de personaje solo, con /api/me/look de mentira (node tools/serve.mjs y abrir /tools/creator-test.html).
+     ?primera=1 lo abre como al registrarte (con "Después"). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="/css/truco.css">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<section id="creator" class="cr hidden" aria-labelledby="cr-title">
+  <div class="cr-stage">
+    <canvas id="cr-canvas" aria-label="Tu personaje en la tarima (arrastralo para girarlo)"></canvas>
+    <div class="cr-bigname" id="cr-name" aria-hidden="true"></div>
+    <p class="cr-hint">Arrastralo para girarlo</p>
+  </div>
+  <div class="cr-panel">
+    <header class="cr-head">
+      <h2 id="cr-title">Armá tu personaje</h2>
+      <p id="cr-sub"></p>
+    </header>
+    <nav class="cr-tabs" id="cr-tabs" role="tablist" aria-label="Partes del personaje"></nav>
+    <div class="cr-opts" id="cr-opts"></div>
+    <p class="a-msg" id="cr-msg" role="status"></p>
+    <footer class="cr-acts">
+      <button type="button" class="btn" id="cr-random">Aleatorio</button>
+      <button type="button" class="btn ghost" id="cr-skip">Después</button>
+      <button type="button" class="btn primary" id="cr-save">Listo</button>
+    </footer>
+  </div>
+</section>
+<p id="out" style="padding:20px"></p>
+<script type="module">
+  const json = (d) => new Response(JSON.stringify(d), { headers: { 'content-type': 'application/json' } });
+  const real = fetch;
+  window.fetch = async (url, opt = {}) => {
+    const body = opt.body ? JSON.parse(opt.body) : null;
+    if (url === '/api/me/look') return json({ look: body.look });
+    return real(url, opt);
+  };
+  localStorage.setItem('truco-name', 'Pirulo');
+  const { initCreator, openCreator } = await import('/js/creator.js');
+  initCreator();
+  const first = new URLSearchParams(location.search).has('primera');
+  const again = () => openCreator({ first, onDone: (look) => {
+    document.getElementById('out').textContent = look ? `Guardado: ${JSON.stringify(look)}` : 'Cerrado sin guardar';
+    setTimeout(again, 1500);
+  } });
+  again();
+  window.openCreator = openCreator;
+</script>
+</body>
+</html>

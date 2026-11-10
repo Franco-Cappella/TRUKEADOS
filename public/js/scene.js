@@ -5,7 +5,7 @@ import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { loadModel, Rig } from './models.js';
 import { canvasTex, noise, seeded, toon, setAniso } from './draw3d.js';
 import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
-import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES } from './config.js';
+import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES, AMBIENTE_CACHE, AMBIENTE_FADE_MS } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
 import { store, KEYS } from './dom.js';
@@ -487,21 +487,101 @@ export class TableScene {
   }
 
   // ------------------------------------------------------------ ambiente (bar, café, parque...: ambientes.js)
-  setAmbiente(id) {
+  // Los ambientes armados quedan guardados (AMBIENTE_CACHE como mucho): en la partida la mesa cambia al mapa del que
+  // tiene el turno, y armar uno de nuevo cada vez trabaría la mesa. fade: un fundido corto a negro al cambiar.
+  setAmbiente(id, { fade = false } = {}) {
     const want = AMBIENTE_IDS.includes(id) ? id : 'bar';
     if (this.ambiente === want) return;
     this.ambiente = want;
-    if (this.envGroup) {
-      this.scene.remove(this.envGroup);
-      disposeAmbiente(this.envGroup);
+    if (fade && this.envGroup) {
+      this.fadeTo = want;
+      this.fadeT0 = performance.now();
+      return;
     }
-    const env = buildAmbiente(want);
+    this.showAmbiente(want);
+  }
+
+  envFor(id) {
+    this.envCache ||= new Map();
+    let env = this.envCache.get(id);
+    if (!env) {
+      env = buildAmbiente(id);
+      this.envCache.set(id, env);
+    }
+    // el más viejo se libera (el que se está mostrando nunca)
+    this.envCache.delete(id);
+    this.envCache.set(id, env);
+    while (this.envCache.size > AMBIENTE_CACHE) {
+      const [old, e] = this.envCache.entries().next().value;
+      if (e.group === this.envGroup) break;
+      this.envCache.delete(old);
+      disposeAmbiente(e.group);
+    }
+    return env;
+  }
+
+  showAmbiente(id) {
+    const env = this.envFor(id);
+    if (this.envGroup === env.group) return;
+    if (this.envGroup) this.scene.remove(this.envGroup);
     this.envGroup = env.group;
     this.envUpdate = env.update;
     this.scene.add(env.group);
     this.scene.background = new THREE.Color(env.background);
     this.scene.fog = new THREE.Fog(env.fog[0], env.fog[1], env.fog[2]);
     this.shadowDirty = true;
+  }
+
+  /** Arma de a uno, cuando la página está libre, los mapas que pueden tocar en la partida (los de los jugadores). */
+  prepareAmbientes(ids) {
+    this.envCache ||= new Map();
+    const todo = [...new Set(ids)].filter((id) => AMBIENTE_IDS.includes(id) && !this.envCache.has(id)).slice(0, AMBIENTE_CACHE - 1);
+    if (!todo.length || this.preparing) return;
+    this.preparing = true;
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 200));
+    const next = () => {
+      const id = todo.shift();
+      if (!id) return void (this.preparing = false);
+      if (!this.envCache.has(id)) {
+        try {
+          const env = buildAmbiente(id);
+          this.envCache.set(id, env);
+          // el que se está mostrando queda último (es el más nuevo en uso)
+          const showing = [...this.envCache].find(([, e]) => e.group === this.envGroup);
+          if (showing) {
+            this.envCache.delete(showing[0]);
+            this.envCache.set(...showing);
+          }
+        } catch (err) {
+          console.error('ambiente', err);
+        }
+      }
+      idle(next, { timeout: 1500 });
+    };
+    idle(next, { timeout: 1500 });
+  }
+
+  // El fundido a negro del cambio de mapa (un velo pegado a la cámara).
+  updateFade(now) {
+    if (!this.fadeTo && !this.veil?.visible) return;
+    if (!this.veil) {
+      this.veil = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false }));
+      this.veil.position.z = -0.05;
+      this.veil.renderOrder = 999;
+      this.camera.add(this.veil);
+    }
+    const t = (now - this.fadeT0) / AMBIENTE_FADE_MS;
+    this.veil.visible = true;
+    if (this.fadeTo) {
+      this.veil.material.opacity = Math.min(1, t * 2);
+      if (t >= 0.5) {
+        this.showAmbiente(this.fadeTo);
+        this.fadeTo = null;
+      }
+    } else {
+      this.veil.material.opacity = Math.max(0, 2 - t * 2);
+      if (t >= 1) this.veil.visible = false;
+    }
   }
 
   // ------------------------------------------------------------ mesa según cantidad de jugadores
@@ -1761,6 +1841,7 @@ export class TableScene {
     }
     // lo que se mueve en el ambiente (nubes, estrellas, pétalos, faroles): si falla, la mesa sigue
     try {
+      this.updateFade(now);
       this.envUpdate?.(now, dt);
     } catch (err) {
       console.error('ambiente', err);

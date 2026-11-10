@@ -1,6 +1,6 @@
 // Lo social: foto de perfil, amigos por nombre de usuario y ranking. Si la migración 20261109000000_social todavía
 // no se aplicó, leer devuelve vacío y escribir avisa, sin romper el resto del juego.
-import { AUTH, AVATAR, MODES, ELO_START, RANKING_SIZE } from '../public/js/config.js';
+import { AUTH, AVATAR, MODES, ELO_START, RANKING_SIZE, cleanLook } from '../public/js/config.js';
 import { rest, forgetProfile } from './auth.js';
 import { rosterAt } from './roster.js';
 
@@ -66,6 +66,16 @@ export async function setAvatar(env, uid, avatar) {
   await dropGif(env, uid);
   forgetProfile(uid);
   return { avatar };
+}
+
+/** Tu personaje dibujado (el creador de personaje): lo limpia cleanLook y va a profiles.look. { look } o { error }. */
+export async function setLook(env, uid, raw) {
+  const look = cleanLook(raw);
+  if (!look) return { error: 'Ese personaje no sirve: probá de nuevo' };
+  const res = await rest(env, `profiles?id=eq.${uid}`, { method: 'PATCH', body: JSON.stringify({ look }) });
+  if (!res.ok) return { error: NOT_READY };
+  forgetProfile(uid);
+  return { look };
 }
 
 const pair = (a, b) => (a < b ? [a, b] : [b, a]);
