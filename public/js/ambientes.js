@@ -4,12 +4,14 @@
 import * as THREE from 'three';
 import { canvasTex, noise, seeded, toon } from './draw3d.js';
 import { FONT } from './theme.js';
+import { sky, clouds, layer, paintHills, paintTreeline, paintCity, petals, fireflies, dust, updater } from './paisaje.js';
+import { chinatown as barrioChino } from './barrio-chino.js';
 
 // Gris con un tono: l de 0 a 1, h (0-360) y s (0-1) chiquita.
 // Color de un ambiente: l de 0 a 1, h el tono (0-360) y s la saturación de base, que se multiplica por la del
 // ambiente que se está armando (SAT): así cada lugar tiene sus colores sin escribirlos uno por uno.
 let SAT = 1;
-const SATURATION = { bar: 5.5, cafe: 5, parrilla: 6, parque: 7, quincho: 5, club: 6, campo: 5 };
+const SATURATION = { bar: 5.5, cafe: 5, parrilla: 6, parque: 7, quincho: 5, club: 6, campo: 5, chinatown: 5 };
 const gray = (l, h = 30, s = 0.06) => `#${new THREE.Color().setHSL(h / 360, Math.min(0.92, s * SAT), l).getHexString()}`;
 // Colores que no dependen de SAT (los de verdad: banderas, manteles, botellas).
 const hsl = (h, s, l) => `#${new THREE.Color().setHSL(h / 360, s, l).getHexString()}`;
@@ -95,30 +97,6 @@ function sun(g, color, intensity, dir = [3, 6, 2]) {
   g.add(l, l.target);
 }
 
-// Cielo: una esfera grande con degradé (y estrellas, de noche).
-function skyDome(g, stops, { stars = 0, seed = 3 } = {}) {
-  const tex = canvasTex(64, 512, (ctx, w, h) => {
-    const gr = ctx.createLinearGradient(0, 0, 0, h);
-    stops.forEach(([at, c]) => gr.addColorStop(at, c));
-    ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, w, h);
-  });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false }));
-  g.add(dome);
-  if (stars) {
-    const r = seeded(seed);
-    const pts = [];
-    for (let i = 0; i < stars; i++) {
-      const a = r() * Math.PI * 2;
-      const e = 0.15 + r() * 1.3;
-      pts.push(Math.cos(a) * Math.cos(e) * 38, Math.sin(e) * 38, Math.sin(a) * Math.cos(e) * 38);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    g.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: '#f2f2f2', size: 0.12, fog: false })));
-  }
-}
-
 const box = (w, h, d, mat) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.castShadow = true;
@@ -132,16 +110,58 @@ const cyl = (r0, r1, h, mat, seg = 16) => {
 };
 
 // Árbol de copa redonda (tilo, plátano): tronco y tres o cuatro bochas.
+// Follaje pintado: racimos de hojas con luz arriba y sombra abajo, en sprites que siempre miran a la cámara.
+// Uno por color de hojas (se comparten entre los árboles del ambiente).
+const leafCache = new Map();
+function leafMats(color) {
+  if (leafCache.has(color)) return leafCache.get(color);
+  const base = new THREE.Color(color);
+  const tone = (dl, dh = 0) => {
+    const hsl = {};
+    base.getHSL(hsl);
+    return `#${new THREE.Color().setHSL(hsl.h + dh, Math.min(1, hsl.s * 1.1), Math.max(0, Math.min(1, hsl.l + dl))).getHexString()}`;
+  };
+  const mats = [0, 1].map((k) => {
+    const tex = canvasTex(256, 256, (ctx, w) => {
+      const r = seeded(70 + k);
+      for (let i = 0; i < 260; i++) {
+        const a = r() * Math.PI * 2;
+        const d = Math.sqrt(r()) * w * 0.42;
+        const x = w / 2 + Math.cos(a) * d;
+        const y = w / 2 + Math.sin(a) * d * 0.9;
+        const up = 1 - y / w; // arriba más claro: le da el sol
+        ctx.fillStyle = r() < 0.12 ? tone(0.18, 0.02) : tone(-0.12 + up * 0.22 + (r() - 0.5) * 0.06);
+        ctx.beginPath();
+        ctx.ellipse(x, y, 6 + r() * 6, 3 + r() * 3, r() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    return new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: 0.3 });
+  });
+  leafCache.set(color, mats);
+  return mats;
+}
+
 function tree(g, x, z, { h = 3.2, crown = 1.2, trunk, leaves, r }) {
   const t = cyl(0.09, 0.14, h * 0.55, toon(trunk));
   t.position.set(x, h * 0.275, z);
   g.add(t);
   const n = 3 + Math.floor(r() * 2);
+  const mats = leafMats(leaves);
   for (let i = 0; i < n; i++) {
-    const s = new THREE.Mesh(new THREE.IcosahedronGeometry(crown * (0.6 + r() * 0.35), 1), toon(leaves, { flatShading: true }));
+    const rad = crown * (0.6 + r() * 0.35);
+    // bocha de adentro (da volumen y tira sombra) y hojas pintadas por encima
+    const s = new THREE.Mesh(new THREE.IcosahedronGeometry(rad * 0.85, 1), toon(leaves, { flatShading: true }));
     s.position.set(x + (r() - 0.5) * crown, h * 0.62 + r() * crown * 0.7, z + (r() - 0.5) * crown);
     s.castShadow = true;
     g.add(s);
+    for (let k = 0; k < 4; k++) {
+      const sp = new THREE.Sprite(mats[k % 2]);
+      const sz = rad * (1.1 + r() * 0.5);
+      sp.scale.set(sz, sz, 1);
+      sp.position.set(s.position.x + (r() - 0.5) * rad, s.position.y + (r() - 0.4) * rad * 0.8, s.position.z + (r() - 0.5) * rad);
+      g.add(sp);
+    }
   }
 }
 
@@ -372,6 +392,11 @@ function wallTex({ top, bottom, trim, seam, dado = 1.0, panels = 128, shade = 0.
 // ------------------------------------------------------------------ los ambientes
 // Cada uno: build(g) arma el grupo y devuelve { background, fog: [color, cerca, lejos] }.
 const BUILD = {
+  // Barrio Chino de noche (barrio-chino.js): faroles, neones, el portal y cerezos en flor.
+  chinatown(g) {
+    return barrioChino(g);
+  },
+
   // Bar notable porteño: boiserie oscura, estantería de botellas, láminas y lámpara colgante.
   bar(g) {
     // boiserie de madera oscura, molduras doradas y tablones cálidos
@@ -434,6 +459,7 @@ const BUILD = {
       const pal = { sol: [hsl(40, 0.6, 0.62), hsl(20, 0.6, 0.2)], guarda: [hsl(15, 0.4, 0.18), hsl(40, 0.55, 0.72)], espada: [hsl(5, 0.55, 0.32), hsl(40, 0.4, 0.82)], pampa: [hsl(30, 0.5, 0.5), hsl(25, 0.45, 0.12)] }[k];
       onWall(g, picture(k, pal[0], pal[1], hsl(25, 0.45, 0.16)), 0.9, 1.2, { wall, x, y: 2.3 });
     });
+    dust(g, { color: '#ffe4bf' });
     return { background: gray(0.03), fog: [gray(0.03), 7, 16] };
   },
 
@@ -510,6 +536,7 @@ const BUILD = {
       chair(g, x + 0.55, z, -Math.PI / 2, wood);
       chair(g, x - 0.55, z, Math.PI / 2, wood);
     }
+    dust(g, { color: '#fffaf0', radius: 1.2 });
     return { background: gray(0.82, 40, 0.06), fog: [gray(0.85, 40, 0.06), 8, 18] };
   },
 
@@ -606,21 +633,51 @@ const BUILD = {
       sideTable(g, x, z, cloth, toon(gray(0.12)));
       chair(g, x, z + 0.55, 0, toon(gray(0.2)));
     }
+    dust(g, { color: '#fff1dc' });
     return { background: gray(0.6), fog: [gray(0.65), 8, 18] };
   },
 
   // Bosques de Palermo: cielo claro, pasto, árboles, bancos, faroles, el lago y la ciudad a lo lejos.
   parque(g) {
-    skyDome(g, [[0, gray(0.96, 210, 0.12)], [0.45, gray(0.86, 210, 0.08)], [0.5, gray(0.78, 120, 0.04)], [1, gray(0.6, 120, 0.05)]]);
+    // cielo de primavera: azul arriba, blanco lechoso en el horizonte, el sol y nubes que pasan
+    sky(g, [[0, hsl(208, 0.62, 0.52)], [0.32, hsl(204, 0.6, 0.7)], [0.48, hsl(200, 0.45, 0.88)], [0.5, hsl(60, 0.3, 0.9)], [0.52, hsl(100, 0.3, 0.4)], [1, hsl(100, 0.3, 0.3)]], {
+      glow: { u: 0.62, v: 0.2, color: 'rgba(255,250,220,1)', size: 0.22, alpha: 0.7 },
+      haze: 'rgba(240,248,255,0.6)',
+    });
+    clouds(g, { r: 32, y: 11, h: 9, n: 22, seed: 4, speed: 0.006 });
+    clouds(g, { r: 28, y: 7.5, h: 5, n: 14, seed: 9, speed: 0.01, alpha: 0.75, shade: '#c7d3e3' });
+    // profundidad: cerros azulados, la arboleda del otro lado del lago y la ciudad entre la bruma
+    layer(g, paintHills(hsl(205, 0.25, 0.62), { base: 0.6, amp: 0.4, waves: 3 }), { r: 30.5, h: 6, y: 2.9, seed: 2 });
+    layer(g, paintTreeline(hsl(130, 0.35, 0.3), hsl(80, 0.5, 0.6), { top: 0.3 }), { r: 20, h: 4.5, y: 2.2, haze: hsl(200, 0.3, 0.8), t: 0.35, seed: 6 });
+    layer(g, paintTreeline(hsl(120, 0.4, 0.22), hsl(80, 0.55, 0.55), { top: 0.35, poplar: 0.25 }), { r: 15.5, h: 4.2, y: 2.05, haze: hsl(200, 0.3, 0.8), t: 0.12, seed: 13 });
+    petals(g, { n: 60, colors: ['#f6e27a', '#9ccf5c', '#ffffff'], area: 7, top: 4, speed: 0.25, size: 0.06, seed: 3 });
     hemi(g, '#ffffff', gray(0.4, 100, 0.1), 1.3);
     sun(g, '#fffaf0', 1.6, [4, 7, 3]);
     const grass = canvasTex(512, 512, (ctx, w, h) => {
       ctx.fillStyle = gray(0.58, 100, 0.08);
       ctx.fillRect(0, 0, w, h);
       const r = seeded(9);
-      for (let i = 0; i < 4000; i++) {
-        ctx.fillStyle = gray(0.5 + r() * 0.15, 100, 0.08);
-        ctx.fillRect(r() * w, r() * h, 2, 5);
+      // matas más oscuras y más claras para que no sea un verde parejo
+      for (let i = 0; i < 60; i++) {
+        ctx.fillStyle = `rgba(${r() < 0.5 ? '20,60,10' : '200,230,120'},0.08)`;
+        ctx.beginPath();
+        ctx.ellipse(r() * w, r() * h, 20 + r() * 50, 12 + r() * 30, r() * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 6000; i++) {
+        ctx.fillStyle = gray(0.45 + r() * 0.22, 95 + r() * 20, 0.08);
+        ctx.save();
+        ctx.translate(r() * w, r() * h);
+        ctx.rotate((r() - 0.5) * 0.8);
+        ctx.fillRect(0, 0, 1.6, 4 + r() * 4);
+        ctx.restore();
+      }
+      // flores de trébol y margaritas
+      for (let i = 0; i < 70; i++) {
+        ctx.fillStyle = r() < 0.6 ? '#fbfbf2' : '#f2d64b';
+        ctx.beginPath();
+        ctx.arc(r() * w, r() * h, 1.6 + r() * 1.2, 0, Math.PI * 2);
+        ctx.fill();
       }
     }, [16, 16]);
     floor(g, grass, 40);
@@ -685,15 +742,24 @@ const BUILD = {
         x += bw + rr() * 10;
       }
     });
-    const skyline = new THREE.Mesh(new THREE.CylinderGeometry(24, 24, 3, 48, 1, true), new THREE.MeshBasicMaterial({ map: city, transparent: true, side: THREE.BackSide, fog: false }));
+    const skyline = new THREE.Mesh(new THREE.CylinderGeometry(24, 24, 3, 48, 1, true), new THREE.MeshBasicMaterial({ map: city, transparent: true, opacity: 0.75, side: THREE.BackSide, fog: false, depthWrite: false }));
     skyline.position.y = 1.4;
+    skyline.renderOrder = -6;
     g.add(skyline);
     return { background: gray(0.9, 210, 0.08), fog: [gray(0.88, 210, 0.08), 12, 30] };
   },
 
   // Quincho de noche: pared de ladrillo con parrilla, pérgola de madera, guirnalda de lamparitas y estrellas.
   quincho(g) {
-    skyDome(g, [[0, gray(0.02, 230, 0.2)], [0.5, gray(0.08, 230, 0.15)], [1, gray(0.05)]], { stars: 260 });
+    // noche de verano: estrellas que titilan, la luna, el resplandor del pueblo y luciérnagas en el pasto
+    sky(g, [[0, hsl(232, 0.55, 0.04)], [0.35, hsl(228, 0.5, 0.09)], [0.49, hsl(230, 0.35, 0.2)], [0.5, hsl(30, 0.4, 0.25)], [0.52, hsl(230, 0.3, 0.05)], [1, hsl(230, 0.3, 0.04)]], {
+      stars: 420,
+      moon: { dir: [-0.6, 0.55, 0.6], size: 3 },
+      glow: { u: 0.8, v: 0.5, color: 'rgba(255,170,90,0.9)', size: 0.25, alpha: 0.35 },
+    });
+    layer(g, paintTreeline(hsl(230, 0.3, 0.06), hsl(230, 0.3, 0.12), { top: 0.3, poplar: 0.3 }), { r: 18, h: 4.6, y: 2.25, seed: 4 });
+    layer(g, paintCity(hsl(230, 0.25, 0.08), { lit: 0.12, light: '#ffcf7a', min: 0.08, max: 0.28, antenna: 0.05 }), { r: 26, h: 4, y: 1.95, seed: 7 });
+    fireflies(g, { n: 45, area: 7 });
     hemi(g, gray(0.6, 230, 0.15), gray(0.15), 0.8);
     pendant(g, { shade: gray(0.1), bulb: '#fff2d6', light: '#ffe3b8', intensity: 8 });
     floor(g, checkerTex(gray(0.3, 15, 0.12), gray(0.34, 15, 0.12), 6, 10), 12);
@@ -842,12 +908,21 @@ const BUILD = {
     for (const [x, z] of [[3.6, 2.6], [-3.6, -3]]) {
       sideTable(g, x, z, toon(gray(0.9)), toon(gray(0.2)));
     }
+    dust(g, { color: '#fff8e8', radius: 1.3 });
     return { background: gray(0.55), fog: [gray(0.6), 8, 18] };
   },
 
   // Estancia al atardecer: la pampa, un molino, el galpón, la tranquera y un ombú.
   campo(g) {
-    skyDome(g, [[0, gray(0.55, 220, 0.12)], [0.38, gray(0.82, 30, 0.2)], [0.5, gray(0.92, 35, 0.3)], [0.52, gray(0.4, 60, 0.1)], [1, gray(0.3, 60, 0.1)]]);
+    // atardecer en la pampa: cielo que va del celeste al durazno, el sol bajo, nubes doradas y horizonte en capas
+    sky(g, [[0, hsl(215, 0.5, 0.48)], [0.28, hsl(220, 0.4, 0.66)], [0.42, hsl(28, 0.75, 0.75)], [0.49, hsl(35, 0.9, 0.8)], [0.5, hsl(40, 0.9, 0.86)], [0.52, hsl(60, 0.25, 0.35)], [1, hsl(60, 0.25, 0.28)]], {
+      glow: { u: 0.375, v: 0.44, color: 'rgba(255,200,120,1)', size: 0.3, alpha: 0.85 },
+      haze: 'rgba(255,214,160,0.7)',
+    });
+    clouds(g, { color: hsl(35, 0.9, 0.85), shade: hsl(330, 0.3, 0.55), r: 32, y: 10.5, h: 10, n: 7, seed: 12, alpha: 0.85, speed: 0.004 });
+    layer(g, paintHills(hsl(25, 0.25, 0.58), { base: 0.75, amp: 0.15, waves: 2 }), { r: 31, h: 3, y: 1.45, seed: 5 });
+    layer(g, paintTreeline(hsl(80, 0.25, 0.22), hsl(40, 0.8, 0.6), { top: 0.25, poplar: 0.4 }), { r: 22, h: 4, y: 1.95, haze: hsl(30, 0.6, 0.75), t: 0.35, seed: 19 });
+    fireflies(g, { n: 18, area: 8, color: '#ffe9a0' });
     hemi(g, gray(0.95, 35, 0.35), gray(0.3, 60, 0.1), 1.15);
     sun(g, gray(0.92, 32, 0.6), 1.7, [-6, 3, -5]);
     const ground = canvasTex(512, 512, (ctx, w, h) => {
@@ -931,11 +1006,13 @@ export function buildAmbiente(id) {
   SAT = SATURATION[id] ?? 5;
   const out = (BUILD[id] || BUILD.bar)(g);
   SAT = 1;
-  return { group: g, ...out };
+  // update(now, dt): lo que se mueve (nubes, estrellas, pétalos, faroles); null si el ambiente es quieto
+  return { group: g, update: updater(g), ...out };
 }
 
 /** Libera la memoria de un ambiente que ya no se usa. */
 export function disposeAmbiente(group) {
+  leafCache.clear();
   group.traverse((o) => {
     o.geometry?.dispose?.();
     const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];

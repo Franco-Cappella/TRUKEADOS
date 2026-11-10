@@ -497,6 +497,7 @@ export class TableScene {
     }
     const env = buildAmbiente(want);
     this.envGroup = env.group;
+    this.envUpdate = env.update;
     this.scene.add(env.group);
     this.scene.background = new THREE.Color(env.background);
     this.scene.fog = new THREE.Fog(env.fog[0], env.fog[1], env.fog[2]);
@@ -1757,6 +1758,13 @@ export class TableScene {
       this.yaw = damp(this.yaw, this.tYaw, CAM_RATE, dt);
       this.pitch = damp(this.pitch, this.tPitch, CAM_RATE, dt);
       this.applyCamera();
+    }
+    // lo que se mueve en el ambiente (nubes, estrellas, pétalos, faroles): si falla, la mesa sigue
+    try {
+      this.envUpdate?.(now, dt);
+    } catch (err) {
+      console.error('ambiente', err);
+      this.envUpdate = null;
     }
     // las animaciones que se encadenan (en done) se agregan a la lista nueva, no se pierden
     const running = this.tweens;

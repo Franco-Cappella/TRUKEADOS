@@ -32,6 +32,7 @@ export const AMBIENTES = [
   { id: 'quincho', name: 'Quincho' },
   { id: 'club', name: 'Club de barrio' },
   { id: 'campo', name: 'Estancia' },
+  { id: 'chinatown', name: 'Barrio Chino' },
 ];
 /** Otro ambiente al azar (distinto del anterior, prev). */
 export function pickAmbiente(rng = Math.random, prev = null) {
