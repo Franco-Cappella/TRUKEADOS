@@ -166,6 +166,7 @@
           </header>
           <nav class="sh-cats" id="shop-cats" aria-label="Categorías"></nav>
           <div id="shop-list" class="sh-list"></div>
+          <nav class="sh-dots" id="shop-dots" aria-label="Secciones de la tienda"></nav>
           <p class="a-msg" id="shop-msg" role="status"></p>
         </div>
 
@@ -249,6 +250,15 @@
             <div class="st-row"><span class="st-label"><b>Mail</b></span><b id="profile-email"></b></div>
           </section>
           <section class="st-sec">
+            <h3>Privacidad</h3>
+            <label class="st-row"><span class="st-label"><b>Aparecer conectado</b><small>Si lo apagás, tus amigos te ven desconectado y no saben en qué mesa estás</small></span><input class="st-switch" type="checkbox" role="switch" id="set-online"></label>
+          </section>
+          <section class="st-sec">
+            <h3>Avisos</h3>
+            <label class="st-row"><span class="st-label"><b>Mensajes de amigos</b><small>Un aviso cuando un amigo te escribe</small></span><input class="st-switch" type="checkbox" role="switch" id="set-note-msgs"></label>
+            <label class="st-row"><span class="st-label"><b>Solicitudes de amistad</b><small>Los carteles para aceptar. Igual las ves en Amigos</small></span><input class="st-switch" type="checkbox" role="switch" id="set-note-reqs"></label>
+          </section>
+          <section class="st-sec">
             <h3>Sonido</h3>
             <label class="st-row"><span class="st-label"><b>Voces de la mesa</b><small>Los cantos y lo que dice cada jugador</small></span><input class="st-switch" type="checkbox" role="switch" id="set-voice"></label>
             <label class="st-row"><span class="st-label"><b>Volumen de las voces</b></span><span class="st-volume"><input class="st-range" type="range" min="0" max="100" step="5" id="set-volume"><output id="set-volume-val"></output></span></label>
@@ -262,10 +272,31 @@
             <h3>Mesa</h3>
             <label class="st-row"><span class="st-label"><b>Nombre de la carta al tirarla</b><small>Un cartelito unos segundos. Pasando el mouse se ve siempre</small></span><input class="st-switch" type="checkbox" role="switch" id="set-labels"></label>
             <label class="st-row"><span class="st-label"><b>Gráficos livianos</b><small>Menos resolución y sombras fijas, si la mesa se traba</small></span><input class="st-switch" type="checkbox" role="switch" id="set-lowgfx"></label>
+            <div class="st-row">
+              <label class="st-label" for="set-cam"><b>Vista al empezar</b><small>En la partida la cambiás con la tecla V</small></label>
+              <select class="st-select" id="set-cam"><option value="first">Primera persona</option><option value="front">De frente (te ves la cara)</option></select>
+            </div>
+          </section>
+          <section class="st-sec">
+            <h3>Accesibilidad</h3>
+            <label class="st-row"><span class="st-label"><b>Menos movimiento</b><small>Sin animaciones de la interfaz</small></span><input class="st-switch" type="checkbox" role="switch" id="set-motion"></label>
+            <label class="st-row"><span class="st-label"><b>Letra más grande</b><small>Todo el menú y los carteles un poco más grandes</small></span><input class="st-switch" type="checkbox" role="switch" id="set-bigtext"></label>
+          </section>
+          <section class="st-sec">
+            <h3>Ayuda</h3>
+            <div class="st-row"><span class="st-label"><b>Términos y privacidad</b><small>Cómo funciona Trukeados y qué hacemos con tus datos</small></span><span class="st-actions"><a class="btn small ghost" href="/legal/terminos" target="_blank" rel="noopener">Términos</a><a class="btn small ghost" href="/legal/privacidad" target="_blank" rel="noopener">Privacidad</a></span></div>
+            <div class="st-row"><span class="st-label"><b>Escribinos</b><small>Un problema, una idea o algo que no anda</small></span><a class="btn small ghost" href="mailto:legal@trukeados.com">legal@trukeados.com</a></div>
+            <div class="st-row"><span class="st-label"><b>Volver a los ajustes de fábrica</b><small>Sonido, mesa, avisos y accesibilidad, en este dispositivo</small></span><button class="btn small ghost" type="button" id="set-reset">Restablecer</button></div>
           </section>
           <section class="st-sec">
             <h3>Sesión</h3>
             <div class="st-row"><span class="st-label"><b>Cerrar sesión</b><small>Vas a tener que volver a entrar para jugar</small></span><button class="btn small danger" type="button" id="logout">Cerrar sesión</button></div>
+          </section>
+          <section class="st-sec st-danger">
+            <h3>Tu cuenta</h3>
+            <div class="st-row"><span class="st-label"><b>Descargar mis datos</b><small>Tu perfil, lo que compraste, tus amigos y tus partidas, en un archivo</small></span><button class="btn small" type="button" id="set-export">Descargar</button></div>
+            <div class="st-row"><span class="st-label"><b>Borrar mi cuenta</b><small>Se borran tu perfil, tu ELO, tus monedas, lo que compraste y tus amigos. No se puede deshacer</small></span><button class="btn small danger" type="button" id="set-delete">Borrar cuenta</button></div>
+            <p class="a-msg" id="set-acct-msg" role="status"></p>
           </section>
         </div>
 
@@ -305,6 +336,18 @@
     <div class="sd-view"><div class="lk-view" id="sd-stage"></div><canvas id="sd-canvas" width="480" height="360"></canvas></div>
     <div class="sd-info" id="sd-info"></div>
   </div></dialog>
+
+  <!-- borrar la cuenta: hay que escribir el nombre de usuario -->
+  <dialog id="delete-dialog" class="dl" aria-labelledby="delete-title">
+    <form method="dialog" id="delete-form" novalidate>
+      <h2 id="delete-title">Borrar tu cuenta</h2>
+      <p class="dl-hint">Se borran para siempre tu perfil, tu ELO, tus monedas, lo que compraste, tu foto y tus amigos. Las partidas que jugaste quedan en el historial de los demás. <b>No se puede deshacer.</b></p>
+      <label class="dl-hint" for="delete-confirm">Para confirmar, escribí tu nombre de usuario: <b id="delete-name"></b></label>
+      <input class="st-input" id="delete-confirm" autocomplete="off" spellcheck="false" style="width: 100%; margin: 6px 0 4px">
+      <p class="a-msg bad" id="delete-msg" role="status"></p>
+      <div class="dl-foot"><button class="btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="btn danger" type="submit" id="delete-go" disabled>Borrar para siempre</button></div>
+    </form>
+  </dialog>
 
   <dialog id="credits-dialog" class="dl cr-dialog" aria-labelledby="credits-title">
     <form method="dialog">

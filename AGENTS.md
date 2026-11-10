@@ -66,6 +66,7 @@ test/auth.test.js         verificación del token de Supabase y validación del 
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
 test/sala.test.js         la sala (TrucoRoom) de punta a punta: bots, consultas, señas, desconexiones
 test/rendirse.test.js     rendirse en equipo: el pedido que tienen que aceptar los compañeros (SURRENDER_NEED)
+test/cuenta.test.js       borrar la cuenta (con el nombre escrito a mano) y bajar los datos (src/account.js)
 test/helpers/             banco de pruebas de la sala en Node (storage, sockets, Lobby, cuentas y reloj de mentira)
 supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)
 docs/CUENTAS.md           cuentas: cómo está armado y cómo se configura Supabase

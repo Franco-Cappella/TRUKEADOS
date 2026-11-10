@@ -10,6 +10,7 @@ import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
 import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
 import { recentMatches } from './matches.js';
+import { exportData, deleteAccount } from './account.js';
 import { fakeRecent } from './matchmaking.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, SHOW_TABLES, roomOptions } from '../public/js/config.js';
 
@@ -89,6 +90,20 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     const body = await request.json().catch(() => ({}));
     const r = await renameProfile(env, auth.user.id, auth.profile, body.username);
+    return r.error ? json({ error: r.error }, 400) : json(r);
+  }
+
+  // Ajustes: bajar tus datos y borrar la cuenta (con tu nombre de usuario escrito a mano)
+  if (path === '/api/me/export' && method === 'GET') {
+    const auth = await requireUser(env, request, { fresh: true });
+    if (auth.error) return auth.error;
+    return json(await exportData(env, auth.user, auth.profile));
+  }
+  if (path === '/api/me/delete' && method === 'POST') {
+    const auth = await requireUser(env, request, { fresh: true });
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    const r = await deleteAccount(env, auth.user, auth.profile, body.confirm);
     return r.error ? json({ error: r.error }, 400) : json(r);
   }
 

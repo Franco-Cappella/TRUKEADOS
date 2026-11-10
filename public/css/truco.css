@@ -1365,3 +1365,20 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
   .sd-view { min-height: 240px; }
   .sh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* los puntitos de la derecha de la tienda: una sección cada uno (como para saber que hay más abajo) */
+.sh-dots { position: fixed; right: clamp(8px, 1.4vw, 20px); top: 50%; transform: translateY(-50%); z-index: 6; display: flex; flex-direction: column; gap: 10px; }
+.sh-dots button { position: relative; width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+.sh-dots button::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--text-dim); opacity: 0.55; transition: transform 0.15s, opacity 0.15s, background 0.15s; }
+.sh-dots button:hover::before { opacity: 1; transform: scale(1.25); }
+.sh-dots button.on::before { width: 9px; height: 22px; border-radius: 5px; background: var(--text); opacity: 1; }
+.sh-dots span { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); padding: 4px 9px; white-space: nowrap; font-size: 11px; font-weight: 800; letter-spacing: var(--track); text-transform: uppercase; background: var(--text); color: var(--bg); opacity: 0; pointer-events: none; transition: opacity 0.12s; }
+.sh-dots button:hover span, .sh-dots button:focus-visible span { opacity: 1; }
+.sh-dots:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .sh-dots button::before { transition: none; } }
+
+/* ajustes de accesibilidad (Ajustes → Accesibilidad) */
+:root.less-motion *, :root.less-motion *::before, :root.less-motion *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+:root.big-text { zoom: 1.12; }
+.st-danger { border-top: 1px solid var(--red); }
+.st-danger h3 { color: var(--red); }

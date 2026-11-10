@@ -1,5 +1,5 @@
 // La foto de cada personaje 3D en la tienda: un póster armado en el momento con el modelo de verdad. Fondo de color
-// con rayos, el nombre gigante atrás, el personaje en pose (mano en la cintura, saludando) iluminado con
+// con rayos, el nombre gigante atrás, el personaje en pose (las manos en la cintura) iluminado con
 // luces de contorno de dos colores, y brillitos adelante. Los colores salen de COSMETIC_LOOK[id].poster (theme.js).
 // Se hace una vez por personaje (un solo contexto de WebGL que se suelta al terminar) y se guarda.
 import * as THREE from 'three';
@@ -169,7 +169,7 @@ function render(tpl, pal) {
   const box = rig.mesh.boundingBox.clone().applyMatrix4(rig.mesh.matrixWorld);
   const size = box.getSize(new THREE.Vector3());
   const tall = size.y > size.x * 1.6;
-  const top = tall ? head.y + 0.62 : box.max.y + size.y * 0.12; // con la mano de arriba
+  const top = tall ? head.y + 0.58 : box.max.y + size.y * 0.12; // la cabeza con aire arriba
   const bottom = tall ? head.y * 0.36 : box.min.y - size.y * 0.06;
   const camera = new THREE.PerspectiveCamera(26, POSTER_W / POSTER_H, 0.1, 50);
   const halfH = Math.tan(THREE.MathUtils.degToRad(13));

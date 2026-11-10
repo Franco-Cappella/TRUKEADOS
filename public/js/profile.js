@@ -1,7 +1,7 @@
 // Perfil (evolución del ELO y últimas partidas) y Ajustes (cuenta, sonido y mesa).
 import { ROUTES, MODES, modeLabel, AUTH, usernameFreeAt, usernameFreeDay } from './config.js';
 import { $, esc, api, store, KEYS } from './dom.js';
-import { currentMe, changeUsername } from './auth.js';
+import { currentMe, changeUsername, signOut } from './auth.js';
 import { rowHtml } from './history.js';
 import { isVoiceOn, toggleVoice, voiceVolume, setVoiceVolume, isSfxOn, toggleSfx, myVoice, setMyVoice, previewVoice } from './audio.js';
 
@@ -65,6 +65,13 @@ function paintVoice() {
   for (const id of ['#set-volume', '#set-gender', '#set-voice-test']) $(id).disabled = !on;
 }
 
+// Menos movimiento y letra más grande: una clase en <html> (se aplica al cargar y al cambiarlos)
+export function applyLook() {
+  document.documentElement.classList.toggle('less-motion', store.get(KEYS.lessMotion, '0') === '1');
+  document.documentElement.classList.toggle('big-text', store.get(KEYS.bigText, '0') === '1');
+}
+applyLook();
+
 export function loadSettings() {
   $('#set-voice').checked = isVoiceOn();
   $('#set-sfx').checked = isSfxOn();
@@ -72,6 +79,13 @@ export function loadSettings() {
   $('#set-gender').value = myVoice();
   $('#set-labels').checked = store.get(KEYS.cardLabels, '1') === '1';
   $('#set-lowgfx').checked = store.get(KEYS.lowGfx, '0') === '1';
+  $('#set-online').checked = store.get(KEYS.invisible, '0') !== '1';
+  $('#set-note-msgs').checked = store.get(KEYS.noteMsgs, '1') !== '0';
+  $('#set-note-reqs').checked = store.get(KEYS.noteReqs, '1') !== '0';
+  $('#set-cam').value = store.get(KEYS.camMode, 'first') === 'front' ? 'front' : 'first';
+  $('#set-motion').checked = store.get(KEYS.lessMotion, '0') === '1';
+  $('#set-bigtext').checked = store.get(KEYS.bigText, '0') === '1';
+  $('#set-acct-msg').textContent = '';
   $('#set-name-form').classList.add('hidden');
   $('#set-name-msg').textContent = '';
   paintVolume();
@@ -102,6 +116,75 @@ export function initProfile(repaint) {
   $('#set-voice-test').addEventListener('click', previewVoice);
   $('#set-labels').addEventListener('change', (e) => store.set(KEYS.cardLabels, e.target.checked ? '1' : '0'));
   $('#set-lowgfx').addEventListener('change', (e) => store.set(KEYS.lowGfx, e.target.checked ? '1' : '0'));
+  $('#set-online').addEventListener('change', (e) => store.set(KEYS.invisible, e.target.checked ? '0' : '1'));
+  $('#set-note-msgs').addEventListener('change', (e) => store.set(KEYS.noteMsgs, e.target.checked ? '1' : '0'));
+  $('#set-note-reqs').addEventListener('change', (e) => {
+    store.set(KEYS.noteReqs, e.target.checked ? '1' : '0');
+    if (!e.target.checked) $('#friend-notes').querySelectorAll('.fr-note').forEach((n) => n.remove());
+  });
+  $('#set-cam').addEventListener('change', (e) => store.set(KEYS.camMode, e.target.value));
+  $('#set-motion').addEventListener('change', (e) => {
+    store.set(KEYS.lessMotion, e.target.checked ? '1' : '0');
+    applyLook();
+  });
+  $('#set-bigtext').addEventListener('change', (e) => {
+    store.set(KEYS.bigText, e.target.checked ? '1' : '0');
+    applyLook();
+  });
+  // de fábrica: lo de este dispositivo (no la sesión ni lo de la cuenta)
+  $('#set-reset').addEventListener('click', () => {
+    for (const k of [KEYS.voice, KEYS.voiceVol, KEYS.cardLabels, KEYS.lowGfx, KEYS.voiceGender, KEYS.sfx, KEYS.camMode, KEYS.muted, KEYS.invisible, KEYS.noteMsgs, KEYS.noteReqs, KEYS.lessMotion, KEYS.bigText]) store.del(k);
+    applyLook();
+    loadSettings();
+    $('#set-acct-msg').textContent = 'Listo: los ajustes volvieron a como venían.';
+    $('#set-acct-msg').classList.remove('bad');
+  });
+  // bajar tus datos: un JSON
+  $('#set-export').addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    try {
+      const data = await api(ROUTES.api.exportMe);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `trukeados-${currentMe()?.profile?.username || 'datos'}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      $('#set-acct-msg').textContent = err.message;
+      $('#set-acct-msg').classList.add('bad');
+    }
+    b.disabled = false;
+  });
+  // borrar la cuenta: con el nombre de usuario escrito a mano
+  const dlg = $('#delete-dialog');
+  const want = () => currentMe()?.profile?.username || '';
+  $('#set-delete').addEventListener('click', () => {
+    $('#delete-name').textContent = want();
+    $('#delete-confirm').value = '';
+    $('#delete-msg').textContent = '';
+    $('#delete-go').disabled = true;
+    dlg.showModal();
+    $('#delete-confirm').focus();
+  });
+  $('#delete-confirm').addEventListener('input', (e) => {
+    $('#delete-go').disabled = e.target.value.trim().toLowerCase() !== want().toLowerCase();
+  });
+  $('#delete-form').addEventListener('submit', async (e) => {
+    if (e.submitter?.value === 'cancel') return;
+    e.preventDefault();
+    $('#delete-go').disabled = true;
+    try {
+      await api(ROUTES.api.deleteMe, { confirm: $('#delete-confirm').value });
+      dlg.close();
+      await signOut();
+      location.href = ROUTES.home;
+    } catch (err) {
+      $('#delete-msg').textContent = err.message;
+      $('#delete-go').disabled = false;
+    }
+  });
 
   const nameMsg = (t, bad = true) => {
     $('#set-name-msg').textContent = t;

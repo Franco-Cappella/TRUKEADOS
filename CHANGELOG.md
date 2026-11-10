@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.22.0 — ajustes nuevos y tienda con secciones
+- **Ajustes**: borrar tu cuenta (escribiendo tu nombre de usuario para confirmar) y descargar tus datos en un archivo;
+  "Aparecer conectado" (si lo apagás, tus amigos te ven desconectado); avisos de mensajes y de solicitudes de amistad
+  que se pueden apagar; la vista con la que empezás la partida; menos movimiento y letra más grande; ayuda (términos,
+  privacidad, contacto) y volver a los ajustes de fábrica.
+- **Tienda**: puntitos a la derecha, uno por sección; marcan dónde estás y al tocarlos bajás a esa sección.
+- **Pósters**: Volcho y Olcho ahora posan con las dos manos en la cintura (el brazo levantado se prestaba a confusión).
+- Migración que les regala el Gato Melón a trosman y NicoV.
+
 ## 1.21.0 — Gato Melón
 - **Personaje nuevo: Gato Melón** (2500 monedas), el modelo de Kasugay en Sketchfab (licencia Sketchfab Standard, con
   el crédito en la tienda, en Créditos y en Licencias). Venía en piezas sueltas y sin esqueleto: ahora tiene huesos,

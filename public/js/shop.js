@@ -215,6 +215,11 @@ export function initShop(paint) {
     shopCat = b.dataset.cat;
     renderShop();
   });
+  addEventListener('scroll', () => $('#shop-dots').childElementCount && markDot(), { capture: true, passive: true });
+  $('#shop-dots').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dot]');
+    if (b) $('#shop-list').querySelectorAll('.sh-sec')[b.dataset.dot]?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  });
   $('#shop-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-open]');
     if (b) openDetail(b.dataset.open);
@@ -326,8 +331,8 @@ function renderShop() {
   if (!cat.slots) {
     // la vidriera: los personajes en grande y lo del día
     const stars = COSMETICS.filter((c) => c.slot === 'personaje');
-    html += `<section class="sh-sec"><h4>Destacados <small>Personajes en 3D: los ven todos en la mesa</small></h4><div class="sh-feat">${stars.map((it) => card(it, true)).join('')}</div></section>`;
-    html += `<section class="sh-sec"><h4>Del día <small>Cambia en <span id="sh-rot">${untilMidnight()}</span></small></h4><div class="sh-grid">${dayPicks().map((it) => card(it)).join('')}</div></section>`;
+    html += `<section class="sh-sec" data-label="Destacados"><h4>Destacados <small>Personajes en 3D: los ven todos en la mesa</small></h4><div class="sh-feat">${stars.map((it) => card(it, true)).join('')}</div></section>`;
+    html += `<section class="sh-sec" data-label="Del día"><h4>Del día <small>Cambia en <span id="sh-rot">${untilMidnight()}</span></small></h4><div class="sh-grid">${dayPicks().map((it) => card(it)).join('')}</div></section>`;
   }
   const slots = cat.slots || COSMETIC_SLOTS.map((x) => x.key).filter((k) => k !== 'personaje');
   for (const key of slots) {
@@ -335,9 +340,10 @@ function renderShop() {
     // primero lo que no tenés, de lo más caro a lo más barato
     const items = COSMETICS.filter((c) => c.slot === key).sort((a, b) => state.owned.includes(a.id) - state.owned.includes(b.id) || b.price - a.price);
     if (!items.length) continue;
-    html += `<section class="sh-sec"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-grid ${key === 'personaje' ? 'feat' : ''}">${items.map((it) => card(it, key === 'personaje')).join('')}</div></section>`;
+    html += `<section class="sh-sec" data-label="${esc(s.label)}"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-grid ${key === 'personaje' ? 'feat' : ''}">${items.map((it) => card(it, key === 'personaje')).join('')}</div></section>`;
   }
   $('#shop-list').innerHTML = html;
+  renderDots();
   for (const c of $('#shop-list').querySelectorAll('canvas[data-preview]')) preview(c, cosmeticById(c.dataset.preview));
   clearInterval(rotT);
   rotT = setInterval(() => {
@@ -345,6 +351,26 @@ function renderShop() {
     if (!el) return clearInterval(rotT);
     el.textContent = untilMidnight();
   }, 30_000);
+}
+
+// Los puntitos de la derecha: uno por sección (dicen que hay más abajo); tocar uno baja a esa sección y el de la
+// sección que se está viendo queda marcado.
+function renderDots() {
+  const secs = [...$('#shop-list').querySelectorAll('.sh-sec')];
+  $('#shop-dots').innerHTML = secs.length > 1 ? secs.map((x, i) => `<button type="button" data-dot="${i}" aria-label="${esc(x.dataset.label)}"><span>${esc(x.dataset.label)}</span></button>`).join('') : '';
+  markDot();
+}
+// marcada: la última sección que ya empezó (su título pasó el tercio de arriba de la pantalla); abajo de todo, la última
+function markDot() {
+  const secs = [...$('#shop-list').querySelectorAll('.sh-sec')];
+  const line = innerHeight * 0.35;
+  let cur = 0;
+  secs.forEach((x, i) => {
+    if (x.getBoundingClientRect().top <= line) cur = i;
+  });
+  const last = secs.at(-1);
+  if (last && last.getBoundingClientRect().bottom <= innerHeight + 2) cur = secs.length - 1;
+  $('#shop-dots').querySelectorAll('button').forEach((x, k) => x.classList.toggle('on', k === cur));
 }
 
 // La ficha: la cosa en grande (el personaje 3D girando, la baraja abierta), qué es y comprar o ponértela.

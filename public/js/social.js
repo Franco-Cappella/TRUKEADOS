@@ -57,7 +57,8 @@ export function onIncoming(incoming) {
   pendingCount = incoming.length;
   paintFriendsBadge(pendingCount);
   applyTitle();
-  const seen = loadSeen();
+  // los carteles y avisos se pueden apagar en Ajustes (las solicitudes igual están en Amigos)
+  const seen = store.get(KEYS.noteReqs, '1') === '0' ? new Set(incoming.map((p) => p.id)) : loadSeen();
   // en el menú: un cartel por cada una que no dejaste para después
   $('#friend-notes').innerHTML = incoming
     .filter((p) => !seen.has(p.id))

@@ -153,7 +153,7 @@ function paintBadges() {
   const btn = $('#fd-btn');
   if (btn) btn.innerHTML = `Amigos${online.length ? ` <small>${online.length}</small>` : ''}${unread ? '<i class="fd-new"></i>' : ''}`;
   // mensaje nuevo con el panel cerrado: un aviso
-  if (unread > lastUnread && $('#fd').classList.contains('hidden')) {
+  if (unread > lastUnread && $('#fd').classList.contains('hidden') && store.get(KEYS.noteMsgs, '1') !== '0') {
     const f = friends.find(unreadOf);
     notify(`<b>${esc(f.username)}</b> te escribió. Abrí Amigos para contestarle.`);
   }
@@ -175,7 +175,8 @@ function notify(html) {
 async function refresh() {
   if (!currentMe()?.profile) return;
   try {
-    await api(ROUTES.api.presence, opts.where());
+    // "Aparecer conectado" apagado: no se avisa (los amigos te ven desconectado cuando vence el último aviso)
+    if (store.get(KEYS.invisible, '0') !== '1') await api(ROUTES.api.presence, opts.where());
   } catch {}
   try {
     const r = await api(ROUTES.api.friends);

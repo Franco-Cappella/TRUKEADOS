@@ -20,6 +20,11 @@ export const store = {
       localStorage.setItem(k, v);
     } catch {}
   },
+  del(k) {
+    try {
+      localStorage.removeItem(k);
+    } catch {}
+  },
 };
 
 // Claves de lo que se guarda en el navegador (un solo lugar para no pisarse).
@@ -41,6 +46,11 @@ export const KEYS = {
   camMode: 'truco-cam-mode', // vista: first, back o front
   muted: 'truco-muted',
   dmRead: 'truco-dm-read', // hasta dónde leíste el chat con cada amigo (JSON id -> fecha)
+  invisible: 'truco-invisible', // 1: no avisar que estás conectado (los amigos te ven desconectado)
+  noteMsgs: 'truco-note-msgs', // 0: sin aviso de mensaje nuevo de un amigo
+  noteReqs: 'truco-note-reqs', // 0: sin carteles de solicitudes de amistad
+  lessMotion: 'truco-less-motion', // 1: menos animaciones
+  bigText: 'truco-big-text', // 1: letra más grande
   friendSeen: 'truco-friend-seen', // solicitudes de amistad a las que dijiste "Ahora no" (JSON de ids) // nombres de usuario silenciados en el chat (JSON)
 };
 

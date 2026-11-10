@@ -57,6 +57,8 @@ export const ROUTES = {
     me: '/api/me',
     matches: '/api/matches',
     avatar: '/api/me/avatar',
+    exportMe: '/api/me/export',
+    deleteMe: '/api/me/delete',
     username: '/api/me/username',
     friends: '/api/friends',
     friendsRespond: '/api/friends/respond',
