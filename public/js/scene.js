@@ -346,6 +346,7 @@ const CAM_FRONT = { dist: 1.05, up: 0.05 };
 const RIG_BACK = 0.42; // los personajes 3D: cuánto más atrás del borde de la mesa se sientan
 const SELF_NECK = { back: 0.16, down: 0.16 }; // tu personaje 3D en primera persona: el cuello, respecto de los ojos
 const SELF_HAND_REACH = 0.6; // tu mano izquierda: qué parte del camino de los ojos a las cartas
+const SELF_LEAN = 0.25; // cuánto de lo que se inclina la cámara al mirar para abajo sigue el cuerpo (más, se sube a la mesa)
 // sin cartas: dónde apoya las manos (adelante de los ojos, a cada costado y apenas arriba del paño), en metros
 const SELF_REST = { forward: 0.34, side: 0.3, up: 0.03 };
 const HEAD_RATE = 9; // suavizado del giro de cabeza de los personajes
@@ -877,7 +878,9 @@ export class TableScene {
     if (c.self && first) {
       // cuánto le falta al cuello para quedar justo abajo y atrás de los ojos: se corrige de a poco
       const flat = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-      const want = this.camera.position.clone().addScaledVector(flat, -SELF_NECK.back).add(new THREE.Vector3(0, -SELF_NECK.down, 0));
+      // el cuerpo sigue apenas a la cámara cuando te inclinás para mirar la mesa (SELF_LEAN): si la siguiera entera, se subía a la mesa
+      const eyes = this.headPos.clone().lerp(this.camera.position, SELF_LEAN);
+      const want = eyes.addScaledVector(flat, -SELF_NECK.back).add(new THREE.Vector3(0, -SELF_NECK.down, 0));
       c.selfOff.addScaledVector(want.sub(r.at('Neck')), 0.5);
       if (c.selfOff.length() > 1) c.selfOff.setLength(1);
     }
