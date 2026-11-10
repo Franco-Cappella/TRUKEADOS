@@ -1,5 +1,5 @@
 // La foto de cada personaje 3D en la tienda: un póster armado en el momento con el modelo de verdad. Fondo de color
-// con rayos, el nombre gigante atrás, el personaje en pose (mano en la cintura, saludando, guiñando) iluminado con
+// con rayos, el nombre gigante atrás, el personaje en pose (mano en la cintura, saludando) iluminado con
 // luces de contorno de dos colores, y brillitos adelante. Los colores salen de COSMETIC_LOOK[id].poster (theme.js).
 // Se hace una vez por personaje (un solo contexto de WebGL que se suelta al terminar) y se guarda.
 import * as THREE from 'three';
@@ -153,7 +153,7 @@ function render(tpl, pal) {
   rig.root.rotation.y = -0.38; // tres cuartos, mirando un poco hacia la izquierda del póster
   rig.root.updateMatrixWorld(true);
   rig.hero();
-  rig.face?.set('wink');
+  rig.face?.set('neutral');
   scene.add(rig.root);
   // encuadre: de las rodillas para arriba, el personaje a la derecha del medio
   rig.root.updateMatrixWorld(true);

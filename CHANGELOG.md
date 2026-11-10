@@ -2,7 +2,7 @@
 
 ## 1.20.1 — pósters de los personajes
 - La foto de Volcho y Olcho en la tienda (y en la Taquilla) ahora es un póster armado con el modelo 3D: fondo de
-  color con rayos, el nombre gigante atrás, el personaje con la mano en la cintura, saludando y guiñando el ojo.
+  color con rayos, el nombre gigante atrás, el personaje con la mano en la cintura y saludando.
 - Buscando rivales: "+ Invitar a un amigo" está en el cartel del compañero que falta; con el lugar guardado aparece una
   barra abajo (ya no tapa a los rivales). En la tienda dice "Equipar".
 
