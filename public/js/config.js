@@ -274,8 +274,15 @@ export const BOT = {
   // Se resta esto (en puntos) por cada canto, proporcional a lo poco que confía en ganarlo (ver bluffTax en bot.js).
   bluffTax: { envido: 0.6, real: 1.4, falta: 9, truco: 1.2 },
   bluffSure: { envido: 0.5, real: 0.6, falta: 0.96, truco: 0.6 }, // desde esta chance de ganar el envido ya no es farol
-  faltaMinWin: 0.86, // la falta envido solo con al menos esta chance de ganar el envido...
-  faltaDesperate: 5, // ... salvo que al rival le falten estos puntos o menos para ganar la partida
+  // La falta envido (que se puede llevar la partida) solo con tantos de verdad: al menos faltaMinTanto propios Y
+  // faltaMinWin de chance de ganar el envido (imaginada con faltaSamples manos o más; con menos no se confía).
+  faltaMinTanto: 31,
+  faltaMinWin: 0.86,
+  faltaSamples: 20,
+  // La excepción: va perdiendo y al rival le faltan faltaDesperate puntos o menos (ya no hay nada que cuidar);
+  // igual, con faltaDesperateTanto o más (no con cualquier cosa).
+  faltaDesperate: 5,
+  faltaDesperateTanto: 26,
   double: 0.04, // tira dos cartas encimadas (con la de arriba quemada)
   doubleKill: 0.2, // si juega último y mata, a veces deja encimada la de la ronda siguiente (no se quema)
   behind: 1 / 6, // "va perdiendo por mucho": la diferencia supera esta parte de la partida

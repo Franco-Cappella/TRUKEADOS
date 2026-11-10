@@ -173,8 +173,10 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   farolean casi siempre se hacen los guapos.
 - **Faroles con medida** (`bluffTax` en bot.js, `BOT.bluffTax`/`bluffSure`/`faltaMinWin` en config.js): como el modelo de base
   supone rivales que casi nunca quieren, cantar con nada "convenía" siempre y los bots cantaban envido (y falta) en
-  cada mano. Ahora cantar con poca chance de ganar el envido o el truco resta puntos, y la falta solo sale con tantos de
-  verdad (o si al rival le faltan `BOT.faltaDesperate` puntos o menos). Lo verifica test/bots.test.js. Como mucho uno cada `TIMING.botChatGap` ms. Ninguna frase nombra el truco ni el envido salvo que sea el canto: decir una de esas palabras en una frase es cantarla (o subirla), así que la charla dice "el segundo", "el primero" o "los tantos" ([reglas](docs/REGLAS.md)).
+  cada mano. Ahora cantar con poca chance de ganar el envido o el truco resta puntos. La falta (`faltaOk`) pide tantos propios de
+verdad (`BOT.faltaMinTanto`, 31) y estar seguro de ganar el envido con suficientes manos imaginadas (`faltaSamples`);
+una "macana" de un bot flojo nunca es una falta. La excepción: va perdiendo y al rival le faltan `BOT.faltaDesperate`
+puntos o menos (igual, con `faltaDesperateTanto` o más). Lo verifica test/bots.test.js. Como mucho uno cada `TIMING.botChatGap` ms. Ninguna frase nombra el truco ni el envido salvo que sea el canto: decir una de esas palabras en una frase es cantarla (o subirla), así que la charla dice "el segundo", "el primero" o "los tantos" ([reglas](docs/REGLAS.md)).
 
 ## Interfaz
 - Al abrir una sala, `RoomClient` borra los botones del panel: si no, al volver a una partida con el mismo canto

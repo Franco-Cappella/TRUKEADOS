@@ -346,6 +346,8 @@ const CAM_FRONT = { dist: 1.05, up: 0.05 };
 const RIG_BACK = 0.42; // los personajes 3D: cuánto más atrás del borde de la mesa se sientan
 const SELF_NECK = { back: 0.16, down: 0.16 }; // tu personaje 3D en primera persona: el cuello, respecto de los ojos
 const SELF_HAND_REACH = 0.6; // tu mano izquierda: qué parte del camino de los ojos a las cartas
+// sin cartas: dónde apoya las manos (adelante de los ojos, a cada costado y apenas arriba del paño), en metros
+const SELF_REST = { forward: 0.34, side: 0.3, up: 0.03 };
 const HEAD_RATE = 9; // suavizado del giro de cabeza de los personajes
 const THROW_MS = 360; // carta de la mano a la mesa
 // Campo de visión (grados, vertical). Más amplio = ves más mesa y a los costados.
@@ -852,6 +854,15 @@ export class TableScene {
       // la derecha, al lado de las cartas (lista para tirar)
       const side = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
       right = cam.clone().lerp(palm.clone().addScaledVector(side, 0.17).add(new THREE.Vector3(0, -0.06, 0)), SELF_HAND_REACH);
+    } else if (first) {
+      // sin cartas en la mano: las dos apoyadas en el borde de la mesa, a los costados (si no, la pose de siempre
+      // las deja levantadas delante de los ojos y tapan toda la pantalla)
+      const flat = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+      const side = new THREE.Vector3().crossVectors(flat, new THREE.Vector3(0, 1, 0));
+      const base = this.camera.position.clone().addScaledVector(flat, SELF_REST.forward);
+      base.y = TABLE_Y + SELF_REST.up;
+      left = base.clone().addScaledVector(side, -SELF_REST.side);
+      right = base.clone().addScaledVector(side, SELF_REST.side);
     }
     const rch = c.reach;
     if (rch && now < rch.until) {

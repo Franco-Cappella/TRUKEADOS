@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
 import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks, botCallsTantos, bluffTax } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer, talkAsk, PHRASE_WHEEL, TELL_TANTOS, TANTO_NAMES, talkTellTantos } from '../public/js/talk.js';
-import { BOT } from '../public/js/config.js';
+import { BOT, botSkill } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
 
 function seeded(seed) {
@@ -510,10 +510,68 @@ test('envido con medida: a 0 a 0 nunca canta falta sin tantos, y no farolea en c
   assert.ok(calls / hands < 0.55, `canta envido sin tantos en ${calls} de ${hands}`);
 });
 
-test('falta envido: si al rival le faltan pocos puntos, se la juega aunque no tenga tanto', () => {
-  const g = newGame({ mode: '1v1', target: 30 });
+test('falta envido: solo con tantos de verdad; si va perdiendo y al rival le falta poco, se la juega con algo', () => {
+  // con 7 y 6 de oro tiene 33; con 7 y 2 de oro, 29: eso no alcanza para una falta a 0 a 0, aunque crea que gana
+  const g = fixed([['7O', '6O', '5E'], ['4C', '5B', '6E']]);
+  assert.equal(tanto(g.h.cards[0]).value, 33);
+  g.h.cards[0] = ['7O', '2O', '5E'];
+  g.h.inHand[0] = g.h.cards[0].slice();
+  assert.equal(tanto(g.h.cards[0]).value, 29);
+  g.score = [0, 0];
+  assert.equal(bluffTax(g, 0, 'falta', 0.99), null, 'con 29 no, aunque se crea seguro');
+  // va perdiendo y al rival le faltan 3: con 29 se la juega
   g.score = [5, 27];
   assert.notEqual(bluffTax(g, 0, 'falta', 0.3), null);
+  // va ganando: no es "desesperado", sigue haciendo falta tener 31 o más
+  g.score = [28, 27];
+  assert.equal(bluffTax(g, 0, 'falta', 0.99), null);
+  // con 33 y seguro, sí; pero con pocas manos imaginadas no confía en ese "seguro"
+  g.h.cards[0] = ['7O', '6O', '5E'];
   g.score = [0, 0];
+  assert.notEqual(bluffTax(g, 0, 'falta', 0.95), null);
+  assert.equal(bluffTax(g, 0, 'falta', 1, 3), null);
+  // desesperado pero sin nada (4 de tantos): tampoco
+  g.h.cards[0] = ['4E', '5C', '6B'];
+  g.score = [5, 27];
   assert.equal(bluffTax(g, 0, 'falta', 0.3), null);
+});
+
+test('falta envido: los bots no la cantan a lo loco (ni los flojos, ni en una macana)', () => {
+  const rng = seeded(23);
+  let falta = 0;
+  let low = 0;
+  let hands = 0;
+  for (const elo of [450, 900, 1700]) {
+    const ctx = { skill: botSkill(elo) };
+    for (let i = 0; i < 12; i++) {
+      const g = newGame({ mode: i % 2 ? '2v2' : '1v1', target: 30 }, rng);
+      let steps = 0;
+      let last = -1;
+      while (g.status === 'playing' && steps++ < 20000) {
+        if (g.h.phase === 'ended') {
+          nextHand(g, rng);
+          continue;
+        }
+        if (g.handNo !== last) (hands++, (last = g.handNo));
+        const w = waitingFor(g);
+        if (w.kind === 'show') {
+          const a = botAction(g, w.seats[0], rng, ctx);
+          if (!a) closeShow(g);
+          else act(g, w.seats[0], a);
+          continue;
+        }
+        const seat = w.seats[Math.floor(rng() * w.seats.length)];
+        const a = botAction(g, seat, rng, ctx);
+        if (a?.t === 'envido' && a.kind === 'falta') {
+          falta++;
+          const T = seat % 2;
+          const desperate = g.score[T] < g.score[1 - T] && g.target - g.score[1 - T] <= BOT.faltaDesperate;
+          if (tanto(g.h.cards[seat], g.h.muestra).value < (desperate ? BOT.faltaDesperateTanto : BOT.faltaMinTanto)) low++;
+        }
+        if (!act(g, seat, a, rng).ok) break;
+      }
+    }
+  }
+  assert.equal(low, 0, 'una falta sin los tantos');
+  assert.ok(falta / hands < 0.06, `falta en ${falta} de ${hands} manos`);
 });

@@ -519,12 +519,23 @@ function envidoSamples(g, seat, ctx, rng) {
 }
 
 // Lo que cuesta cantar `kind` con chance p de ganar el envido: con buenos tantos nada; con poco, un farol de vez en
-// cuando sí, pero no en cada mano (si no, el rival lo aprende y te quiere todo). La falta, solo con tantos de verdad
-// o cuando el rival ya está por ganar (ahí no hay nada que perder). null: ni pensarlo.
-export function bluffTax(g, seat, kind, p) {
-  if (kind === 'falta' && p < BOT.faltaMinWin && g.target - g.score[1 - team(seat)] > BOT.faltaDesperate) return null;
+// cuando sí, pero no en cada mano (si no, el rival lo aprende y te quiere todo). La falta, ver faltaOk. n: cuántas
+// manos imaginó para calcular p. null: ni pensarlo.
+export function bluffTax(g, seat, kind, p, n = Infinity) {
+  if (kind === 'falta' && !faltaOk(g, seat, p, n)) return null;
   const sure = BOT.bluffSure[kind] ?? 0.5;
   return p >= sure ? 0 : ((BOT.bluffTax[kind] ?? 0) * (sure - p)) / sure;
+}
+
+// ¿Puede cantar (o subir a) la falta envido? Es la que se puede llevar la partida: nada de farol. Hacen falta tantos
+// de verdad (los propios, que los ve) y estar seguro de ganar el envido, imaginado con suficientes manos (con pocas,
+// un 100 % puede ser casualidad). La excepción: va perdiendo y al rival le falta poco para ganar; igual, con algo.
+export function faltaOk(g, seat, p, n = Infinity) {
+  const T = team(seat);
+  const mine = tanto(g.h.cards[seat], g.h.muestra).value;
+  const desperate = g.score[T] < g.score[1 - T] && g.target - g.score[1 - T] <= BOT.faltaDesperate;
+  if (desperate) return mine >= BOT.faltaDesperateTanto;
+  return mine >= BOT.faltaMinTanto && p >= BOT.faltaMinWin && n >= BOT.faltaSamples;
 }
 
 function envidoOpen(g, seat, ctx, rng, a) {
@@ -533,7 +544,8 @@ function envidoOpen(g, seat, ctx, rng, a) {
   ctx.out = { p };
   const opts = [{ a: null, ev: 0 }];
   for (const kind of a.envido) {
-    const tax = bluffTax(g, seat, kind, p);
+    if (kind === 'falta' && ctx.slipped) continue; // una macana nunca es jugarse la partida
+    const tax = bluffTax(g, seat, kind, p, samples.length);
     if (tax != null) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + BOT.aggro / 2 - tax });
   }
   return choose(opts, rng);
@@ -559,7 +571,8 @@ function envidoAnswer(g, seat, ctx, rng, a) {
   ];
   const p = ctx.out.p;
   for (const kind of a.envido) {
-    const tax = bluffTax(g, seat, kind, p);
+    if (kind === 'falta' && ctx.slipped) continue;
+    const tax = bluffTax(g, seat, kind, p, samples.length);
     if (tax != null) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [...calls, kind]) - tax });
   }
   return choose(opts, rng);
@@ -671,7 +684,7 @@ export function botAction(g, seat, rng = Math.random, ctx = {}) {
   const sk = ctx.skill;
   const slipped = !!sk && rng() < sk.slip;
   curTemp = sk ? (slipped ? 4 : sk.temp) : BOT.temp;
-  if (sk) ctx = { ...ctx, samples: slipped ? 3 : sk.samples, memo: null };
+  if (sk) ctx = { ...ctx, samples: slipped ? 3 : sk.samples, memo: null, slipped };
   if (h.phase === 'show') return h.show.seat === seat && !h.show.folded ? botShow(g, seat) : null;
   if (h.phase !== 'play') return null;
   const w = waitingFor(g);
