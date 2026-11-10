@@ -66,6 +66,23 @@ export function initHistory(openMatch, back) {
   });
   $('#replay-graph').addEventListener('click', (e) => viewer?.seekGraph(e));
   $('#replay-reveal').addEventListener('change', (e) => viewer?.setReveal(e.target.checked));
+  $('#replay-share').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-share]');
+    if (!b || !viewer) return;
+    const old = b.textContent;
+    b.disabled = true;
+    try {
+      const url = await viewer.shareLink(b.dataset.share === 'moment');
+      const title = $('#replay-title').textContent;
+      // en el celular, el menú de compartir del sistema; si no, al portapapeles
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title, text: `Mirá esta partida de truco: ${title}`, url }).catch(() => {});
+      else await navigator.clipboard.writeText(url);
+      b.textContent = '¡Enlace copiado!';
+    } catch (err) {
+      b.textContent = err.message || 'No se pudo compartir';
+    }
+    setTimeout(() => ((b.textContent = old), (b.disabled = false)), 1800);
+  });
   $('#replay-voice').checked = isVoiceOn();
   $('#replay-voice').addEventListener('change', (e) => {
     if (e.target.checked !== isVoiceOn()) toggleVoice();
@@ -167,6 +184,9 @@ class Viewer {
     const by = match.shared?.by;
     const result = by ? `${by} ${match.me.won ? 'ganó' : 'perdió'}` : match.me.won ? 'Ganaste' : 'Perdiste';
     $('#replay-title').textContent = `${result} ${match.score[mine]} a ${match.score[1 - mine]}`;
+    // compartida: se ve igual, pero el que la abre puede no tener cuenta (le ofrecemos jugar)
+    $('#replay').classList.toggle('rv-shared', !!match.shared);
+    $('#replay-cta').classList.toggle('hidden', !match.shared);
     const opts = roomOptionsText(match.options || {});
     $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, match.rated ? 'por ELO' : '', opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
 
@@ -184,6 +204,13 @@ class Viewer {
     this.renderSummary();
     this.go(0);
     this.analyze();
+  }
+
+  // El enlace para compartir (lo crea el servidor la primera vez; una partida compartida ya trae el suyo).
+  // moment: que abra en el paso que se está viendo.
+  async shareLink(moment) {
+    if (!this.m.shared && !this.shareId) this.shareId = (await api(ROUTES.api.share(this.m.id), {})).share;
+    return new URL(ROUTES.shared(this.m.shared?.id || this.shareId, moment ? this.at : 0), location.origin).href;
   }
 
   close() {

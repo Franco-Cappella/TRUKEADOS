@@ -297,6 +297,23 @@ Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voz libre
 - El ELO se calcula en `elo.js`: K baja de 160 a 14 según las partidas jugadas. Los rivales automáticos cuentan con su ELO para el promedio del equipo.
 - Migración `20261109000000_social`: foto, récord de ELO y amigos. El código funciona sin aplicarla (se leen todas las columnas con `*` y lo que falta se ignora): sin foto, sin amigos y sin premios por escalón.
 
+## Antitrampas
+- **Señas**: el servidor las manda solo a quien mira al que la hace (`deliverSena`); al resto no le llega ni que hubo
+  una, así que un cliente modificado no tiene nada que destapar. Además (`ANTICHEAT` en config.js): hay que venir
+  mirando hace `senaDwell` ms (`senaWatchers`), el que cambia de mirada más de `lookBurst` veces queda `lookPenalty`
+  ms sin ver señas (la mirada igual se mueve: los demás la ven), entre dos señas tiene que haber `senaGap` ms y el
+  que se fue al mazo no hace señas. Las miradas pasan siempre por `setGaze` (también las de los bots).
+- **Mensajes**: cada conexión manda como mucho `msgBurst` mensajes por ventana (`flooding`); lo que sobra se descarta.
+- **Lo que ve cada uno**: `viewFor` (engine.js) y `publicRoom` son lo único que sale de la sala. Un campo nuevo con
+  información oculta (cartas, si un rival es automático) no va ahí.
+- Lo verifica test/antitrampas.test.js.
+
+## Compartir partidas
+`POST /api/matches/ID/share` (solo alguien que la jugó; `shareMatch` en matches.js) da una clave al azar guardada en
+`match_shares` (migración `20261117000000_compartir_partidas`), siempre la misma por jugador y partida. El enlace es
+`/repeticion/CLAVE` (`?j=N` abre en el paso N) y lo ve cualquiera, aun sin cuenta (`GET /api/shared/CLAVE`,
+`getShared`): la revisión desde el lugar del que la compartió, sin ids de cuentas ni de la partida.
+
 ## Historial y análisis
 - Calificaciones (`classify` en analysis.js, umbrales en `ANALYSIS`): se miden en chance de ganar la partida perdida, como los *expected points* de chess.com. `evaluateDecision` devuelve `slope` (cuánto vale un punto ahora) para pasar de puntos a chance. La serie del gráfico sale de `winChance` (bot.js), que ve todas las cartas.
 - La sala graba con `this.rec` (`MatchRecorder`): `start` al empezar o en la revancha, `hand(g)` en `afterDeal`
