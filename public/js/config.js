@@ -339,6 +339,8 @@ export const COSMETICS = [
   { id: 'pano-azul', slot: 'pano', name: 'Paño azul', price: 120 },
   { id: 'pano-bordo', slot: 'pano', name: 'Paño bordó', price: 120 },
   { id: 'pano-negro', slot: 'pano', name: 'Paño negro', price: 150 },
+  { id: 'pano-alfombra', slot: 'pano', name: 'Paño alfombra persa', price: 450 },
+  { id: 'pano-almendro', slot: 'pano', name: 'Paño almendro en flor', price: 450 },
   { id: 'dorso-azul', slot: 'dorso', name: 'Dorso azul', price: 100 },
   { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
   { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },

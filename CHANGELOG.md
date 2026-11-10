@@ -1,5 +1,10 @@
 # Cambios
 
+## 1.24.0 — paños con imagen
+- **Paños nuevos en la tienda** (450 monedas): **alfombra persa** y **almendro en flor**. La imagen cubre toda la
+  mesa, con los bordes un poco más oscuros y la costura alrededor; mientras carga se ve un paño liso de sus colores.
+  Cualquier paño puede ser una imagen: `img` en COSMETIC_LOOK (public/img/panos), con `fit` y `turn`.
+
 ## 1.23.0 — caritas para todos
 - **Señas con carita para todos**: Volcho y Olcho también hacen las señas con una carita redonda que les tapa la cara,
   como el Gato Melón (se fueron los párpados y las bocas dibujados encima de la cara).

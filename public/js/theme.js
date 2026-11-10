@@ -129,6 +129,10 @@ export const COSMETIC_LOOK = {
   'pano-azul': { felt: ['#2f5f8f', '#244b73', '#1a3857'] },
   'pano-bordo': { felt: ['#7a2e38', '#62242d', '#4a1a22'] },
   'pano-negro': { felt: ['#333536', '#26282a', '#1a1b1c'] },
+  // paños con imagen (public/img/panos): estirada sobre toda la mesa. felt: los colores mientras carga.
+  // fit: 'stretch' (entera, estirada) o 'cover' (llena sin deformar, recorta lo que sobra); turn: girarla 90°
+  'pano-alfombra': { felt: ['#8e2a22', '#6e1f1a', '#2a1418'], img: '/img/panos/alfombra.webp', fit: 'stretch', thread: '#e8d6b0' },
+  'pano-almendro': { felt: ['#b8321f', '#962817', '#4a120a'], img: '/img/panos/almendro.webp', fit: 'cover', turn: true, thread: '#f4ede0' },
   'dorso-azul': { back: ['#2f6fd6', '#f5f5f5'] },
   'dorso-verde': { back: ['#2e7344', '#f5f5f5'] },
   'dorso-negro': { back: ['#1c1c1c', '#f2c12e'] },

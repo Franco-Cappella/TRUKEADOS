@@ -227,6 +227,66 @@ function feltTex(colors, sides = 4) {
   });
 }
 
+// Paño con imagen (la alfombra, el almendro): la imagen estirada sobre toda la mesa, un poco más oscura en los bordes
+// (y apenas en el centro, para que las cartas se lean) y la costura alrededor. Mientras carga, el paño de colores.
+const feltImgs = new Map();
+function imageFeltTex(look, sides = 4) {
+  const tex = feltTex(look.felt || SCENE.felt, sides);
+  if (!feltImgs.has(look.img)) {
+    feltImgs.set(look.img, new Promise((ok, fail) => {
+      const img = new Image();
+      img.onload = () => ok(img);
+      img.onerror = fail;
+      img.src = look.img;
+    }));
+  }
+  feltImgs.get(look.img).then((img) => {
+    const c = tex.image;
+    const ctx = c.getContext('2d');
+    const { width: w, height: h } = c;
+    ctx.save();
+    if (look.turn) {
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.translate(-h / 2, -w / 2);
+    }
+    const W = look.turn ? h : w;
+    const H = look.turn ? w : h;
+    if (look.fit === 'cover') {
+      const k = Math.max(W / img.width, H / img.height);
+      ctx.drawImage(img, (W - img.width * k) / 2, (H - img.height * k) / 2, img.width * k, img.height * k);
+    } else ctx.drawImage(img, 0, 0, W, H);
+    ctx.restore();
+    // bordes más oscuros y el centro apenas apagado
+    const g = ctx.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0.12)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0.05)');
+    g.addColorStop(1, 'rgba(0,0,0,0.5)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    noise(ctx, w, h, 5);
+    // costura
+    ctx.strokeStyle = look.thread || SCENE.feltInk;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([14, 9]);
+    ctx.beginPath();
+    for (let k = 0; k <= sides; k++) {
+      const a = (k * Math.PI * 2) / sides + Math.PI / sides;
+      const x = w * (0.5 + 0.5 * 0.965 * Math.sin(a));
+      const y = h * (0.5 + 0.5 * 0.965 * Math.cos(a));
+      if (k) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    tex.needsUpdate = true;
+  }).catch(() => {});
+  return tex;
+}
+const makeFelt = (look, sides) => (look?.img ? imageFeltTex(look, sides) : feltTex(look?.felt || SCENE.felt, sides));
+
 // Dorso de las cartas de la tienda: fondo, borde y rombos del color de la tinta, con el nombre al medio.
 function backCanvas([bg, ink]) {
   const c = document.createElement('canvas');
@@ -461,7 +521,7 @@ export class TableScene {
 
     const R = this.R;
     // paño: verde con trama, costura alrededor y el nombre al centro
-    const felt = feltTex(this.feltColors || SCENE.felt, n === 6 ? 6 : 4);
+    const felt = makeFelt(this.feltLook, n === 6 ? 6 : 4);
     // madera con veta
     const woodTex = canvasTex(512, 128, (ctx, w, h) => {
       const r = seeded(5);
@@ -863,12 +923,12 @@ export class TableScene {
 
   // El paño y el dorso del mazo del anfitrión (tienda). null = los de siempre.
   setTable({ pano = null, dorso = null } = {}) {
-    const felt = COSMETIC_LOOK[pano]?.felt || SCENE.felt;
-    if (this.feltColors !== felt) {
-      this.feltColors = felt;
+    const look = COSMETIC_LOOK[pano] || null;
+    if (this.feltLook !== look) {
+      this.feltLook = look;
       if (this.feltMesh) {
         this.feltMesh.material.map?.dispose();
-        this.feltMesh.material.map = feltTex(felt, this.n === 6 ? 6 : 4);
+        this.feltMesh.material.map = makeFelt(look, this.n === 6 ? 6 : 4);
         this.feltMesh.material.needsUpdate = true;
       }
     }

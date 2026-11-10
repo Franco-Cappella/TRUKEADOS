@@ -37,9 +37,26 @@ function drawBust(target, look) {
   ctx.drawImage(full, (CW - sw) / 2, 40, sw, sh, 0, 0, target.width, target.height);
 }
 
-function drawFelt(target, colors) {
+function drawFelt(target, colors, look = null) {
   const ctx = target.getContext('2d');
   const { width: w, height: h } = target;
+  // paño con imagen: la imagen (como queda en la mesa), con las puntas redondeadas
+  if (look?.img) {
+    loadImg(look.img).then((img) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(0, 0, w, h, 8);
+      ctx.clip();
+      const iw = look.turn ? img.height : img.width;
+      const ih = look.turn ? img.width : img.height;
+      const k = Math.max(w / iw, h / ih);
+      ctx.translate(w / 2, h / 2);
+      if (look.turn) ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, (-img.width * k) / 2, (-img.height * k) / 2, img.width * k, img.height * k);
+      ctx.restore();
+    }).catch(() => {});
+    colors = look.felt;
+  }
   const g = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
   g.addColorStop(0, colors[0]);
   g.addColorStop(0.8, colors[1]);
@@ -193,7 +210,7 @@ function preview(canvas, item) {
   }
   const L = COSMETIC_LOOK[item.id];
   if (CHARACTER_SLOTS.includes(item.slot)) drawBust(canvas, dressed(baseLook(), { ...state.equipped, [item.slot]: item.id }));
-  else if (item.slot === 'pano') drawFelt(canvas, L.felt);
+  else if (item.slot === 'pano') drawFelt(canvas, L.felt, L);
   else if (item.slot === 'dorso') drawBack(canvas, L.back);
   else drawObject(canvas, L.colors);
 }
