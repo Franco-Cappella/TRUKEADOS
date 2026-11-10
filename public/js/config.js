@@ -275,6 +275,7 @@ export const GRADES = [
   { key: 'perdida', ...S.perdida },
 ];
 export const HISTORY_PAGE = 20; // partidas por página en el historial
+export const FRIEND_POLL_MS = 20_000; // cada cuánto se revisa si llegó una solicitud de amistad (menú y partida)
 
 // ------------------------------------------------------------------ tienda y personalización
 // Se compra con las monedas que se ganan jugando (COINS). Lo que tenés puesto lo ven todos en la mesa: la ropa,

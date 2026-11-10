@@ -16,6 +16,7 @@ import { initAccount, showEntry, showLoginError } from './account.js';
 import { initHistory, showReplay, hideReplay } from './history.js';
 import { RoomClient } from './room-client.js';
 import { initProfiles } from './profile-card.js';
+import { startFriendWatch } from './social.js';
 
 let scene = null;
 let room = null;
@@ -351,6 +352,7 @@ function openMatch(id) {
 
 initMenu(go, logout);
 initProfiles(); // tocar el nombre de alguien abre su perfil
+startFriendWatch(); // avisos de solicitudes de amistad (menú, partida y título de la pestaña)
 initHistory(openMatch, () => {
   // volver al historial (o atrás, si se llegó desde ahí)
   sessionStorage.setItem('truco-menu-tab', 'partidas');

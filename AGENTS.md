@@ -207,6 +207,11 @@ mentira, `fakeRecent`, para no delatarse; también el ELO de cada modo, `elos`, 
 elemento con `data-user="nombre"` lo abre. Los usuarios automáticos tienen un perfil como cualquiera (del plantel o
 inventado a partir del nombre) y se les puede mandar solicitud (queda pendiente).
 
+## Avisos de amistad
+`startFriendWatch` (social.js) revisa `/api/friends` cada `FRIEND_POLL_MS`: pinta el número de Amigos y el del título
+de la pestaña, un cartel por solicitud en `#friend-notes` (los de "Ahora no" se guardan en `KEYS.friendSeen`) y, en
+la partida, un aviso una vez por solicitud.
+
 ## Legales
 `public/legal/`: términos, privacidad (Ley 25.326) y licencias. Enlazadas desde la entrada, el pie del menú y los
 créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarlas.

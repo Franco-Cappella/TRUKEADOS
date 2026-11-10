@@ -349,9 +349,15 @@ function renderCustomize() {
   $('#lk-rar').textContent = rar ? `Personaje 3D · ${rar[1]}` : 'Personaje dibujado';
   $('#lk-rar').className = `rar ${rar ? rar[0] : ''}`;
   $('#lk-coins').textContent = state.coins;
+  // con un personaje 3D, la ropa, el gorro y los anteojos (que son del dibujado) no se ven: quedan apagados
+  const off = (key) => !!char && CHARACTER_SLOTS.includes(key);
+  if (off(openSlot)) openSlot = 'personaje';
   const tile = (s) => {
     const it = cosmeticById(eq[s.key]);
     const r = rarity(it);
+    if (off(s.key)) {
+      return `<button type="button" class="lk-tile off" disabled title="Con un personaje 3D no se ve: es del personaje dibujado"><canvas width="128" height="128" data-tilepreview="${s.key}"></canvas><small>${esc(s.label)}</small><b>${esc(it?.name || DEFAULT_NAME[s.key] || 'Nada')}</b><i class="lk-off">No va con 3D</i></button>`;
+    }
     return `<button type="button" class="lk-tile ${r ? r[0] : 'none'} ${openSlot === s.key ? 'open' : ''}" data-tile="${s.key}" aria-expanded="${openSlot === s.key}"><canvas width="128" height="128" data-tilepreview="${s.key}"></canvas><small>${esc(s.label)}</small><b>${esc(it?.name || DEFAULT_NAME[s.key] || 'Nada')}</b></button>`;
   };
   const s = COSMETIC_SLOTS.find((x) => x.key === openSlot) || COSMETIC_SLOTS[0];

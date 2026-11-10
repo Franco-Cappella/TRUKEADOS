@@ -1,6 +1,6 @@
 // Del menú: amigos por nombre de usuario, ranking y foto de perfil.
-import { ROUTES, AVATAR, MODES, modeLabel, ELO_START } from './config.js';
-import { $, esc, api, avatarHtml, KEYS } from './dom.js';
+import { ROUTES, AVATAR, MODES, modeLabel, ELO_START, FRIEND_POLL_MS } from './config.js';
+import { $, esc, api, avatarHtml, KEYS, store } from './dom.js';
 import { shrinkGif, canShrinkGif } from './gif.js';
 import { loadMe, currentMe } from './auth.js';
 
@@ -24,12 +24,101 @@ export async function loadFriends() {
     $('#fr-outgoing').innerHTML = outgoing.map((p) => person(p, `<button class="btn small ghost" data-remove="${esc(p.id)}">Cancelar</button>`)).join('');
     $('#fr-list').innerHTML = friends.map((p) => person(p, `<button class="btn small ghost" data-remove="${esc(p.id)}">Sacar</button>`)).join('');
     $('#fr-empty').classList.toggle('hidden', friends.length > 0);
-    paintFriendsBadge(incoming.length);
+    onIncoming(incoming);
     return { friends, incoming };
   } catch (err) {
     friendsMsg(err.message);
     return null;
   }
+}
+
+// ------------------------------------------------------------------ avisos de solicitudes de amistad
+// Se revisa cada FRIEND_POLL_MS (en el menú y en la partida): el número de "Amigos", el del título de la pestaña,
+// un cartel en el menú por cada solicitud (Aceptar / Ahora no) y, en la partida, un aviso una sola vez.
+let pendingCount = 0;
+const toasted = new Set(); // las que ya se avisaron en la partida (en esta pestaña)
+const loadSeen = () => {
+  try {
+    return new Set(JSON.parse(store.get(KEYS.friendSeen, '[]')));
+  } catch {
+    return new Set();
+  }
+};
+const saveSeen = (s) => store.set(KEYS.friendSeen, JSON.stringify([...s].slice(-200)));
+
+// "(2) Trukeados": el número de solicitudes adelante del título (el menú y la sala cambian el título: se repone)
+function applyTitle() {
+  const base = document.title.replace(/^\(\d+\) /, '');
+  const want = pendingCount ? `(${pendingCount}) ${base}` : base;
+  if (document.title !== want) document.title = want;
+}
+
+export function onIncoming(incoming) {
+  pendingCount = incoming.length;
+  paintFriendsBadge(pendingCount);
+  applyTitle();
+  const seen = loadSeen();
+  // en el menú: un cartel por cada una que no dejaste para después
+  $('#friend-notes').innerHTML = incoming
+    .filter((p) => !seen.has(p.id))
+    .map((p) => `<div class="rj fr-note">${avatarHtml(p)}<p class="rj-text"><b><span class="u-link" data-user="${esc(p.username)}">${esc(p.username)}</span> te mandó una solicitud de amistad</b><span>ELO ${esc(eloOf(p, Object.keys(MODES)[0]))} en 1 vs 1</span></p>
+      <div class="rj-actions"><button class="btn ghost" type="button" data-fr-later="${esc(p.id)}">Ahora no</button><button class="btn primary" type="button" data-fr-accept="${esc(p.id)}">Aceptar</button></div></div>`)
+    .join('');
+  // en la partida: un aviso chico, una vez por solicitud
+  const game = !$('#game')?.classList.contains('hidden') && $('#menu')?.classList.contains('hidden');
+  for (const p of incoming) {
+    if (toasted.has(p.id)) continue;
+    toasted.add(p.id);
+    if (game && !seen.has(p.id)) gameToast(`<b>${esc(p.username)}</b> te mandó una solicitud de amistad. Aceptala desde Amigos, en el menú.`);
+  }
+}
+
+function gameToast(html) {
+  const area = $('#toast-area');
+  if (!area) return;
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = html;
+  area.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
+}
+
+async function checkFriends() {
+  if (!currentMe()?.profile) return;
+  try {
+    const { incoming } = await api(ROUTES.api.friends);
+    onIncoming(incoming);
+  } catch {}
+}
+
+let watching = false;
+/** Empieza a revisar las solicitudes de amistad (una sola vez, al arrancar). */
+export function startFriendWatch() {
+  if (watching) return;
+  watching = true;
+  checkFriends();
+  setInterval(checkFriends, FRIEND_POLL_MS);
+  const title = document.querySelector('title');
+  if (title) new MutationObserver(applyTitle).observe(title, { childList: true });
+  $('#friend-notes').addEventListener('click', async (e) => {
+    const later = e.target.closest('[data-fr-later]');
+    const ok = e.target.closest('[data-fr-accept]');
+    if (later) {
+      const seen = loadSeen();
+      seen.add(later.dataset.frLater);
+      saveSeen(seen);
+      later.closest('.fr-note')?.remove();
+    } else if (ok) {
+      ok.disabled = true;
+      try {
+        await api(ROUTES.api.friendsRespond, { id: ok.dataset.frAccept, accept: true });
+        ok.closest('.fr-note')?.remove();
+      } catch {
+        ok.disabled = false;
+      }
+      checkFriends();
+    }
+  });
 }
 
 function paintFriendsBadge(n) {

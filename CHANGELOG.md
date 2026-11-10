@@ -1,6 +1,13 @@
 # Cambios
 
+## 1.18.5 — avisos de amistad
+- **Solicitudes de amistad**: se revisan cada 20 segundos. En el menú aparece un cartel con quién te la mandó y
+  "Aceptar" / "Ahora no"; en la partida, un aviso una sola vez; y el número va en "Amigos" y en el título de la pestaña,
+  por ejemplo "(1) Trukeados".
+
 ## 1.18.4 — taquilla a la medida
+- Con un personaje 3D puesto, la ropa, el gorro y los anteojos (que son del dibujado) quedan apagados en la
+  Taquilla: en gris, tachados y con "No va con 3D".
 - La Taquilla entra entera en la pantalla: la tarima ocupa el alto y la columna de la derecha se desliza si hace falta.
 - Migración que le regala a NicoV todos los cosméticos de la tienda.
 

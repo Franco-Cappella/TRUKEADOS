@@ -39,7 +39,8 @@ export const KEYS = {
   autostart: 'truco-autostart', // sessionStorage
   lastMode: 'truco-last-mode', // último modo elegido (para armar la mesa)
   camMode: 'truco-cam-mode', // vista: first, back o front
-  muted: 'truco-muted', // nombres de usuario silenciados en el chat (JSON)
+  muted: 'truco-muted',
+  friendSeen: 'truco-friend-seen', // solicitudes de amistad a las que dijiste "Ahora no" (JSON de ids) // nombres de usuario silenciados en el chat (JSON)
 };
 
 export const savedName = () => store.get(KEYS.name) || 'Invitado';
