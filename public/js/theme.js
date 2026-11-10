@@ -10,25 +10,25 @@ export const FONT = "'Hanken Grotesk', system-ui, sans-serif";
 // Tinta de los contornos de personajes y manos.
 export const INK = '#17100b';
 
-// Escena 3D: la mesa y lo que hay arriba. Blanco y negro: el color lo ponen las cartas y los personajes.
-// Los lugares (bar, café, parque...) tienen sus tonos en ambientes.js.
+// Escena 3D: la mesa y lo que hay arriba (paño verde y madera, como en un bar de verdad).
+// Los lugares (bar, café, parque...) tienen sus colores en ambientes.js.
 export const SCENE = {
-  background: '#080808',
-  fog: '#080808',
-  felt: ['#2e2e2e', '#262626', '#1d1d1d'], // centro -> borde del paño (franjas planas)
-  feltInk: 'rgba(255,255,255,0.22)',
+  background: '#0c0806',
+  fog: '#0c0806',
+  felt: ['#27523e', '#204534', '#1a4529'], // centro -> borde del paño (franjas planas)
+  feltInk: 'rgba(226,204,166,0.2)',
   feltName: APP_NAME, // lo que está escrito en el paño
-  wood: '#141414',
-  woodStreak: ['#0a0a0a', '#262626'],
-  woodDark: '#4a4a4a',
-  chair: '#1f1f1f',
-  glass: '#e6e6e6',
-  wine: '#2a0e12',
-  bottle: '#1a1a1a',
-  mate: '#2b2b2b',
-  yerba: '#55603a',
-  bombilla: '#c8c8c8',
-  deckSide: '#ececec',
+  wood: '#452a17',
+  woodStreak: ['#2c1a0e', '#5a3a22'],
+  woodDark: '#8a6a55',
+  chair: '#34200f',
+  glass: '#d6d8cc',
+  wine: '#3f0f15',
+  bottle: '#1a3325',
+  mate: '#5a3c22',
+  yerba: '#6c7f3c',
+  bombilla: '#b9b2a0',
+  deckSide: '#dccbaa',
 };
 
 // Luces del bar: sin mapeo de tonos, para que la paleta quede tal cual se eligió.

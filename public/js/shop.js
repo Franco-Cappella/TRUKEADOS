@@ -5,8 +5,15 @@ import { COSMETIC_LOOK, SCENE } from './theme.js';
 import { lookFor, dressed, drawCharacter, W as CW, H as CH } from './characters.js';
 import { $, esc, api, savedName } from './dom.js';
 import { currentMe } from './auth.js';
+import { LockerStage } from './locker.js';
 
 let state = { owned: [], coins: 0, equipped: {} };
+let stage = null; // la tarima de la Taquilla (se arma la primera vez que se abre)
+let openSlot = 'personaje'; // la ranura que se está eligiendo en la Taquilla
+
+// Rareza según el precio (en blanco y negro: se nota por el estilo del casillero).
+export const rarity = (it) => (!it ? null : it.price >= 1000 ? ['leg', 'Legendario'] : it.price >= 120 ? ['epi', 'Épico'] : it.price >= 60 ? ['raro', 'Raro'] : ['com', 'Común']);
+const DEFAULT_NAME = { personaje: 'El dibujado', pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre', baraja: 'La de siempre' };
 let onCoins = () => {};
 
 const CHARACTER_SLOTS = ['ropa', 'gorro', 'anteojos'];
@@ -259,7 +266,15 @@ export function initShop(paint) {
       b.disabled = false;
     }
   });
+  const goShop = () => document.querySelector('[data-tab="tienda"]')?.click();
+  $('#lk-shop').addEventListener('click', goShop);
   $('#cu-slots').addEventListener('click', async (e) => {
+    const t = e.target.closest('button[data-tile]');
+    if (t) {
+      openSlot = t.dataset.tile;
+      return renderCustomize();
+    }
+    if (e.target.closest('[data-goshop]')) return goShop();
     const b = e.target.closest('button[data-slot]');
     if (!b || b.classList.contains('on')) return;
     try {
@@ -309,14 +324,42 @@ function renderShop() {
   for (const c of $('#shop-list').querySelectorAll('canvas[data-preview]')) preview(c, cosmeticById(c.dataset.preview));
 }
 
+// Lo que está puesto en una ranura (o lo de siempre), dibujado en un canvas.
+function previewSlot(canvas, slot, id) {
+  const it = cosmeticById(id);
+  if (it) return preview(canvas, it);
+  const eq = { ...state.equipped, [slot]: undefined };
+  if (CHARACTER_SLOTS.includes(slot) || slot === 'personaje') return drawBust(canvas, dressed(baseLook(), eq));
+  if (slot === 'pano') return drawFelt(canvas, SCENE.felt);
+  if (slot === 'dorso') return drawBack(canvas, null);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// La Taquilla: la tarima con tu personaje y, al costado, un casillero por ranura; el de la ranura abierta despliega
+// lo que tenés para esa ranura.
 function renderCustomize() {
   const eq = state.equipped;
-  drawBust($('#cu-bust'), dressed(baseLook(), eq));
-  drawFelt($('#cu-felt'), COSMETIC_LOOK[eq.pano]?.felt || SCENE.felt);
-  drawBack($('#cu-back'), COSMETIC_LOOK[eq.dorso]?.back || null);
-  $('#cu-slots').innerHTML = COSMETIC_SLOTS.map((s) => {
-    const mine = COSMETICS.filter((c) => c.slot === s.key && state.owned.includes(c.id));
-    const chip = (id, label) => `<button type="button" data-slot="${s.key}" data-item="${esc(id || '')}" class="${(eq[s.key] || '') === (id || '') ? 'on' : ''}">${esc(label)}</button>`;
-    return `<div class="cu-slot"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="m-pills cu-pills">${chip(null, { personaje: 'El dibujado', pano: 'El de siempre', dorso: 'El de siempre', ropa: 'La de siempre', baraja: 'La de siempre' }[s.key] || 'Nada')}${mine.map((it) => chip(it.id, it.name)).join('')}</div>${mine.length ? '' : '<small class="muted">Comprá algo en la tienda para elegirlo acá.</small>'}</div>`;
-  }).join('');
+  const char = cosmeticById(eq.personaje);
+  stage ||= new LockerStage($('#lk-view'));
+  stage.show({ personaje: char?.id || null, look: dressed(baseLook(), eq) });
+  $('#lk-bigname').textContent = (char?.name || savedName()).toUpperCase();
+  $('#lk-char').textContent = char ? char.name : savedName();
+  const rar = rarity(char);
+  $('#lk-rar').textContent = rar ? `Personaje 3D · ${rar[1]}` : 'Personaje dibujado';
+  $('#lk-rar').className = `rar ${rar ? rar[0] : ''}`;
+  $('#lk-coins').textContent = state.coins;
+  const tile = (s) => {
+    const it = cosmeticById(eq[s.key]);
+    const r = rarity(it);
+    return `<button type="button" class="lk-tile ${r ? r[0] : 'none'} ${openSlot === s.key ? 'open' : ''}" data-tile="${s.key}" aria-expanded="${openSlot === s.key}"><canvas width="128" height="128" data-tilepreview="${s.key}"></canvas><small>${esc(s.label)}</small><b>${esc(it?.name || DEFAULT_NAME[s.key] || 'Nada')}</b></button>`;
+  };
+  const s = COSMETIC_SLOTS.find((x) => x.key === openSlot) || COSMETIC_SLOTS[0];
+  const mine = COSMETICS.filter((c) => c.slot === s.key && state.owned.includes(c.id));
+  const card = (id, name, r) => `<button type="button" class="lk-item ${r ? r[0] : 'none'} ${(eq[s.key] || '') === (id || '') ? 'on' : ''}" data-slot="${s.key}" data-item="${esc(id || '')}"><canvas width="128" height="128" data-itempreview="${esc(id || '')}"></canvas><b>${esc(name)}</b><small>${r ? r[1] : 'Gratis'}</small></button>`;
+  const items = [card(null, DEFAULT_NAME[s.key] || 'Nada', null), ...mine.map((it) => card(it.id, it.name, rarity(it)))];
+  $('#cu-slots').innerHTML = `<div class="lk-tiles">${COSMETIC_SLOTS.map(tile).join('')}</div>
+    <div class="lk-pick"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="lk-items">${items.join('')}<button type="button" class="lk-item more" data-goshop="1"><span>+</span><b>Más en la tienda</b><small>${COSMETICS.filter((c) => c.slot === s.key && !state.owned.includes(c.id)).length} para comprar</small></button></div></div>`;
+  for (const c of $('#cu-slots').querySelectorAll('canvas[data-tilepreview]')) previewSlot(c, c.dataset.tilepreview, eq[c.dataset.tilepreview]);
+  for (const c of $('#cu-slots').querySelectorAll('canvas[data-itempreview]')) previewSlot(c, s.key, c.dataset.itempreview || null);
 }

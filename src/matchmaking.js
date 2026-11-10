@@ -1,6 +1,6 @@
 // Partida rápida: si no aparece gente en un rato, completan la mesa rivales automáticos de un ELO parecido.
 // En la mesa se ven como cualquier jugador; su fuerza depende de su ELO (botSkill en config.js).
-import { MATCH, ELO, COSMETICS, cleanEquipped } from '../public/js/config.js';
+import { MATCH, ELO, COSMETICS, MODES, cleanEquipped } from '../public/js/config.js';
 import { rosterPick } from './roster.js';
 
 const FIRST = ['mati', 'nacho', 'lucho', 'facu', 'juani', 'santi', 'tomi', 'gonza', 'pato', 'vicky', 'caro', 'sofi', 'flor', 'agus', 'maxi', 'fede', 'nico', 'rama', 'seba', 'gaby', 'lau', 'mechi', 'pau', 'cande', 'cami', 'ezequiel', 'dani', 'leo', 'ale', 'marce', 'bruno', 'joaco', 'lolo', 'negro', 'turco', 'gringo', 'tano', 'colo', 'pipi', 'chino'];
@@ -36,7 +36,7 @@ export function rivalElo(base, rng) {
   return Math.max(ELO.floor, Math.round(base + spread));
 }
 
-// Algunos tienen cosas de la tienda, como cualquiera que ya jugó un poco.
+// Algunos tienen cosas de la tienda, como cualquiera que ya jugó un poco (y unos pocos, un personaje 3D).
 function rivalCos(rng) {
   const cos = {};
   for (const slot of ['ropa', 'gorro', 'anteojos', 'objeto']) {
@@ -44,14 +44,24 @@ function rivalCos(rng) {
     const items = COSMETICS.filter((c) => c.slot === slot);
     cos[slot] = items[Math.floor(rng() * items.length)].id;
   }
+  if (rng() < MATCH.personajeChance) {
+    const items = COSMETICS.filter((c) => c.slot === 'personaje');
+    cos.personaje = items[Math.floor(rng() * items.length)].id;
+  }
   return cleanEquipped(cos);
+}
+
+// El ELO de cada modo (para el cartel): el de la mesa y, en los otros modos, uno parecido.
+function rivalElos(rng, mode, elo, p = null) {
+  return Object.fromEntries(Object.keys(MODES).map((m) => [m, m === mode ? elo : p ? p[`elo_${m}`] : Math.max(ELO.floor, Math.round(elo + (rng() - 0.5) * 220))]));
 }
 
 // Siempre que se pueda, uno de los usuarios del plantel (los del ranking).
 export function rivalSeat(base, rng, used, mode = '1v1') {
   const p = rosterPick(base, MATCH.eloSpread * 1.6, mode, rng, used);
-  if (p) return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: p.username, elo: p[`elo_${mode}`], cos: rivalCos(rng) };
-  return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: rivalName(rng, used), elo: rivalElo(base, rng), cos: rivalCos(rng) };
+  if (p) return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: p.username, elo: p[`elo_${mode}`], elos: rivalElos(rng, mode, p[`elo_${mode}`], p), cos: rivalCos(rng) };
+  const elo = rivalElo(base, rng);
+  return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: rivalName(rng, used), elo, elos: rivalElos(rng, mode, elo), cos: rivalCos(rng) };
 }
 
 /** Lo que tarda en aparecer el próximo rival (el primero tarda más: se está buscando). */

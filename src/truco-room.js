@@ -164,6 +164,8 @@ export class TrucoRoom extends DurableObject {
       const profile = user && (await getProfile(this.env, user.id, { fresh: true }).catch(() => null));
       if (!profile) return this.send(ws, { t: 'auth' });
       account = { pid: user.id, name: profile.username, cos: cleanEquipped(profile.equipped), elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
+      // el ELO de cada modo (para el desplegable del cartel)
+      account.elos = Object.fromEntries(Object.keys(MODES).map((m) => [m, profile[`elo_${m}`] ?? ELO_START]));
       // las últimas 3 partidas, para el cartel de la mesa (si la base no contesta, sin historial)
       account.recent = await recentMatches(this.env, user.id).catch(() => []);
     }
@@ -187,6 +189,7 @@ export class TrucoRoom extends DurableObject {
           r.seats[seat].elo = account.elo;
           r.seats[seat].avatar = account.avatar;
           r.seats[seat].recent = account.recent;
+          r.seats[seat].elos = account.elos;
           // volvió después de cortarse: se avisa (y si ya jugaba el bot por él, que deja de jugar)
           if (r.status === 'playing' && r.afkSince[seat] && !this.online(ws).has(pid)) {
             this.addSystemChat(r.afkBot?.[seat] ? `${name} volvió: deja de jugar el bot en su lugar` : `${name} volvió`);
@@ -199,7 +202,7 @@ export class TrucoRoom extends DurableObject {
         } else if (r.status === 'lobby' && !msg.spectate) {
           const free = this.openSeat(!!msg.invited);
           if (free != null) {
-            r.seats[free] = { pid, name, cos, voice, elo: account.elo, avatar: account.avatar, recent: account.recent };
+            r.seats[free] = { pid, name, cos, voice, elo: account.elo, elos: account.elos, avatar: account.avatar, recent: account.recent };
             this.addSystemChat(`${name} se sentó a la mesa`);
           }
         }
@@ -1433,7 +1436,7 @@ export class TrucoRoom extends DurableObject {
         const botIn = dl != null ? Math.max(0, dl - Date.now()) : null;
         const tantoIn = dl != null && r.game?.h && waitingFor(r.game).kind === 'declare' && waitingFor(r.game).seats.includes(i);
         // cos: lo que tiene puesto de la tienda (ropa, gorro, anteojos, lo que tiene delante)
-        return { forfeit: !!since && !this.partnerOnline(i, online), away, tantoIn: !!tantoIn, name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, voice: s.voice || null, recent: s.bot && !s.disguised ? null : s.recent || [], cos: s.bot ? botCos(s.name, s.cos || {}) : s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
+        return { forfeit: !!since && !this.partnerOnline(i, online), away, tantoIn: !!tantoIn, name: s.name, bot: !!s.bot && !s.disguised, online: on, host: !s.bot && s.pid === r.host, botIn, voice: s.voice || null, recent: s.bot && !s.disguised ? null : s.recent || [], elos: s.bot && !s.disguised ? null : s.elos || null, cos: s.bot ? botCos(s.name, s.cos || {}) : s.cos || {}, elo: s.elo ?? null, avatar: s.avatar || null };
       }),
       // el paño y el mazo son los del anfitrión
       table: (() => {

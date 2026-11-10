@@ -217,6 +217,26 @@ export class Rig {
     this.model.updateMatrixWorld(true);
   }
 
+  /** De pie (la taquilla): brazos al costado, respira y gira la cabeza un poco. */
+  stand({ breathe = 0, headYaw = 0 } = {}) {
+    for (const [b, q] of this.rest) b.quaternion.copy(q);
+    const b = this.b;
+    this.hipsRest ||= b.Hips.position.clone();
+    b.Hips.position.copy(this.hipsRest);
+    b.Head.scale.setScalar(1);
+    this.root.updateMatrixWorld(true);
+    const hipY = this.root.worldToLocal(this.at('Hips')).y;
+    const chestY = this.root.worldToLocal(this.at('Spine2')).y;
+    const side = 0.2 + breathe * 0.004;
+    twoBone(b.LeftArm, b.LeftForeArm, b.LeftHand, this.local(side, hipY - 0.04, 0.05), this.local(0.3, chestY - 0.25, -0.6));
+    twoBone(b.RightArm, b.RightForeArm, b.RightHand, this.local(-side, hipY - 0.04, 0.05), this.local(-0.3, chestY - 0.25, -0.6));
+    this.curl('Left', 0.35);
+    this.curl('Right', 0.35);
+    rotateWorld(b.Spine, new THREE.Vector3(1, 0, 0).transformDirection(this.root.matrixWorld), -0.02 + breathe * 0.012);
+    rotateWorld(b.Head, UP, headYaw);
+    this.model.updateMatrixWorld(true);
+  }
+
   // Dobla un poco los dedos (0 = estirados).
   curl(side, k) {
     for (const f of ['Index', 'Middle', 'Ring', 'Pinky']) {

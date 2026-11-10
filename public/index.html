@@ -163,16 +163,22 @@
           <p class="a-msg" id="shop-msg" role="status"></p>
         </div>
 
-        <div class="m-card ap-panel h-panel hidden" data-panel="taquilla">
-          <h3>Taquilla <small>lo que te ponés lo ven todos en la mesa</small></h3>
-          <div class="cu-wrap">
-            <div class="cu-preview">
-              <canvas id="cu-bust" width="256" height="280" aria-label="Así te ven"></canvas>
-              <div class="cu-table"><canvas id="cu-felt" width="120" height="70" aria-label="Paño"></canvas><canvas id="cu-back" width="46" height="70" aria-label="Mazo"></canvas></div>
-            </div>
-            <div id="cu-slots" class="cu-slots"></div>
-          </div>
-          <p class="a-msg" id="cu-msg" role="status"></p>
+        <div class="ap-panel h-panel hidden lk" data-panel="taquilla">
+          <section class="lk-stage" aria-label="Tu personaje">
+            <div class="lk-bigname" id="lk-bigname" aria-hidden="true"></div>
+            <div class="lk-view" id="lk-view"></div>
+            <div class="lk-tag"><small>Así te ven en la mesa</small><b id="lk-char"></b><span class="rar" id="lk-rar"></span></div>
+            <p class="lk-hint">Arrastralo para girarlo</p>
+          </section>
+          <section class="lk-side">
+            <header class="lk-head">
+              <h3>Taquilla</h3>
+              <span class="lk-coins"><b id="lk-coins">0</b> monedas</span>
+              <button type="button" class="btn small" id="lk-shop">Ir a la tienda</button>
+            </header>
+            <div id="cu-slots" class="lk-slots"></div>
+            <p class="a-msg" id="cu-msg" role="status"></p>
+          </section>
         </div>
 
         <div class="ap-panel h-panel hidden pf" data-panel="perfil">
@@ -278,6 +284,8 @@
     </form>
   </dialog>
 
+  <dialog id="user-dialog" class="dl ud" aria-label="Perfil del jugador"><div id="ud-body"></div></dialog>
+
   <dialog id="credits-dialog" class="dl cr-dialog" aria-labelledby="credits-title">
     <form method="dialog">
       <h2 id="credits-title">Créditos</h2>
@@ -350,7 +358,7 @@
       <div class="spacer"></div>
       <span id="spect" class="muted"></span>
       <button class="btn small ghost" id="voice-toggle" title="Voz de los cantos">Voz: sí</button>
-      <button class="btn small ghost" id="cam-btn" title="Cambiar la vista: primera persona, desde atrás (tercera) o de frente (segunda). Tecla V">Vista: 1ª</button>
+      <button class="btn small ghost" id="cam-btn" title="Cambiar la vista: primera persona o de frente (segunda persona, te ves la cara). Tecla V">Vista: 1ª</button>
       <button class="btn small ghost" id="zoom-btn" title="Mantené apretada la tecla Z (o este botón) para hacer zoom">Zoom <kbd>Z</kbd></button>
       <button class="btn small ghost" id="help-btn" title="Ayuda">?</button>
       <button class="btn small ghost" id="chat-toggle" title="Chat">Chat<i id="chat-badge" class="badge hidden"></i></button>

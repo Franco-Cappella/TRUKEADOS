@@ -323,8 +323,7 @@ const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 // Acerca `cur` a `target` de forma suave e independiente de los FPS (rate: cuán rápido, en 1/s).
 const damp = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
 const CAM_RATE = 14; // suavizado de la cámara
-const CAM_MODES = ['first', 'back', 'front']; // primera, tercera (desde atrás) y segunda persona (de frente)
-const CAM_BACK = { dist: 1.25, up: 0.32 };
+const CAM_MODES = ['first', 'front']; // primera persona y segunda (de frente: te ves la cara)
 const CAM_FRONT = { dist: 1.05, up: 0.05 };
 const RIG_BACK = 0.42; // los personajes 3D: cuánto más atrás del borde de la mesa se sientan
 const SELF_NECK = { back: 0.16, down: 0.16 }; // tu personaje 3D en primera persona: el cuello, respecto de los ojos
@@ -393,7 +392,7 @@ export class TableScene {
 
     this.handGroup = new THREE.Group();
     this.camera.add(this.handGroup);
-    // vista: 'first' (primera persona), 'back' (tercera: desde atrás) o 'front' (segunda: de frente, te ves la cara)
+    // vista: 'first' (primera persona) o 'front' (segunda: de frente, te ves la cara)
     this.camMode = CAM_MODES.includes(store.get(KEYS.camMode)) ? store.get(KEYS.camMode) : 'first';
     this.headPos = new THREE.Vector3(0, EYE_Y, 1);
 
@@ -405,7 +404,7 @@ export class TableScene {
     window.addEventListener('resize', () => this.resize());
     this.clock = new THREE.Clock();
     this.applyQuality();
-    this.renderer.setAnimationLoop(() => this.frame());
+    this.renderer.setAnimationLoop(() => this.safeFrame());
   }
 
   applyQuality() {
@@ -424,7 +423,7 @@ export class TableScene {
   resume() {
     this.clock.getDelta();
     this.applyQuality();
-    this.renderer.setAnimationLoop(() => this.frame());
+    this.renderer.setAnimationLoop(() => this.safeFrame());
   }
 
   // ------------------------------------------------------------ ambiente (bar, café, parque...: ambientes.js)
@@ -788,7 +787,7 @@ export class TableScene {
     r.face?.set(expr, talking, expr === 'bite' ? biteAt(now) : 1);
   }
 
-  // ------------------------------------------------------------ vistas (primera, tercera y segunda persona)
+  // ------------------------------------------------------------ vistas (primera y segunda persona)
   setCamMode(mode) {
     if (!CAM_MODES.includes(mode)) return;
     this.camMode = mode;
@@ -995,11 +994,7 @@ export class TableScene {
     const lean = THREE.MathUtils.smoothstep(-this.pitch, 0.3, 1.0);
     this.camera.position.set(-Math.sin(this.yaw) * 0.12 * lean, EYE_Y + 0.2 * lean, this.R + 0.24 - 0.42 * lean);
     this.headPos.set(0, EYE_Y, this.R + 0.24);
-    if (this.camMode === 'back') {
-      // tercera persona: atrás y un poco arriba de tu cabeza, mirando para el mismo lado
-      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-      this.camera.position.copy(this.headPos).addScaledVector(fwd, -CAM_BACK.dist).add(new THREE.Vector3(0, CAM_BACK.up, 0));
-    } else if (this.camMode === 'front') {
+    if (this.camMode === 'front') {
       // segunda persona: adelante tuyo, mirándote a la cara
       const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       this.camera.position.copy(this.headPos).addScaledVector(fwd, CAM_FRONT.dist).add(new THREE.Vector3(0, CAM_FRONT.up, 0));
@@ -1660,6 +1655,19 @@ export class TableScene {
     this.camera.updateProjectionMatrix();
   }
 
+  // Un error en un cuadro no puede cortar el ciclo de dibujo: si lo corta, la mesa queda congelada (con las
+  // cartas que estaban volando pegadas a la cámara) aunque el juego siga.
+  safeFrame() {
+    try {
+      this.frame();
+    } catch (err) {
+      console.error('cuadro', err);
+      try {
+        this.renderer.render(this.scene, this.camera);
+      } catch {}
+    }
+  }
+
   frame() {
     const dt = Math.min(0.05, this.clock.getDelta());
     const now = performance.now();
@@ -1684,9 +1692,19 @@ export class TableScene {
     this.tweens = [];
     const keep = running.filter((tw) => {
       const t = Math.min(1, (now - tw.t0) / tw.ms);
-      tw.fn(t);
-      if (t >= 1) {
-        tw.done?.();
+      // una animación que falla se descarta (y la carta queda donde termina): no frena a las demás
+      try {
+        tw.fn(t);
+        if (t >= 1) {
+          tw.done?.();
+          return false;
+        }
+      } catch (err) {
+        console.error('animación', err);
+        try {
+          tw.fn(1);
+          tw.done?.();
+        } catch {}
         return false;
       }
       return true;
@@ -1708,7 +1726,11 @@ export class TableScene {
     for (const c of this.chars.values()) {
       if (c.rig) {
         c.mesh.visible = false;
-        this.updateRig(c, now, dt);
+        try {
+          this.updateRig(c, now, dt);
+        } catch (err) {
+          console.error('personaje 3D', c.seat, err);
+        }
         continue;
       }
       // el tuyo (dibujado) solo se ve en tercera o segunda persona
@@ -1720,7 +1742,11 @@ export class TableScene {
       c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
       // respira un poquito
       c.mesh.position.y = CHAR_H / 2 + Math.sin(now / 900 + c.seat) * 0.003;
-      this.updateCharacter(c, now, dt);
+      try {
+        this.updateCharacter(c, now, dt);
+      } catch (err) {
+        console.error('personaje', c.seat, err);
+      }
     }
     const target = this.computeLookTarget();
     if (target !== this.lookTarget) {

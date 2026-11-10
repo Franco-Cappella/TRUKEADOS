@@ -64,6 +64,7 @@ export const ROUTES = {
     invites: '/api/invites',
     invitesDone: '/api/invites/done',
     ranking: (mode) => `/api/ranking?mode=${mode}`,
+    user: (name) => `/api/users/${encodeURIComponent(name)}`,
     shop: '/api/shop',
     buy: '/api/shop/buy',
     equip: '/api/shop/equip',
@@ -130,6 +131,7 @@ export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se a
 // ------------------------------------------------------------------ bots
 // Cómo piensan (ver bot.js y brain.js). Las trampas solo valen en mesas que las permiten.
 export const BOT = {
+  claim: 0.95, // chance de que un bot rival te pida ver los tantos (y reclame si no los mostrás)
   samples: 40, // manos imaginadas del rival por decisión (Monte Carlo)
   memoSamples: 160, // memoria: con tantas manos imaginadas juntadas en una situación ya no piensa (ver BotMemo)
   temp: 0.15, // ruido al elegir entre cantos (en puntos): más alto = más impredecible
@@ -189,6 +191,7 @@ export const ELO = {
 };
 // Partida rápida: lo que se espera gente antes de que completen la mesa rivales automáticos.
 export const MATCH = {
+  personajeChance: 0.07, // los rivales automáticos con personaje 3D (Volcho u Olcho): pocos
   waitMin: 6000, // primer rival: entre 6 y 22 s
   waitRand: 16000,
   gapMin: 1500, // los siguientes, más seguidos

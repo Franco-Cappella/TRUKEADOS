@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
-import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
+import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml, DEFAULT_AVATAR } from './dom.js';
 import { audio, flick, ding, say, hush, myVoice, setSeatVoices } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 
@@ -22,15 +22,19 @@ function loadMuted() {
 }
 
 // Lo que se despliega del cartel: las últimas 3 partidas (ganó o perdió, modo, tanteador, ELO y cuándo).
-function recentHtml(p) {
+function recentHtml(p, mode) {
   if (p.recent == null) return '<p class="np-none">Bot de la mesa</p>';
+  const more = `<button type="button" class="np-more" data-user="${esc(p.name)}">Ver perfil y agregar de amigo</button>`;
+  // el ELO de cada modo, con el de esta mesa resaltado
+  const elos = p.elos ? `<div class="np-elos">${Object.keys(MODES).map((m) => `<span class="${m === mode ? 'on' : ''}"><small>${esc(modeLabel(m))}</small><b>${esc(p.elos[m] ?? '–')}</b></span>`).join('')}</div>` : '';
+  if (!p.recent.length) return `${elos}<p class="np-none">Todavía no terminó ninguna partida</p>${more}`;
   if (!p.recent.length) return '<p class="np-none">Todavía no terminó ninguna partida</p>';
   const ago = (at) => {
     const m = Math.max(1, Math.round((Date.now() - Date.parse(at)) / 60000));
     return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
   };
   const rows = p.recent.map((r) => `<li class="${r.won ? 'w' : 'l'}"><b>${r.won ? 'G' : 'P'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${r.at ? ago(r.at) : ''}</small></li>`);
-  return `<h5>Últimas partidas</h5><ul>${rows.join('')}</ul>`;
+  return `${elos}<h5>Últimas partidas</h5><ul>${rows.join('')}</ul>${more}`;
 }
 
 // en equipo uno se va al mazo por todos (salvo en un duelo de pica-pica)
@@ -625,7 +629,9 @@ export class RoomClient {
       el.innerHTML = '<div class="bubbles"></div><div class="nameplate"><span class="np-av"></span><span class="np-main"><b class="np-name"></b><span class="np-sub"></span></span><div class="np-drop"></div></div>';
       $('#labels').appendChild(el);
       const plate = el.querySelector('.nameplate');
-      plate.addEventListener('click', () => plate.classList.toggle('open'));
+      plate.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-user]')) plate.classList.toggle('open');
+      });
       plate.addEventListener('mouseleave', () => plate.classList.remove('open'));
       l = { el, plate, bubbles: el.querySelector('.bubbles'), av: el.querySelector('.np-av'), name: el.querySelector('.np-name'), sub: el.querySelector('.np-sub'), drop: el.querySelector('.np-drop') };
       this.labels.set(seat, l);
@@ -1072,18 +1078,18 @@ export class RoomClient {
       const open = l.plate.classList.contains('open');
       l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''} ${open ? 'open' : ''}`;
       // la foto se cambia solo si cambió (si no, parpadea con cada estado)
-      const avKey = p.avatar || `i:${p.name}`;
+      const avKey = p.avatar || DEFAULT_AVATAR;
       if (l.av.dataset.key !== avKey) {
         l.av.dataset.key = avKey;
-        l.av.innerHTML = p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : esc(initial(p.name));
+        l.av.innerHTML = `<img src="${esc(avKey)}" alt="">`;
       }
       if (l.name.textContent !== p.name) l.name.textContent = p.name;
       const sub = [p.elo ? `<span class="np-elo">${esc(p.elo)}</span>` : '', ...chips.map((c) => `<span class="chip">${c}</span>`), looking, p.online && !p.away ? '' : `<span class="off">${this.offText(seat)}</span>`].filter(Boolean).join('');
       if (l.sub.innerHTML !== sub) l.sub.innerHTML = sub;
-      const dropKey = JSON.stringify(p.recent ?? null);
+      const dropKey = JSON.stringify([p.recent ?? null, p.elos ?? null, st.room.cfg.mode]);
       if (l.drop.dataset.key !== dropKey) {
         l.drop.dataset.key = dropKey;
-        l.drop.innerHTML = recentHtml(p);
+        l.drop.innerHTML = recentHtml(p, st.room.cfg.mode);
       }
     });
   }
@@ -1128,7 +1134,7 @@ export class RoomClient {
       const me = i === st.you;
       const tags = [me && 'vos', p.host && 'anfitrión', p.bot && 'bot', !p.online && 'desconectado'].filter(Boolean);
       return `<div class="w-seat ${me ? 'me' : ''} ${p.online ? '' : 'off'} ${host ? 'drag' : ''}" data-seat="${i}" ${host ? 'title="Arrastralo a otro lugar para cambiarlo de equipo"' : ''}>
-        ${host ? '<span class="w-grip" aria-hidden="true">⠿</span>' : ''}<span class="w-av">${esc(initial(p.name))}</span>
+        ${host ? '<span class="w-grip" aria-hidden="true">⠿</span>' : ''}${avatarHtml(p)}
         <span class="w-nm">${esc(p.name)}${tags.length ? `<small>${tags.join(' · ')}</small>` : ''}</span>
         ${host && p.bot ? `<button type="button" class="w-mini" data-unbot="${i}" title="Sacar el bot">Sacar</button>` : ''}
         ${host && !p.bot && !me && !p.host ? `<button type="button" class="w-mini" data-kick="${i}" title="Echar de la mesa">Echar</button>` : ''}</div>`;

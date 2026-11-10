@@ -48,11 +48,10 @@ export const savedName = () => store.get(KEYS.name) || 'Invitado';
 export const initial = (name) => [...String(name ?? '').trim()][0]?.toUpperCase() || '?';
 
 // Foto de perfil, o la inicial si no tiene. p: { name o username, avatar }. Devuelve HTML ya escapado.
+// Sin foto: la silueta de siempre (la misma para todos los que no subieron una).
+export const DEFAULT_AVATAR = '/img/avatar.svg';
 export function avatarHtml(p, cls = '') {
-  const name = p?.username ?? p?.name;
-  return p?.avatar
-    ? `<img class="w-av photo ${cls}" src="${esc(p.avatar)}" alt="" loading="lazy">`
-    : `<span class="w-av ${cls}">${esc(initial(name))}</span>`;
+  return `<img class="w-av photo ${cls}" src="${esc(p?.avatar || DEFAULT_AVATAR)}" alt="" loading="lazy">`;
 }
 
 // Lee una vez y borra (para pasar un dato de una pantalla a otra).

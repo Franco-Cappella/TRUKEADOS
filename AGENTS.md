@@ -82,9 +82,9 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 5. Cada cambio de reglas lleva test en `test/` y una línea en `docs/REGLAS.md`. Una opción de sala nueva se
    agrega en `ROOM_OPTIONS` (config.js): el menú, la sala de espera y el servidor la toman de ahí.
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
-7. Estilo: blanco y negro, grotesk. Una sola tipografía (Hanken Grotesk, variable `--font`) y la paleta de `:root`
-   (negro, blanco y grises; el rojo solo para errores; esquinas rectas). Nada de itálicas decorativas, serif ni
-   colores de interfaz: el color lo ponen las cartas y los personajes.
+7. Estilo: la interfaz (menú, paneles) es blanco y negro, grotesk: una sola tipografía (Hanken Grotesk, variable
+   `--font`) y la paleta de `:root` (negro, blanco y grises; el rojo solo para errores; esquinas rectas). La mesa y
+   los ambientes de la partida, en cambio, van a todo color (paño verde, `SATURATION` en ambientes.js).
 8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
    o texto nuevo sigue esas reglas.
 
@@ -170,6 +170,8 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   pendiente quedaban los de la conexión vieja (sus clics no llegaban a ningún lado).
 - Chat: tocar el nombre de alguien lo silencia (`KEYS.muted`, por nombre de usuario): no se ven sus mensajes ni sus
   frases, sí sus cantos y tantos (son eventos del juego, no chat).
+- El ciclo de dibujo (`safeFrame`) no se corta por un error: cada animación y cada personaje se actualizan aparte.
+  Si se corta, la mesa queda congelada aunque el juego siga.
 - Pantalla de partida: arriba la barra (salir, código, voz, zoom, ayuda, chat), "Mirar a" al centro y el
   anotador a la izquierda; abajo a la izquierda Señas y "Mostrá las dos"; **abajo a la derecha el panel**
   (`#panel`: estado + carta elegida + acciones). El centro de abajo es de la mano: no pongas nada ahí.
@@ -196,7 +198,14 @@ y una entrada en `AMBIENTES`. Para mirarlos: `/tools/scene-test.html` (con `shoo
 ## Cartel de cada jugador
 Foto, nombre, ELO y estado; al pasarle el mouse (o tocarlo) muestra sus últimas 3 partidas (`recent` de cada
 asiento: `recentMatches` en matches.js al entrar, y se actualiza al terminar; los rivales automáticos tienen uno de
-mentira, `fakeRecent`, para no delatarse).
+mentira, `fakeRecent`, para no delatarse; también el ELO de cada modo, `elos`, y unos pocos, un personaje 3D:
+`MATCH.personajeChance`). Sin foto se usa `/img/avatar.svg` (`DEFAULT_AVATAR`). Los bots piden ver los tantos
+`BOT.claim` (95 %) de las veces.
+
+## Perfil de otros
+`GET /api/users/<nombre>` (`publicProfile` en social.js) y el diálogo de `public/js/profile-card.js`: cualquier
+elemento con `data-user="nombre"` lo abre. Los usuarios automáticos tienen un perfil como cualquiera (del plantel o
+inventado a partir del nombre) y se les puede mandar solicitud (queda pendiente).
 
 ## Legales
 `public/legal/`: términos, privacidad (Ley 25.326) y licencias. Enlazadas desde la entrada, el pie del menú y los
@@ -212,8 +221,10 @@ créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarl
   la derecha que tira (`reach` en scene.js), la cabeza que mira. Las señas son capas dibujadas pegadas a la cabeza
   (`FaceLayer`): párpados, cejas, boca, cachetes y nariz, en el lugar que encontró la herramienta.
 - Los bots que se llaman como un personaje lo usan (`BOT_PERSONAJES`, `botCos` en config.js; lo agrega `publicRoom`).
-- Vistas (botón "Vista" arriba o tecla V): primera persona, tercera (desde atrás) y segunda (de frente). En primera
-  persona tu personaje 3D sigue a la cámara (solo lo ves vos) y sus manos sostienen y tiran las cartas.
+- Vistas (botón "Vista" arriba o tecla V): primera persona y segunda (de frente). En primera persona tu personaje
+  3D sigue a la cámara (solo lo ves vos) y sus manos sostienen y tiran las cartas.
+- Taquilla: `public/js/locker.js` (`LockerStage`) muestra tu personaje en una tarima (3D con `Rig.stand`, o el
+  dibujado); los casilleros y la rareza por precio (`rarity`) están en shop.js.
 - Una cara nueva: correr build-skin, revisar en el visor que las señas caigan bien, agregar el ítem en `COSMETICS` y
   el modelo en `COSMETIC_LOOK` (url, escala y foto).
 

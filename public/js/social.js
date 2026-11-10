@@ -7,7 +7,8 @@ import { loadMe, currentMe } from './auth.js';
 const eloOf = (p, mode) => p[`elo_${mode}`] ?? ELO_START;
 let rankMode = Object.keys(MODES)[0];
 
-const person = (p, extra = '') => `<div class="so-row">${avatarHtml(p)}<span class="so-name"><b>${esc(p.username)}</b><small>${Object.keys(MODES).map((m) => `${esc(modeLabel(m))}: ${esc(eloOf(p, m))}`).join(' · ')}</small></span>${extra}</div>`;
+// tocar a alguien (foto o nombre) abre su perfil (profile-card.js)
+const person = (p, extra = '') => `<div class="so-row">${avatarHtml(p)}<span class="so-name"><b class="u-link" data-user="${esc(p.username)}">${esc(p.username)}</b><small>${Object.keys(MODES).map((m) => `${esc(modeLabel(m))}: ${esc(eloOf(p, m))}`).join(' · ')}</small></span>${extra}</div>`;
 
 function friendsMsg(text, bad = true) {
   $('#fr-msg').textContent = text;
@@ -43,7 +44,7 @@ export async function loadRanking() {
   try {
     const { players } = await api(ROUTES.api.ranking(rankMode));
     const myId = currentMe()?.user?.id;
-    box.innerHTML = players.map((p, i) => `<div class="so-row rk ${p.id === myId ? 'me' : ''}"><span class="rk-pos">${i + 1}</span>${avatarHtml(p)}<span class="so-name"><b>${esc(p.username)}</b><small>${esc(p[`games_${rankMode}`])} partidas</small></span><b class="rk-elo">${esc(eloOf(p, rankMode))}</b></div>`).join('') || '<p class="muted">Todavía nadie jugó por ELO en este modo.</p>';
+    box.innerHTML = players.map((p, i) => `<div class="so-row rk ${p.id === myId ? 'me' : ''}"><span class="rk-pos">${i + 1}</span>${avatarHtml(p)}<span class="so-name"><b class="u-link" data-user="${esc(p.username)}">${esc(p.username)}</b><small>${esc(p[`games_${rankMode}`])} partidas</small></span><b class="rk-elo">${esc(eloOf(p, rankMode))}</b></div>`).join('') || '<p class="muted">Todavía nadie jugó por ELO en este modo.</p>';
   } catch (err) {
     box.innerHTML = `<p class="muted">${esc(err.message)}</p>`;
   }

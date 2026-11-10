@@ -789,7 +789,8 @@ export function botClaims(g, seat, rng = Math.random, ctx = {}) {
   const h = g.h;
   if (h?.phase !== 'show' || team(seat) === team(h.show.seat)) return false;
   if (ctx.peek && tanto(h.cards[h.show.seat], h.muestra).value !== h.show.value) return true;
-  return rng() < 0.55 + 0.4 * rate(brainOf(ctx, h.show.seat), 'lie');
+  // casi siempre te piden los tantos: zafar es 1 de cada 20 (BOT.claim)
+  return rng() < BOT.claim;
 }
 
 // Trampa del que reparte: se da una de las cartas buenas que quedaron en el mazo en lugar de su peor carta.

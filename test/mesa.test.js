@@ -69,3 +69,62 @@ test('cartel: la sala manda foto y últimas partidas de las personas; los bots e
   assert.equal(seats[0].recent.length, 1);
   assert.equal(seats[1].recent, null);
 });
+
+test('bots: casi siempre te piden los tantos (zafar es 1 de cada 20)', async () => {
+  const { botClaims } = await import('../public/js/bot.js');
+  const { newGame, act, waitingFor } = await import('../public/js/engine.js');
+  const g = newGame({ mode: '1v1', dealer: 1 });
+  g.h.cards = [['7E', '6E', '4C'], ['1O', '4B', '5C']];
+  g.h.inHand = g.h.cards.map((c) => c.slice());
+  act(g, 0, { t: 'envido', kind: 'envido' });
+  act(g, 1, { t: 'quiero' });
+  while (waitingFor(g).kind === 'declare') act(g, waitingFor(g).seats[0], { t: g.h.envido.declare.best ? 'buenas' : 'cantar' });
+  act(g, 0, { t: 'mazo' });
+  assert.equal(g.h.phase, 'show');
+  let n = 0;
+  const N = 4000;
+  for (let i = 0; i < N; i++) if (botClaims(g, 1, Math.random, {})) n++;
+  assert.ok(n / N > 0.92 && n / N < 0.98, `reclamó ${n} de ${N}`);
+});
+
+test('jugadores falsos: ELO de cada modo y, unos pocos, personaje 3D', async () => {
+  const { rivalSeat } = await import('../src/matchmaking.js');
+  let with3d = 0;
+  for (let i = 0; i < 400; i++) {
+    const s = rivalSeat(1200, Math.random, new Set(), '2v2');
+    assert.deepEqual(Object.keys(s.elos).sort(), ['1v1', '2v2', '3v3']);
+    assert.equal(s.elos['2v2'], s.elo);
+    assert.equal(s.recent.length, 3);
+    assert.equal(s.avatar, undefined, 'sin foto: la predeterminada');
+    if (s.cos.personaje) {
+      with3d++;
+      assert.ok(['volcho', 'olcho'].includes(s.cos.personaje));
+    }
+  }
+  assert.ok(with3d > 5 && with3d < 70, `con personaje 3D: ${with3d} de 400`);
+});
+
+test('perfil de otro: un usuario automático tiene perfil como cualquiera y se lo puede agregar', async () => {
+  const { publicProfile, requestFriend } = await import('../src/social.js');
+  const { rosterAt } = await import('../src/roster.js');
+  const { fakeRecent } = await import('../src/matchmaking.js');
+  const env = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SECRET_KEY: 'k' };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('[]', { status: 200 });
+  try {
+    const name = rosterAt()[0].username;
+    const { profile } = await publicProfile(env, 'u-1', name, async () => [], fakeRecent);
+    assert.equal(profile.username, name);
+    assert.equal(profile.recent.length, 3);
+    assert.equal(profile.friend, 'none');
+    assert.ok(profile.elo_1v1 > 0 && profile.elo_3v3 > 0);
+    const again = await publicProfile(env, 'u-1', 'nadie_123', async () => [], fakeRecent);
+    const twice = await publicProfile(env, 'u-1', 'nadie_123', async () => [], fakeRecent);
+    assert.deepEqual(again.profile.elo_2v2, twice.profile.elo_2v2, 'el mismo nombre, el mismo perfil');
+    assert.deepEqual(await requestFriend(env, 'u-1', name), { ok: true, status: 'pending' });
+    assert.deepEqual(await requestFriend(env, 'u-1', 'nadie_123', true), { ok: true, status: 'pending' });
+    assert.ok((await requestFriend(env, 'u-1', 'nadie_123')).error, 'buscando a mano, un nombre que no existe da error');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

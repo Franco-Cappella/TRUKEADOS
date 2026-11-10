@@ -1,13 +1,18 @@
-// Ambientes de la partida (uno por partida, lo elige el servidor: AMBIENTES en config.js). Lugares argentinos
-// dibujados en blanco y negro, cada uno con un tono apenas distinto: lo único con color fuerte en la mesa son las
-// cartas y los personajes. Cada ambiente arma su grupo (paredes o cielo, piso, muebles de fondo y luces) alrededor
+// Ambientes de la partida (uno por partida, lo elige el servidor: AMBIENTES en config.js). Lugares argentinos a todo
+// color, como en la vida real: el parque bien verde, el club con vida, los bares y la parrilla cálidos. Cada ambiente arma su grupo (paredes o cielo, piso, muebles de fondo y luces) alrededor
 // de la mesa, que está en el centro (radio < 1.3 m, altura TABLE_Y). Todo se pinta en canvas (draw3d.js).
 import * as THREE from 'three';
 import { canvasTex, noise, seeded, toon } from './draw3d.js';
 import { FONT } from './theme.js';
 
 // Gris con un tono: l de 0 a 1, h (0-360) y s (0-1) chiquita.
-const gray = (l, h = 30, s = 0.06) => `#${new THREE.Color().setHSL(h / 360, s, l).getHexString()}`;
+// Color de un ambiente: l de 0 a 1, h el tono (0-360) y s la saturación de base, que se multiplica por la del
+// ambiente que se está armando (SAT): así cada lugar tiene sus colores sin escribirlos uno por uno.
+let SAT = 1;
+const SATURATION = { bar: 5.5, cafe: 5, parrilla: 6, parque: 7, quincho: 5, club: 6, campo: 5 };
+const gray = (l, h = 30, s = 0.06) => `#${new THREE.Color().setHSL(h / 360, Math.min(0.92, s * SAT), l).getHexString()}`;
+// Colores que no dependen de SAT (los de verdad: banderas, manteles, botellas).
+const hsl = (h, s, l) => `#${new THREE.Color().setHSL(h / 360, s, l).getHexString()}`;
 const basic = (color, extra = {}) => new THREE.MeshBasicMaterial({ color, ...extra });
 
 const ROOM = 5;
@@ -369,15 +374,16 @@ function wallTex({ top, bottom, trim, seam, dado = 1.0, panels = 128, shade = 0.
 const BUILD = {
   // Bar notable porteño: boiserie oscura, estantería de botellas, láminas y lámpara colgante.
   bar(g) {
-    const P = { wall: gray(0.1), wallAlt: gray(0.115), seam: gray(0.05), trim: gray(0.22), floor: [gray(0.17), gray(0.2), gray(0.15)] };
+    // boiserie de madera oscura, molduras doradas y tablones cálidos
+    const P = { wall: hsl(18, 0.5, 0.17), wallAlt: hsl(18, 0.5, 0.2), seam: hsl(15, 0.5, 0.08), trim: hsl(35, 0.55, 0.38), floor: [hsl(22, 0.5, 0.22), hsl(24, 0.5, 0.27), hsl(20, 0.5, 0.19)] };
     hemi(g, gray(0.95, 35, 0.3), gray(0.25), 1.2);
     pendant(g, { shade: gray(0.12), bulb: '#fff6e6', light: '#ffeacc' });
     const fill = new THREE.PointLight(gray(0.7, 30, 0.2), 1.2, 9, 1.4);
     fill.position.set(-2.5, 2.2, -2);
     g.add(fill);
-    floor(g, plankTex(P.floor, gray(0.06)));
-    ceiling(g, gray(0.04));
-    walls(g, wallTex({ top: P.wall, bottom: gray(0.07), trim: P.trim, seam: P.seam, dado: 0.92, extra: (ctx, w, h, yAt) => {
+    floor(g, plankTex(P.floor, hsl(15, 0.5, 0.08)));
+    ceiling(g, hsl(15, 0.4, 0.06));
+    walls(g, wallTex({ top: P.wall, bottom: hsl(14, 0.5, 0.11), trim: P.trim, seam: P.seam, dado: 0.92, extra: (ctx, w, h, yAt) => {
       for (let x = 0; x < w; x += 128) {
         ctx.fillStyle = (x / 128) % 2 ? P.wallAlt : P.wall;
         ctx.fillRect(x + 3, 0, 125, yAt(0.92) - 10);
@@ -395,7 +401,7 @@ const BUILD = {
         while (x < w - 60) {
           const bw = 30 + r() * 18;
           const bh = 118 + r() * 46;
-          drawBottle(ctx, x, base, bw, bh, gray(0.12 + r() * 0.22, 30, 0.08), r() < 0.7, gray(0.75));
+          drawBottle(ctx, x, base, bw, bh, hsl([140, 35, 0, 50, 200, 25][Math.floor(r() * 6)], 0.55 + r() * 0.3, 0.16 + r() * 0.2), r() < 0.7, hsl(45, 0.45, 0.78));
           x += bw + 12 + r() * (r() < 0.2 ? 90 : 26);
         }
         ctx.fillStyle = gray(0.16);
@@ -406,7 +412,7 @@ const BUILD = {
       ctx.lineWidth = 16;
       ctx.strokeStyle = gray(0.16);
       ctx.strokeRect(8, 8, w - 16, h - 16);
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.fillRect(0, 0, w, h);
       noise(ctx, w, h, 6);
     });
@@ -425,7 +431,8 @@ const BUILD = {
       g.add(stool, leg);
     }
     [['sol', 1, -1.9], ['guarda', 1, 1.9], ['espada', 3, -1.9], ['pampa', 3, 1.9]].forEach(([k, wall, x]) => {
-      onWall(g, picture(k, gray(0.78, 35, 0.12), gray(0.1), gray(0.05)), 0.9, 1.2, { wall, x, y: 2.3 });
+      const pal = { sol: [hsl(40, 0.6, 0.62), hsl(20, 0.6, 0.2)], guarda: [hsl(15, 0.4, 0.18), hsl(40, 0.55, 0.72)], espada: [hsl(5, 0.55, 0.32), hsl(40, 0.4, 0.82)], pampa: [hsl(30, 0.5, 0.5), hsl(25, 0.45, 0.12)] }[k];
+      onWall(g, picture(k, pal[0], pal[1], hsl(25, 0.45, 0.16)), 0.9, 1.2, { wall, x, y: 2.3 });
     });
     return { background: gray(0.03), fog: [gray(0.03), 7, 16] };
   },
@@ -594,7 +601,7 @@ const BUILD = {
       head.position.set(-ROOM + 0.18, 2.07, -2.0 + i * 0.3);
       g.add(sif, head);
     }
-    const cloth = toon('#f4f4f2');
+    const cloth = toon(null, { map: checkerTex(hsl(2, 0.7, 0.45), '#f4f1ea', 6, 1) });
     for (const [x, z] of [[-3.3, 2.8], [3.3, 2.8], [3.3, -2.6]]) {
       sideTable(g, x, z, cloth, toon(gray(0.12)));
       chair(g, x, z + 0.55, 0, toon(gray(0.2)));
@@ -774,7 +781,7 @@ const BUILD = {
     });
     floor(g, court);
     ceiling(g, gray(0.3));
-    walls(g, wallTex({ top: gray(0.82), bottom: gray(0.18, 220, 0.1), trim: gray(0.1), seam: gray(0.1), dado: 1.4, panels: 0, shade: 0.15 }));
+    walls(g, wallTex({ top: hsl(200, 0.55, 0.82), bottom: hsl(215, 0.6, 0.32), trim: hsl(48, 0.95, 0.55), seam: hsl(215, 0.6, 0.25), dado: 1.4, panels: 0, shade: 0.12 }));
     // escudo y nombre
     const crest = canvasTex(512, 512, (ctx, w, h) => {
       ctx.fillStyle = gray(0.12);
@@ -804,7 +811,7 @@ const BUILD = {
       ctx.lineTo(w, 10);
       ctx.stroke();
       for (let x = 0, i = 0; x < w; x += 64, i++) {
-        ctx.fillStyle = i % 2 ? gray(0.12) : '#f5f5f5';
+        ctx.fillStyle = [hsl(200, 0.7, 0.62), '#f5f5f5', hsl(48, 0.95, 0.55), hsl(215, 0.65, 0.35), hsl(2, 0.7, 0.5)][i % 5];
         ctx.beginPath();
         ctx.moveTo(x + 4, 10);
         ctx.lineTo(x + 60, 10);
@@ -921,7 +928,9 @@ export const AMBIENTE_IDS = Object.keys(BUILD);
 export function buildAmbiente(id) {
   const g = new THREE.Group();
   g.name = `ambiente:${id}`;
+  SAT = SATURATION[id] ?? 5;
   const out = (BUILD[id] || BUILD.bar)(g);
+  SAT = 1;
   return { group: g, ...out };
 }
 

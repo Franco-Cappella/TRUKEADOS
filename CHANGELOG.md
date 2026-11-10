@@ -1,5 +1,24 @@
 # Cambios
 
+## 1.18.1 — perfiles, color y un arreglo
+- **Perfil de otros jugadores**: tocando un nombre (ranking, amigos, el cartel de la mesa) se ve su foto, su ELO y
+  partidas de cada modo y sus últimas partidas, con el botón para agregarlo de amigo.
+- **Ambientes a todo color** otra vez: el parque bien verde, el club celeste y amarillo con banderines, el bar con
+  maderas y botellas de colores, la parrilla con ladrillo y manteles a cuadros. La mesa vuelve al paño verde.
+- Arreglado: si algo fallaba en un cuadro, la mesa quedaba congelada (por ejemplo con las cartas recién tiradas,
+  gigantes, pegadas a la cámara). Ahora un error no corta el dibujo.
+
+## 1.18.0 — taquilla nueva
+- **Taquilla**: tu personaje de cuerpo entero en una tarima con luz, con su nombre gigante de fondo. Si es 3D,
+  respira, mira a los costados y se gira arrastrando. Al costado, un casillero por ranura con lo que tenés puesto y
+  su rareza (común, raro, épico, legendario); tocás uno y elegís entre lo que tenés.
+- Los botones de arriba de la partida ya no se pisan: "Mirar a" va debajo.
+- Quedan dos vistas: primera persona y de frente (segunda). Se sacó la de atrás.
+- Los bots te piden ver los tantos el 95 % de las veces; si no los mostrás, perdés el envido.
+- Los jugadores automáticos tienen historial de partidas, el ELO de cada modo y la foto predeterminada; unos pocos
+  juegan con Volcho u Olcho.
+- El desplegable del cartel muestra el ELO de cada modo. Sin foto, todos tienen la misma silueta.
+
 ## 1.17.0 — blanco y negro, ambientes y cartel nuevo
 - **Diseño nuevo**: blanco y negro con tipografía grotesk (Hanken Grotesk), esquinas rectas, partida rápida en un
   bloque blanco. La mesa también: paño grafito con líneas blancas y marco negro.

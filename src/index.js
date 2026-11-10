@@ -8,7 +8,9 @@ import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile, renameProfile } from './auth.js';
 import { listMatches, getMatch } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
-import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking } from './social.js';
+import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
+import { recentMatches } from './matches.js';
+import { fakeRecent } from './matchmaking.js';
 import { MODES, DEFAULT_MODE, DEFAULT_TARGET, TARGETS, ELO_START, SHOW_TABLES, roomOptions } from '../public/js/config.js';
 
 export { TrucoRoom, Lobby };
@@ -108,7 +110,7 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     const body = await request.json().catch(() => ({}));
     const uid = auth.user.id;
-    const r = path === '/api/friends' ? await requestFriend(env, uid, body.username)
+    const r = path === '/api/friends' ? await requestFriend(env, uid, body.username, !!body.fromProfile)
       : path === '/api/friends/respond' ? await respondFriend(env, uid, body.id, !!body.accept)
       : path === '/api/friends/remove' ? await removeFriend(env, uid, body.id)
       : { error: 'No encontrado' };
@@ -136,6 +138,15 @@ async function handle(request, env) {
     const body = await request.json().catch(() => ({}));
     await lobbyStub(env).inviteDone(auth.user.id, String(body.code));
     return json({ ok: true });
+  }
+
+  // el perfil de otro jugador (para verlo y agregarlo de amigo)
+  const user = path.match(/^\/api\/users\/([^/]+)$/);
+  if (user && method === 'GET') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const r = await publicProfile(env, auth.user.id, decodeURIComponent(user[1]), recentMatches, fakeRecent);
+    return r.error ? json({ error: r.error }, 404) : json(r);
   }
 
   if (path === '/api/ranking' && method === 'GET') {

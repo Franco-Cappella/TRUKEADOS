@@ -15,6 +15,7 @@ import { initAuth, loadMe, currentMe, lastLoadError, onAuthChange, signOut } fro
 import { initAccount, showEntry, showLoginError } from './account.js';
 import { initHistory, showReplay, hideReplay } from './history.js';
 import { RoomClient } from './room-client.js';
+import { initProfiles } from './profile-card.js';
 
 let scene = null;
 let room = null;
@@ -122,9 +123,9 @@ function bindGameUI() {
     room?.act({ t: 'rendirse' });
   };
 
-  // vista: primera persona, tercera (desde atrás) y segunda (de frente), como en los juegos de bloques (botón o V)
+  // vista: primera persona o segunda (de frente, te ves la cara), con el botón o la tecla V
   const cb = $('#cam-btn');
-  const CAM_LABEL = { first: 'Vista: 1ª', back: 'Vista: 3ª', front: 'Vista: 2ª' };
+  const CAM_LABEL = { first: 'Vista: 1ª', front: 'Vista: 2ª' };
   const paintCam = () => (cb.textContent = CAM_LABEL[scene.camMode] || CAM_LABEL.first);
   paintCam();
   cb.onclick = () => {
@@ -349,6 +350,7 @@ function openMatch(id) {
 }
 
 initMenu(go, logout);
+initProfiles(); // tocar el nombre de alguien abre su perfil
 initHistory(openMatch, () => {
   // volver al historial (o atrás, si se llegó desde ahí)
   sessionStorage.setItem('truco-menu-tab', 'partidas');
