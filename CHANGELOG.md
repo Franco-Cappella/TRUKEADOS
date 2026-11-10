@@ -1,5 +1,9 @@
 # Cambios
 
+## 1.18.4 — taquilla a la medida
+- La Taquilla entra entera en la pantalla: la tarima ocupa el alto y la columna de la derecha se desliza si hace falta.
+- Migración que le regala a NicoV todos los cosméticos de la tienda.
+
 ## 1.18.3 — irse mostrando
 - Al irte al mazo, además de "Sí, me voy" está **"Me voy y muestro"**: te vas y das vuelta las cartas que no tiraste
   ("¡Mirá lo que tenía!"), para lucirte o cargar al rival. No cambia ningún punto.

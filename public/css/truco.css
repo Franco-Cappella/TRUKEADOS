@@ -657,8 +657,9 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .sh-item .btn { border-radius: var(--radius); }
 .sh-own { font-size: 13px; color: var(--good-ink); padding: 7px 0; }
 /* ---------- taquilla: la tarima y los casilleros ---------- */
-.lk { display: grid; grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.05fr); gap: 0; min-height: min(720px, calc(100vh - 80px)); background: var(--bg); border: 1px solid var(--line); }
-.lk-stage { position: relative; overflow: hidden; container-type: inline-size; background: radial-gradient(ellipse 70% 55% at 50% 70%, #2a2a2a 0%, #101010 60%, #050505 100%); border-right: 1px solid var(--line); min-height: 520px; }
+/* entra entera en la pantalla: la tarima ocupa el alto y la columna de la derecha se desliza si hace falta */
+.lk { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr); gap: 0; height: calc(100dvh - 110px); min-height: 460px; max-height: 820px; background: var(--bg); border: 1px solid var(--line); }
+.lk-stage { position: relative; overflow: hidden; container-type: inline-size; background: radial-gradient(ellipse 70% 55% at 50% 70%, #2a2a2a 0%, #101010 60%, #050505 100%); border-right: 1px solid var(--line); min-height: 0; }
 .lk-bigname { position: absolute; inset: 5% 0 auto; text-align: center; font-weight: 800; font-size: clamp(48px, 21cqi, 150px); line-height: 0.85; letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.16); word-break: break-word; padding: 0 12px; pointer-events: none; user-select: none; }
 .lk-view { position: absolute; inset: 0; }
 .lk-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -677,7 +678,7 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .rar.leg { background: var(--text); color: var(--bg); border-color: var(--text); }
 .rar.epi { color: var(--text); border-color: var(--text); background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0 4px, transparent 4px 8px); }
 .rar.raro { color: var(--text); border-color: var(--text); }
-.lk-side { display: flex; flex-direction: column; gap: 16px; padding: clamp(16px, 2.4vw, 28px); min-width: 0; }
+.lk-side { display: flex; flex-direction: column; gap: 14px; padding: clamp(14px, 2vw, 24px); min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .lk-head { display: flex; align-items: center; gap: 12px; }
 .lk-head h3 { margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 800; letter-spacing: -0.04em; text-transform: uppercase; flex: 1; }
 .lk-coins { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
@@ -686,7 +687,8 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .lk-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .lk-tile, .lk-item { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 8px 8px 9px; text-align: left; background: var(--surface); border: 1px solid var(--line); color: var(--text); cursor: pointer; transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.12s, background 0.12s; min-width: 0; }
 .lk-tile:hover, .lk-item:hover { transform: translateY(-2px); border-color: var(--text-dim); }
-.lk-tile canvas, .lk-item canvas { width: 100%; aspect-ratio: 1; height: auto; background: #0d0d0d; display: block; margin-bottom: 4px; object-fit: contain; }
+.lk-tile canvas, .lk-item canvas { width: 100%; height: clamp(52px, 9vh, 92px); background: #0d0d0d; display: block; margin-bottom: 4px; object-fit: contain; }
+.lk-item canvas { height: clamp(64px, 12vh, 112px); }
 .lk-tile small, .lk-item small { font-size: 9px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
 .lk-tile b, .lk-item b { font-size: 13px; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-tile.open { border-color: var(--text); box-shadow: inset 0 -3px 0 var(--text); }
@@ -697,15 +699,16 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .lk-tile.raro, .lk-item.raro { border-color: var(--line-2); }
 .lk-pick h4 { margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; }
 .lk-pick h4 small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-dim); margin-left: 6px; font-size: 13px; }
-.lk-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.lk-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .lk-item.on { outline: 2px solid var(--text); outline-offset: 2px; }
 .lk-item.on::after { content: 'Puesto'; position: absolute; top: 12px; left: 12px; padding: 2px 6px; font-size: 9px; font-weight: 800; letter-spacing: var(--track); text-transform: uppercase; background: var(--text); color: var(--bg); }
 .lk-item.leg.on::after { background: var(--bg); color: var(--text); }
-.lk-item.more { justify-content: center; align-items: center; text-align: center; border-style: dashed; background: none; min-height: 150px; }
+.lk-item.more { justify-content: center; align-items: center; text-align: center; border-style: dashed; background: none; min-height: 110px; }
 .lk-item.more span { font-size: 36px; font-weight: 300; line-height: 1; }
 @media (max-width: 900px) {
-  .lk { grid-template-columns: 1fr; }
-  .lk-stage { min-height: 420px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .lk { grid-template-columns: 1fr; height: auto; max-height: none; }
+  .lk-stage { height: min(60vh, 440px); border-right: 0; border-bottom: 1px solid var(--line); }
+  .lk-side { overflow: visible; }
   .lk-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) { .lk-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
