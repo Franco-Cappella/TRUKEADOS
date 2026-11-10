@@ -166,7 +166,11 @@ npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRE
   hacen los demás (`talkEvent`: cantos, cartas grandes, rondas, mazo, envido, fin de partida), apuran al que tarda
   (`TIMING.botIdle`) y a veces se contestan entre ellos. Las frases dependen de
   la chance de ganar que calcularon, sin delatarse: con mano buena a veces se hacen los humildes y cuando
-  farolean casi siempre se hacen los guapos. Como mucho uno cada `TIMING.botChatGap` ms. Ninguna frase nombra el truco ni el envido salvo que sea el canto: decir una de esas palabras en una frase es cantarla (o subirla), así que la charla dice "el segundo", "el primero" o "los tantos" ([reglas](docs/REGLAS.md)).
+  farolean casi siempre se hacen los guapos.
+- **Faroles con medida** (`bluffTax` en bot.js, `BOT.bluffTax`/`bluffSure`/`faltaMinWin` en config.js): como el modelo de base
+  supone rivales que casi nunca quieren, cantar con nada "convenía" siempre y los bots cantaban envido (y falta) en
+  cada mano. Ahora cantar con poca chance de ganar el envido o el truco resta puntos, y la falta solo sale con tantos de
+  verdad (o si al rival le faltan `BOT.faltaDesperate` puntos o menos). Lo verifica test/bots.test.js. Como mucho uno cada `TIMING.botChatGap` ms. Ninguna frase nombra el truco ni el envido salvo que sea el canto: decir una de esas palabras en una frase es cantarla (o subirla), así que la charla dice "el segundo", "el primero" o "los tantos" ([reglas](docs/REGLAS.md)).
 
 ## Interfaz
 - Al abrir una sala, `RoomClient` borra los botones del panel: si no, al volver a una partida con el mismo canto

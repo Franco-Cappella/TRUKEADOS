@@ -455,6 +455,9 @@ function evRaise(st, u, level, cur) {
   return (1 - pa) * u(cur) + pap * u(level) + (pa - pap) * u(-level);
 }
 
+// Como bluffTax pero para el truco: un farol de vez en cuando, no cantar con cualquier cosa.
+const trucoTax = (p) => (p >= BOT.bluffSure.truco ? 0 : (BOT.bluffTax.truco * (BOT.bluffSure.truco - p)) / BOT.bluffSure.truco);
+
 function trucoTurn(g, seat, ctx, rng, a) {
   const h = g.h;
   const L = h.truco.level;
@@ -463,7 +466,7 @@ function trucoTurn(g, seat, ctx, rng, a) {
   ctx.out = { p };
   const u = utility(g, seat);
   const evPass = p * u(L) + (1 - p) * u(-L);
-  const evCall = evRaise(st, u, L + 1, L) + BOT.aggro;
+  const evCall = evRaise(st, u, L + 1, L) + BOT.aggro - trucoTax(p);
   return choose([{ a: null, ev: evPass }, { a: { t: 'truco' }, ev: evCall }], rng);
 }
 
@@ -478,7 +481,7 @@ function trucoAnswer(g, seat, ctx, rng, a) {
     { a: { t: 'quiero' }, ev: p * u(Lp) + (1 - p) * u(-Lp) },
     { a: { t: 'noquiero' }, ev: u(-(Lp - 1)) },
   ];
-  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(st, u, Lp + 1, Lp) + BOT.aggro });
+  if (a.truco) opts.push({ a: { t: 'truco' }, ev: evRaise(st, u, Lp + 1, Lp) + BOT.aggro - trucoTax(p) });
   return choose(opts, rng);
 }
 
@@ -515,11 +518,24 @@ function envidoSamples(g, seat, ctx, rng) {
   return worlds(g, seat, ctx, rng, weigher(g, seat, ctx));
 }
 
+// Lo que cuesta cantar `kind` con chance p de ganar el envido: con buenos tantos nada; con poco, un farol de vez en
+// cuando sí, pero no en cada mano (si no, el rival lo aprende y te quiere todo). La falta, solo con tantos de verdad
+// o cuando el rival ya está por ganar (ahí no hay nada que perder). null: ni pensarlo.
+export function bluffTax(g, seat, kind, p) {
+  if (kind === 'falta' && p < BOT.faltaMinWin && g.target - g.score[1 - team(seat)] > BOT.faltaDesperate) return null;
+  const sure = BOT.bluffSure[kind] ?? 0.5;
+  return p >= sure ? 0 : ((BOT.bluffTax[kind] ?? 0) * (sure - p)) / sure;
+}
+
 function envidoOpen(g, seat, ctx, rng, a) {
   const samples = envidoSamples(g, seat, ctx, rng);
-  ctx.out = { p: wavg(samples, (w) => (envidoWins(g, seat, w) ? 1 : 0)) };
+  const p = wavg(samples, (w) => (envidoWins(g, seat, w) ? 1 : 0));
+  ctx.out = { p };
   const opts = [{ a: null, ev: 0 }];
-  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + BOT.aggro / 2 });
+  for (const kind of a.envido) {
+    const tax = bluffTax(g, seat, kind, p);
+    if (tax != null) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [kind]) + BOT.aggro / 2 - tax });
+  }
   return choose(opts, rng);
 }
 
@@ -541,7 +557,11 @@ function envidoAnswer(g, seat, ctx, rng, a) {
     },
     { a: { t: 'noquiero' }, ev: u(-envidoDeclinedPoints(g, calls, 1 - T)) },
   ];
-  for (const kind of a.envido) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [...calls, kind]) });
+  const p = ctx.out.p;
+  for (const kind of a.envido) {
+    const tax = bluffTax(g, seat, kind, p);
+    if (tax != null) opts.push({ a: { t: 'envido', kind }, ev: evEnvido(g, seat, ctx, samples, [...calls, kind]) - tax });
+  }
   return choose(opts, rng);
 }
 

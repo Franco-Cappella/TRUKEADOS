@@ -11,14 +11,14 @@
 // que imaginan del rival (bot.js): contra alguien que farolea mucho, un truco suyo asusta menos.
 import { rank, team, tanto, waitingFor, actionsFor, envidoOpenFor } from './engine.js';
 
-export const BRAIN_VERSION = 1;
+export const BRAIN_VERSION = 2; // 2: la gente quiere el envido más seguido (antes los bots faroleaban siempre)
 
 // Lo que se supone de alguien que todavía no se conoce (el cerebro global arranca así).
 const PRIORS = {
   trucoCall: [-2.4, 3.4, 0, 0],
   trucoAccept: [-1.6, 3.6, -0.5],
   envidoCall: [-3.4, 4.2],
-  envidoAccept: [-2.0, 3.6, -0.4, -1.5],
+  envidoAccept: [-1.0, 3.6, -0.4, -1.6],
 };
 const RATES = { lie: [1, 4], claim: [3, 2] }; // [veces sí, veces no] de arranque
 export const MODEL_KEYS = Object.keys(PRIORS);

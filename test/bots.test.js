@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, act, waitingFor, nextHand, closeShow, rank, tanto } from '../public/js/engine.js';
-import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks, botCallsTantos } from '../public/js/bot.js';
+import { botAction, botShow, stackDeck, botClaims, imagine, BotMemo, fallbackActions, botAnswer, botAsks, botCallsTantos, bluffTax } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkEvent, BOT_TALK, ASK_TALK, talkAnswer, talkAsk, PHRASE_WHEEL, TELL_TANTOS, TANTO_NAMES, talkTellTantos } from '../public/js/talk.js';
 import { BOT } from '../public/js/config.js';
 import { newBrain, train, predict, observe, rate, X } from '../public/js/brain.js';
@@ -335,9 +335,11 @@ test('memoria: la misma situación se piensa hasta juntar BOT.memoSamples y desp
   const rng = seeded(5);
   const visits = BOT.memoSamples / BOT.samples;
   for (let i = 0; i < visits; i++) botAction(g, 0, rng, { memo });
-  const misses = memo.misses;
-  assert.ok(misses > 0);
+  assert.ok(memo.misses > 0);
   assert.equal(memo.hits, 0);
+  // el bot a veces canta y a veces no: cada rama (truco, qué carta tirar) junta sus manos imaginadas
+  for (let i = 0; i < visits * 4; i++) botAction(g, 0, rng, { memo });
+  const misses = memo.misses;
   // ya maduró: no vuelve a simular
   for (let i = 0; i < 5; i++) botAction(g, 0, rng, { memo });
   assert.equal(memo.misses, misses);
@@ -488,4 +490,30 @@ test('"callado": dice que lo canten ellos solo si los rivales todavía pueden', 
     assert.ok([...puede].some((x) => /ellos/.test(x)), kind);
     for (let i = 0; i < 300; i++) assert.doesNotMatch(talkAnswer(kind, 'callado', seeded(i), false), /ellos/, kind);
   }
+});
+
+test('envido con medida: a 0 a 0 nunca canta falta sin tantos, y no farolea en cada mano', () => {
+  const rng = seeded(11);
+  let falta = 0;
+  let calls = 0;
+  let hands = 0;
+  for (let i = 0; i < 300; i++) {
+    const g = newGame({ mode: '1v1', target: 30, trucoDesdeSegunda: true }, rng);
+    const s = waitingFor(g).seats[0];
+    if (tanto(g.h.cards[s], g.h.muestra).value >= 24) continue;
+    hands++;
+    const a = botAction(g, s, rng, {});
+    if (a?.t === 'envido') calls++;
+    if (a?.t === 'envido' && a.kind === 'falta') falta++;
+  }
+  assert.equal(falta, 0);
+  assert.ok(calls / hands < 0.55, `canta envido sin tantos en ${calls} de ${hands}`);
+});
+
+test('falta envido: si al rival le faltan pocos puntos, se la juega aunque no tenga tanto', () => {
+  const g = newGame({ mode: '1v1', target: 30 });
+  g.score = [5, 27];
+  assert.notEqual(bluffTax(g, 0, 'falta', 0.3), null);
+  g.score = [0, 0];
+  assert.equal(bluffTax(g, 0, 'falta', 0.3), null);
 });
