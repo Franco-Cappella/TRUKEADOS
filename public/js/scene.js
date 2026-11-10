@@ -5,7 +5,7 @@ import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { loadModel, Rig } from './models.js';
 import { canvasTex, noise, seeded, toon, setAniso } from './draw3d.js';
 import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
-import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
+import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
 import { store, KEYS } from './dom.js';
@@ -774,7 +774,7 @@ export class TableScene {
     if (!first) {
       this.syncHandBacks(c);
       const g = c.handBacks.group;
-      g.position.copy(r.root.worldToLocal(r.at('LeftHand'))).add(new THREE.Vector3(0, 0.04, 0.02));
+      g.position.copy(r.root.worldToLocal(r.at('LeftHand'))).add(new THREE.Vector3(0, 0.04, 0.02)).add(r.cardsOffset);
       g.rotation.set(-0.35, 0, 0);
       g.visible = c.state.cards > 0;
     } else if (c.handBacks) {
@@ -785,6 +785,17 @@ export class TableScene {
     const expr = now < c.exprUntil ? c.state.expr : 'neutral';
     const talking = now < c.talkUntil && Math.floor(now / 130) % 2 === 0;
     r.face?.set(expr, talking, expr === 'bite' ? biteAt(now) : 1);
+    // de reojo no se ve la seña: solo mirándolo (tu propia cara, de frente, siempre)
+    if (r.face?.on) r.face.fade(c.self ? 1 : this.glance(r.at('Head')));
+  }
+
+  // Cuánto se ve una seña en ese punto: 1 en el centro de la vista, 0 de reojo (SENA_GLANCE).
+  glance(at) {
+    const fwd = this.camera.getWorldDirection(new THREE.Vector3());
+    const to = at.sub(this.camera.getWorldPosition(new THREE.Vector3())).normalize();
+    const deg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(fwd.dot(to), -1, 1)));
+    const t = THREE.MathUtils.clamp((deg - SENA_GLANCE.clear) / (SENA_GLANCE.gone - SENA_GLANCE.clear), 0, 1);
+    return 1 - t * t * (3 - 2 * t);
   }
 
   // ------------------------------------------------------------ vistas (primera y segunda persona)

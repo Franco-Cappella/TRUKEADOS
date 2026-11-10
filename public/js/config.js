@@ -133,6 +133,9 @@ export const SENAS = {
   nada_envido: { label: 'No tengo envido', expr: 'frown', desc: 'Boca para abajo' },
 };
 export const SENA_MS = 2200; // cuánto dura la cara de una seña
+// Las señas se ven mirando al que la hace, no de reojo: la carita está entera hasta `clear` grados del centro de la
+// vista y se borra del todo a los `gone` (más allá, se le ve la cara de siempre). Así hay que girar para pescarla.
+export const SENA_GLANCE = { clear: 9, gone: 20 };
 export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
 
 // ------------------------------------------------------------------ bots
@@ -229,7 +232,8 @@ export function botSkill(elo) {
   return { samples: Math.round(6 + 44 * t), temp: 0.9 - 0.75 * t, slip: 0.3 * (1 - t) ** 1.5 };
 }
 // Monedas: al registrarte, por partida (contra bots elegidos, la mitad) y cada escalón nuevo de ELO.
-export const COINS = { signup: 200, game: 10, win: 10, botFactor: 0.5, milestoneStep: 100, milestone: 75 };
+export const COINS = { signup: 200, game: 10, win: 10, // ganar: game + win (perder no da monedas)
+  botFactor: 0.5, milestoneStep: 100, milestone: 75 };
 export const AVATAR = {
   size: 128, // lado en píxeles de la foto guardada
   maxChars: 24000,

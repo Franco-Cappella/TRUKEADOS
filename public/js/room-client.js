@@ -1328,7 +1328,7 @@ export class RoomClient {
     // lo que te dejó la partida (llega un ratito después, cuando se guarda)
     const mine = this.match?.players.find((p) => p.seat === this.you);
     const gains = mine
-      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Partida sin puntuar</small></span>'}<span>+${mine.coins} monedas${mine.milestone ? ` <small>(${mine.milestone} por tu récord de ELO)</small>` : ''}</span></div>`
+      ? `<div class="r-gains">${this.match.rated ? `<span class="${mine.eloDelta >= 0 ? 'up' : 'down'}">${mine.eloDelta >= 0 ? '+' : ''}${mine.eloDelta} ELO <small>(${mine.eloBefore + mine.eloDelta})</small></span>` : '<span><small>Partida sin puntuar</small></span>'}${mine.coins ? `<span>+${mine.coins} monedas${mine.milestone ? ` <small>(${mine.milestone} por tu récord de ELO)</small>` : ''}</span>` : '<span><small>Sin monedas: se ganan ganando</small></span>'}</div>`
       : '';
     el.innerHTML = `<div class="card-box">
       <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron!' : 'Perdieron'}</h2>

@@ -239,10 +239,11 @@ créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarl
   piezas de cada uno en `PARTS` (cuerpo, cabeza, brazos, patas, la pieza de la cara). Junta todo en una malla, une las
   texturas (con transparencia), arma huesos con nombres de Mixamo y reparte los brazos y las patas entre sus tres
   huesos para que se doblen. `seatLift` y `handsForward` acomodan cuerpos que no son de persona. Sus señas son una
-  carita encima de la cara (`extras.face.emoji`, `EmojiFace` en models.js) en vez de las capas de ojos y boca.
+  carita encima de la cara (`extras.face.emoji`). `clearFace` saca lo del cuerpo que tapa la cara y `cardsOffset`
+  adelanta las cartas de la mano.
 - `models.js` (`Rig`) los posa por código con cinemática inversa de dos huesos: sentado, la izquierda con las cartas,
-  la derecha que tira (`reach` en scene.js), la cabeza que mira. Las señas son capas dibujadas pegadas a la cabeza
-  (`FaceLayer`): párpados, cejas, boca, cachetes y nariz, en el lugar que encontró la herramienta.
+  la derecha que tira (`reach` en scene.js), la cabeza que mira. Las señas son una carita tipo emoji que tapa la cara
+  (`EmojiFace`), en el lugar que encontró la herramienta (entre los ojos y la boca, o `extras.face.emoji`).
 - Los bots que se llaman como un personaje lo usan (`BOT_PERSONAJES`, `botCos` en config.js; lo agrega `publicRoom`).
 - Vistas (botón "Vista" arriba o tecla V): primera persona y segunda (de frente). En primera persona tu personaje
   3D sigue a la cámara (solo lo ves vos) y sus manos sostienen y tiran las cartas.

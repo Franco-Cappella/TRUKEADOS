@@ -18,10 +18,14 @@ const PARTS = {
     arms: ['polySurface32_lambert12_0', 'polySurface33_lambert12_0'],
     legs: ['pCylinder27_lambert12_0', 'pCylinder28_lambert12_0'],
     height: 1.1, // de las patas a la punta
-    neck: 0.42, // a qué altura del cuerpo (0 abajo, 1 arriba) empieza la cabeza
+    // a qué altura del cuerpo (0 abajo, 1 arriba) empieza la cabeza. El Gato Melón es todo cabeza: casi desde abajo
+    // (si el melón se repartiera entre el pecho y la cabeza, al girarla el borde amarillo se metería en la cara)
+    neck: 0.1,
     face: 'pPlane5_lambert13_0', // la pieza con la cara (ahí va la carita de las señas)
+    clearFace: 0.95, // sacar lo del cuerpo que tapa la cara (hasta este tanto del óvalo de la cara)
     seatLift: 0.2, // sentado: cuánto más alto que una persona (es una bola: si no, la mesa le tapa la cara)
     handsForward: 0.3, // las manos más adelante (si no, quedan adentro de la bola)
+    cardsOffset: [-0.35, -0.04, 0.55], // las cartas de la mano: más al medio, arriba y adelante (si no, la bola las tapa)
   },
 };
 const ATLAS = 1024;
@@ -95,7 +99,7 @@ const limb = (piece, side, names, parent) => {
   piece.chain = { a, b, e, root, tip };
 };
 const side = (piece) => (piece.pos.reduce((s, v) => s + v[0], 0) > 0 ? 'Left' : 'Right'); // su izquierda es +x
-for (const p of pieces.filter((x) => x.kind === 'arm')) limb(p, side(p), ['Arm', 'ForeArm', 'Hand'], spine2);
+for (const p of pieces.filter((x) => x.kind === 'arm')) limb(p, side(p), ['Arm', 'ForeArm', 'Hand'], cfg.neck < 0.3 ? head : spine2); // si es todo cabeza, los brazos giran con ella
 for (const p of pieces.filter((x) => x.kind === 'leg')) limb(p, side(p), ['UpLeg', 'Leg', 'Foot'], hips);
 for (const s of ['Left', 'Right']) {
   for (const n of ['Arm', 'UpLeg']) if (!joints.some((j) => j.name === s + n)) throw new Error(`Falta ${s}${n}: revisá las piezas`);
@@ -161,6 +165,40 @@ for (const t of texIds) {
   slot++;
 }
 
+// solo lo que se ve de la pieza (la textura tiene partes transparentes)
+const opaque = (p, i) => {
+  const r = rects[p.tex];
+  const x = Math.min(r.w - 1, Math.max(0, Math.floor(p.uv[i * 2] * r.w))) + r.x;
+  const y = Math.min(r.h - 1, Math.max(0, Math.floor(p.uv[i * 2 + 1] * r.h))) + r.y;
+  return atlas.data[(y * ATLAS + x) * 4 + 3] > 128;
+};
+
+// ---------------------------------------------------------------- la cara despejada
+// Los pedazos del cuerpo que quedan adelante de la cara (el borde amarillo del melón, en punta) se la tapan o se
+// cruzan con ella según de dónde se mire: se sacan los triángulos del cuerpo que caen adentro del óvalo de la cara.
+if (cfg.face && cfg.clearFace) {
+  const fv = pieces.filter((x) => x.name === cfg.face).flatMap((x) => x.pos.filter((_, i) => opaque(x, i)));
+  const lo = [0, 1, 2].map((c) => Math.min(...fv.map((v) => v[c])));
+  const hi = [0, 1, 2].map((c) => Math.max(...fv.map((v) => v[c])));
+  const cx = (lo[0] + hi[0]) / 2;
+  const cy = (lo[1] + hi[1]) / 2;
+  const rx = ((hi[0] - lo[0]) / 2) * cfg.clearFace;
+  const ry = ((hi[1] - lo[1]) / 2) * cfg.clearFace;
+  let dropped = 0;
+  for (const piece of pieces.filter((x) => x.kind === 'body')) {
+    const keep = [];
+    for (let t = 0; t < piece.idx.length; t += 3) {
+      const v = [0, 1, 2].map((k) => piece.pos[piece.idx[t + k]]);
+      const c = [0, 1, 2].map((k) => (v[0][k] + v[1][k] + v[2][k]) / 3);
+      const inside = ((c[0] - cx) / rx) ** 2 + ((c[1] - cy) / ry) ** 2 < 1 && c[2] > lo[2] - (hi[2] - lo[2]) - 0.02;
+      if (inside) dropped++;
+      else keep.push(piece.idx[t], piece.idx[t + 1], piece.idx[t + 2]);
+    }
+    piece.idx = keep;
+  }
+  console.log('cara despejada:', dropped, 'triángulos del cuerpo fuera');
+}
+
 // ---------------------------------------------------------------- la malla
 const P = [];
 const N = [];
@@ -187,13 +225,6 @@ for (const p of pieces) {
 }
 
 // ---------------------------------------------------------------- la cara (para la carita de las señas)
-// solo lo que se ve de la pieza (la textura tiene partes transparentes)
-const opaque = (p, i) => {
-  const r = rects[p.tex];
-  const x = Math.min(r.w - 1, Math.max(0, Math.floor(p.uv[i * 2] * r.w))) + r.x;
-  const y = Math.min(r.h - 1, Math.max(0, Math.floor(p.uv[i * 2 + 1] * r.h))) + r.y;
-  return atlas.data[(y * ATLAS + x) * 4 + 3] > 128;
-};
 const eyes = pieces.filter((p) => p.name === cfg.face).flatMap((p) => p.pos.filter((_, i) => opaque(p, i)));
 const faceV = eyes.length ? eyes : pieces.filter((p) => p.kind === 'body').flatMap((p) => p.pos).filter((v) => v[2] > bz[1] - (bz[1] - bz[0]) * 0.15);
 const fc = faceV.reduce((a, v) => a.map((x, k) => x + v[k] / faceV.length), [0, 0, 0]);
@@ -256,7 +287,7 @@ joints.forEach((j, i) => {
 nodes[0].children = [1, 2]; // la malla y la cadera
 const out = {
   asset: { version: '2.0', generator: 'Trukeados tools/rig-rigid.mjs', extras: J.asset.extras },
-  extras: { face, alpha: true, seatLift: cfg.seatLift || 0, handsForward: cfg.handsForward || 0 },
+  extras: { face, alpha: true, seatLift: cfg.seatLift || 0, handsForward: cfg.handsForward || 0, cardsOffset: cfg.cardsOffset || [0, 0, 0] },
   scene: 0,
   scenes: [{ nodes: [0] }],
   nodes,

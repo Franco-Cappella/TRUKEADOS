@@ -138,7 +138,7 @@ export class LockerStage {
       this.rig.root.rotation.y = this.yaw;
       this.rig.root.updateMatrixWorld(true);
       this.rig.stand({ breathe: Math.sin(now / 900), headYaw: Math.sin(now / 2600) * 0.35 });
-      this.rig.face?.set(Math.floor(now / 4200) % 5 === 4 ? 'brows' : 'neutral');
+      this.rig.face?.set('neutral');
       this.renderer.render(this.scene, this.camera);
     };
     requestAnimationFrame(tick);

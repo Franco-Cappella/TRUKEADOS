@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.23.0 — caritas para todos
+- **Señas con carita para todos**: Volcho y Olcho también hacen las señas con una carita redonda que les tapa la cara,
+  como el Gato Melón (se fueron los párpados y las bocas dibujados encima de la cara).
+- **Las señas se ven mirando, no de reojo**: la carita se ve entera solo si tenés al jugador cerca del centro de la
+  vista (unos 9 grados) y se borra del todo a los 20 (SENA_GLANCE). A los de los costados los ves, pero para pescar
+  su seña hay que girar a mirarlos.
+- **Gato Melón**: la cara ya no se cruza con el borde amarillo del melón (todo el melón gira junto con la cara) y las
+  cartas de la mano van adelante, a la vista, para que se vea cuántas le quedan.
+- **Monedas solo si ganás**: perder una partida ya no da monedas (ganar sigue dando lo mismo que antes).
+
 ## 1.22.0 — ajustes nuevos y tienda con secciones
 - **Ajustes**: borrar tu cuenta (escribiendo tu nombre de usuario para confirmar) y descargar tus datos en un archivo;
   "Aparecer conectado" (si lo apagás, tus amigos te ven desconectado); avisos de mensajes y de solicitudes de amistad

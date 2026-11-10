@@ -38,7 +38,7 @@ export async function recordMatch(env, meta, log, game) {
   const peaks = [];
   players.forEach((p, i) => {
     p.elo_delta = deltas[i];
-    p.coins = Math.round((COINS.game + (p.won ? COINS.win : 0)) * factor);
+    p.coins = p.won ? Math.round((COINS.game + COINS.win) * factor) : 0; // monedas solo si ganás
     p.milestone = 0;
     const row = prof.get(p.user_id);
     // sin la columna elo_peak (migración pendiente) no hay premio: no se puede saber si ya lo cobró
