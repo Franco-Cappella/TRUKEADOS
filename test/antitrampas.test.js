@@ -21,7 +21,7 @@ test('antitrampas: la seña no le llega al que recién empezó a mirar (ni rastr
   await h.send(ws[1], { t: 'look', target: 0 });
   await h.send(ws[0], { t: 'sena', sena: 'ancho_espada' });
   assert.equal(senas(ws[1]).length, 0);
-  assert.deepEqual(senas(ws[0]).at(-1).seenBy, []);
+  assert.ok(!senas(ws[0]).at(-1).seenBy.includes(1)); // (un bot que ya venía mirando sí la ve)
   await h.tick(ANTICHEAT.senaDwell + ANTICHEAT.senaGap);
   await h.send(ws[0], { t: 'sena', sena: 'tres' });
   assert.equal(senas(ws[1]).at(-1).sena, 'tres');
