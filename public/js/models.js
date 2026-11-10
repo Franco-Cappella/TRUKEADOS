@@ -328,7 +328,7 @@ class EmojiFace {
   }
 
   set(expr, talking = false, bite = 1) {
-    const key = `${expr}|${expr === 'bite' ? Math.round(bite * 6) : ''}`;
+    const key = `${expr}|${expr === 'bite' ? Math.round(bite * 14) : ''}`;
     if (key === this.key) return;
     this.key = key;
     if (!EMOJI[expr]) {
@@ -411,7 +411,7 @@ const curve = (c, pts, lw = 7) => {
   c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]);
   c.stroke();
 };
-const EMOJI = {
+export const EMOJI = { // las caritas de las señas (exportadas para mirarlas en tools/)
   // cejas bien arriba, ojos grandes
   brows: (c) => {
     arc(c, -34, -54, 20, 16);
@@ -437,23 +437,90 @@ const EMOJI = {
     dot(c, 32, -18);
     curve(c, [-12, 42, 24, 46, 50, 24]);
   },
-  // se muerde el labio: los dientes de arriba sobre el labio de abajo (se anima con bite)
+  // Se muerde el labio (la seña del tres), con la boca cerrada: la línea del labio de arriba, el labio de abajo
+  // carnoso y los dos dientes de adelante apoyados encima. Con bite de 0 a 1 los dientes se hunden en el labio, que se
+  // aplasta, se pone más oscuro y se le marca el pozo; la ceja sube, los ojos se entrecierran y los cachetes se ponen
+  // colorados. Animado (SENA_BITE_MS) se ve el mordisco ir y venir.
   bite: (c, bite = 1) => {
-    arc(c, -34, -20, 16, 10);
-    arc(c, 34, -20, 16, 10);
-    const y = 34 + (1 - bite) * 6;
-    c.fillStyle = '#c0392b';
-    c.beginPath();
-    c.ellipse(0, y + 12, 34, 13, 0, 0, Math.PI * 2);
+    const b = Math.max(0, Math.min(1, bite));
+    // cachetes
+    c.fillStyle = 'rgba(255, 80, 80, ' + (0.15 + b * 0.35) + ')';
+    for (const x of [-58, 58]) {
+      c.beginPath();
+      c.ellipse(x, 24, 16, 10, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    // cejas: una sube (pícara), la otra baja un poco
+    arc(c, -36, -50 - b * 8, 20, 10 + b * 8, 7);
+    line(c, 18, -44 + b * 3, 52, -42, 7);
+    // ojos entrecerrados: la pupila recortada por el párpado (una línea que baja con el mordisco)
+    for (const x of [-34, 34]) {
+      const lid = -24 + b * 9;
+      c.save();
+      c.beginPath();
+      c.rect(x - 20, lid, 40, 40);
+      c.clip();
+      dot(c, x, -14, 12);
+      c.restore();
+      arc(c, x, lid, 17, -3, 6);
+    }
+    // labio de abajo: una medialuna carnosa debajo de la línea de la boca (la boca, grande: es lo que hay que leer)
+    const top = 30 - b * 2; // donde se juntan los labios
+    c.save();
+    c.translate(0, top);
+    c.scale(1.35, 1.35);
+    c.translate(0, -top);
+    const lw = 28 + b * 5;
+    const lh = 17 - b * 4; // mordido, más chato
+    const tl = 5 + b * 9; // cuánto se ven los dientes (se hunden en el labio)
+    const lip = () => {
+      c.beginPath();
+      c.moveTo(-lw, top);
+      c.quadraticCurveTo(-lw * 0.5, top + 2, 0, top + 4 * b); // el medio se hunde donde muerden
+      c.quadraticCurveTo(lw * 0.5, top + 2, lw, top);
+      c.bezierCurveTo(lw * 0.8, top + lh * 1.5, -lw * 0.8, top + lh * 1.5, -lw, top);
+      c.closePath();
+    };
+    lip();
+    c.fillStyle = b > 0.5 ? '#c93a4a' : '#e0505a';
     c.fill();
-    c.fillStyle = '#ffffff';
+    c.save();
+    lip();
+    c.clip();
+    // brillo abajo y la marca oscura donde se clavan los dientes
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.beginPath();
+    c.ellipse(-8, top + lh * 0.75, lw * 0.4, lh * 0.18, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = 'rgba(110, 5, 20, ' + b * 0.75 + ')';
+    c.beginPath();
+    c.ellipse(0, top + tl + 1, 18, 3 + b * 5, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+    lip();
     c.strokeStyle = INK;
-    c.lineWidth = 4;
-    c.beginPath();
-    c.rect(-22, y - 8, 44, 14 + bite * 4);
-    c.fill();
+    c.lineWidth = 5;
     c.stroke();
-    line(c, 0, y - 8, 0, y + 6 + bite * 4, 3);
+    // los dos dientes de adelante, desde la línea de la boca: bajan y se hunden en el labio
+    for (const x of [-10, 10]) {
+      c.beginPath();
+      c.roundRect(x - 8, top - 4, 16, tl + 4, [1, 1, 5, 5]);
+      c.fillStyle = '#ffffff';
+      c.fill();
+      c.strokeStyle = INK;
+      c.lineWidth = 4;
+      c.stroke();
+    }
+    // la línea del labio de arriba (tapa el arranque de los dientes) con las comisuras para abajo
+    curve(c, [-lw - 4, top + 3, 0, top - 4, lw + 4, top + 3], 5);
+    // tensión en las comisuras al apretar
+    if (b > 0.4) {
+      c.globalAlpha = (b - 0.4) / 0.6;
+      curve(c, [-lw - 10, top - 6, -lw - 16, top + 4, -lw - 10, top + 14], 4);
+      curve(c, [lw + 10, top - 6, lw + 16, top + 4, lw + 10, top + 14], 4);
+      c.globalAlpha = 1;
+    }
+    c.restore();
   },
   // trompita y un corazón
   kiss: (c) => {

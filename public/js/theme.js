@@ -173,10 +173,15 @@ export const COSMETIC_LOOK = {
   'pano-azul': { felt: ['#2f5f8f', '#244b73', '#1a3857'] },
   'pano-bordo': { felt: ['#7a2e38', '#62242d', '#4a1a22'] },
   'pano-negro': { felt: ['#333536', '#26282a', '#1a1b1c'] },
-  // paños con imagen (public/img/panos): estirada sobre toda la mesa. felt: los colores mientras carga.
-  // fit: 'stretch' (entera, estirada) o 'cover' (llena sin deformar, recorta lo que sobra); turn: girarla 90°
-  'pano-alfombra': { felt: ['#8e2a22', '#6e1f1a', '#2a1418'], img: '/img/panos/alfombra.webp', fit: 'stretch', thread: '#e8d6b0' },
-  'pano-almendro': { felt: ['#b8321f', '#962817', '#4a120a'], img: '/img/panos/almendro.webp', fit: 'cover', turn: true, thread: '#f4ede0' },
+  // paños pintados a mano (panos.js): draw es el pintor; felt, los colores de la vista chica; thread, la costura
+  'pano-alfombra': { felt: ['#8a1f1c', '#5e1412', '#2a1418'], draw: 'alfombra', thread: '#ecdcb6' },
+  'pano-almendro': { felt: ['#5fa8a8', '#22585e', '#163a3e'], draw: 'almendro', thread: '#f4ede0' },
+  'pano-fileteado': { felt: ['#1a1a1d', '#0d0d0f', '#000000'], draw: 'fileteado', thread: '#e8c547' },
+  'pano-poncho': { felt: ['#a3141a', '#7a0f14', '#121010'], draw: 'poncho', thread: '#f1ead8' },
+  'pano-casino': { felt: ['#1f7a4c', '#145a37', '#0b3520'], draw: 'casino', thread: '#d9b44a' },
+  'pano-calcareo': { felt: ['#ece2cc', '#9a3b2c', '#4a6478'], draw: 'calcareo', thread: '#2a2a2e' },
+  'pano-noche': { felt: ['#1d2d5a', '#0f1a3a', '#070b1d'], draw: 'noche', thread: '#f6efd6' },
+  'pano-madera': { felt: ['#7a5233', '#5e3d25', '#3a2416'], draw: 'madera', thread: '#e8c58a' },
   'dorso-azul': { back: ['#2f6fd6', '#f5f5f5'] },
   'dorso-verde': { back: ['#2e7344', '#f5f5f5'] },
   'dorso-negro': { back: ['#1c1c1c', '#f2c12e'] },

@@ -1,5 +1,17 @@
 # Cambios
 
+## 1.26.0 — paños pintados a mano
+- **Paños dibujados a mano** (en canvas, sin imágenes, en alta resolución): se rehicieron la **alfombra persa** (medallón
+  lobulado, esquinas, guarda de varias bandas con flores, flecos) y el **almendro en flor** (ramas nudosas, flores,
+  pimpollos y pétalos sobre un turquesa pintado a pinceladas), y hay seis nuevos: **fileteado porteño**, **poncho
+  salteño**, **casino**, **baldosa calcárea**, **noche de campo** (Vía Láctea, Cruz del Sur, la luna y la pampa) y
+  **mesa de bodegón** (tablones con nudos, clavos y el escudo marcado a fuego).
+- **Bots pie en 3 vs 3**: el pie ya no hace señas (las señas se le hacen a él); los demás bots miran a su pie para
+  hacérselas.
+- **Seña del tres**: la carita se entiende: boca cerrada, los dos dientes de adelante se hunden en el labio de abajo
+  (que se aplasta y se oscurece), ceja levantada, ojos entrecerrados, cachetes colorados; el mordisco va y viene más
+  despacio.
+
 ## 1.25.0 — tu personaje, tu mesa y lugares nuevos
 - **Creador de personaje**: al registrarte armás tu personaje parte por parte (piel, forma de la cara, pelo y su color,
   barba y bigote, anteojos, ropa y sus colores, y la bandera de tu país en un pin del pecho). Está parado en una

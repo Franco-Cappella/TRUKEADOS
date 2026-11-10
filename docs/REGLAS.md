@@ -88,6 +88,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | Irse al mazo y pedir "mostrá las dos" se puede en cualquier momento (no hace falta que sea tu turno) | `actionsFor` |
 | Si pasan 15 s sin que el ganador muestre ni nadie reclame, los tantos valen | `TIMING.showWindow` |
 | Señas: solo las ve quien te está mirando en ese momento | `TrucoRoom.deliverSena` |
+| En 3 vs 3 las señas se le hacen al pie: los bots pie no hacen señas y los demás miran a su pie para hacerlas | `TrucoRoom.botSenas` |
 | Terminada la mano (por ejemplo, después de un no quiero), cualquiera puede mostrar las cartas que no tiró ("mostrá lo que tenías"). También al irse al mazo ("me voy y muestro"). No cambia ningún punto | `engine.js` `lucir`, `mazo {show}` |
 | Si no estás (pestaña oculta o desconectado) y te toca cantar los tantos, a los 10 s se cantan solos: lo que tenés o "son buenas" | `TIMING.autoTanto`, `honestTanto` |
 | La revancha arranca cuando la aceptan todos los de la mesa | `TrucoRoom.tryRematch` |

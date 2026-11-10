@@ -5,6 +5,9 @@ import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { loadModel, Rig } from './models.js';
 import { canvasTex, noise, seeded, toon, setAniso } from './draw3d.js';
 import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
+import { drawPano } from './panos.js';
+
+const PANO_PX = 2048; // lado de la textura de los paños pintados
 import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES, AMBIENTE_CACHE, AMBIENTE_FADE_MS } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
@@ -227,65 +230,20 @@ function feltTex(colors, sides = 4) {
   });
 }
 
-// Paño con imagen (la alfombra, el almendro): la imagen estirada sobre toda la mesa, un poco más oscura en los bordes
-// (y apenas en el centro, para que las cartas se lean) y la costura alrededor. Mientras carga, el paño de colores.
-const feltImgs = new Map();
-function imageFeltTex(look, sides = 4) {
-  const tex = feltTex(look.felt || SCENE.felt, sides);
-  if (!feltImgs.has(look.img)) {
-    feltImgs.set(look.img, new Promise((ok, fail) => {
-      const img = new Image();
-      img.onload = () => ok(img);
-      img.onerror = fail;
-      img.src = look.img;
-    }));
-  }
-  feltImgs.get(look.img).then((img) => {
-    const c = tex.image;
-    const ctx = c.getContext('2d');
-    const { width: w, height: h } = c;
-    ctx.save();
-    if (look.turn) {
-      ctx.translate(w / 2, h / 2);
-      ctx.rotate(Math.PI / 2);
-      ctx.translate(-h / 2, -w / 2);
-    }
-    const W = look.turn ? h : w;
-    const H = look.turn ? w : h;
-    if (look.fit === 'cover') {
-      const k = Math.max(W / img.width, H / img.height);
-      ctx.drawImage(img, (W - img.width * k) / 2, (H - img.height * k) / 2, img.width * k, img.height * k);
-    } else ctx.drawImage(img, 0, 0, W, H);
-    ctx.restore();
-    // bordes más oscuros y el centro apenas apagado
-    const g = ctx.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w * 0.72);
-    g.addColorStop(0, 'rgba(0,0,0,0.12)');
-    g.addColorStop(0.6, 'rgba(0,0,0,0.05)');
-    g.addColorStop(1, 'rgba(0,0,0,0.5)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    noise(ctx, w, h, 5);
-    // costura
-    ctx.strokeStyle = look.thread || SCENE.feltInk;
-    ctx.globalAlpha = 0.8;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([14, 9]);
-    ctx.beginPath();
-    for (let k = 0; k <= sides; k++) {
-      const a = (k * Math.PI * 2) / sides + Math.PI / sides;
-      const x = w * (0.5 + 0.5 * 0.965 * Math.sin(a));
-      const y = h * (0.5 + 0.5 * 0.965 * Math.cos(a));
-      if (k) ctx.lineTo(x, y);
-      else ctx.moveTo(x, y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1;
-    tex.needsUpdate = true;
-  }).catch(() => {});
+// Paño pintado a mano (panos.js): el dibujo entero en alta resolución, con la trama, los bordes y la costura.
+function drawnFeltTex(look, sides = 4) {
+  const tex = canvasTex(PANO_PX, PANO_PX, () => {});
+  drawPano(tex.image, look, sides);
+  tex.needsUpdate = true;
   return tex;
 }
-const makeFelt = (look, sides) => (look?.img ? imageFeltTex(look, sides) : feltTex(look?.felt || SCENE.felt, sides));
+// Los paños quedan armados (en la partida la mesa cambia al paño del que tiene el turno: pintarlo cada vez trabaría).
+const feltCache = new Map();
+function makeFelt(look, sides) {
+  const key = `${look?.draw || (look?.felt || SCENE.felt).join()}|${sides}`;
+  if (!feltCache.has(key)) feltCache.set(key, look?.draw ? drawnFeltTex(look, sides) : feltTex(look?.felt || SCENE.felt, sides));
+  return feltCache.get(key);
+}
 
 // Dorso de las cartas de la tienda: fondo, borde y rombos del color de la tinta, con el nombre al medio.
 function backCanvas([bg, ink]) {
@@ -1002,13 +960,12 @@ export class TableScene {
     this.seatObjs.set(seat, { id, obj });
   }
 
-  // El paño y el dorso del mazo del anfitrión (tienda). null = los de siempre.
+  // El paño y el dorso del mazo de la mesa (los del que tiene el turno: tableLook). null = los de siempre.
   setTable({ pano = null, dorso = null } = {}) {
     const look = COSMETIC_LOOK[pano] || null;
     if (this.feltLook !== look) {
       this.feltLook = look;
       if (this.feltMesh) {
-        this.feltMesh.material.map?.dispose();
         this.feltMesh.material.map = makeFelt(look, this.n === 6 ? 6 : 4);
         this.feltMesh.material.needsUpdate = true;
       }

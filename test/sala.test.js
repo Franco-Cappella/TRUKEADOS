@@ -403,3 +403,20 @@ test('sala: "callado" sabe si los rivales todavía pueden cantar', async () => {
   r.game.h.rounds[2] = { plays: [{ seat: 1, c: '4C' }, { seat: 3, c: '5C' }] };
   assert.equal(h.room.rivalsCan(truco), false);
 });
+
+test('sala: en 3 vs 3 los bots pie no hacen señas, y los demás se las hacen a su pie', async () => {
+  const h = await makeRoom({ mode: '3v3' });
+  const me = await h.join('u0');
+  await h.send(me, { t: 'start', fillBots: true });
+  const r = h.room.room;
+  r.game = newGame({ mode: '3v3', target: 15, dealer: 2 }, Math.random);
+  r.dealUntil = h.now;
+  const pies = [2, 1]; // el que reparte y el que corta (dealer - 1)
+  const sent = [];
+  h.room.deliverSena = (seat, sena) => sent.push({ seat, sena, gaze: h.room.gaze[seat] });
+  r.botSenaDue = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  h.room.botSenas(h.now + 10);
+  const from = sent.map((s) => s.seat).sort();
+  assert.deepEqual(from, [3, 4, 5], 'solo los que no son pie');
+  for (const s of sent) assert.ok(pies.includes(s.gaze) && s.gaze % 2 === s.seat % 2, `el ${s.seat} mira a su pie`);
+});

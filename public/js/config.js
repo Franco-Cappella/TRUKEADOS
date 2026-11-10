@@ -246,7 +246,7 @@ export const CREATOR = {
   reactMs: 650,
 };
 
-export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
+export const SENA_BITE_MS = 1100; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
 // Antitrampas (los aplica la sala; ver "Antitrampas" en AGENTS.md). Las señas viajan solo a los que miran al que la
 // hace; esto evita además que un cliente modificado "barra" la mesa cambiando de mirada a toda velocidad para pescarlas.
 export const ANTICHEAT = {
@@ -476,6 +476,12 @@ export const COSMETICS = [
   { id: 'pano-negro', slot: 'pano', name: 'Paño negro', price: 150 },
   { id: 'pano-alfombra', slot: 'pano', name: 'Paño alfombra persa', price: 450 },
   { id: 'pano-almendro', slot: 'pano', name: 'Paño almendro en flor', price: 450 },
+  { id: 'pano-fileteado', slot: 'pano', name: 'Paño fileteado porteño', price: 480 },
+  { id: 'pano-poncho', slot: 'pano', name: 'Paño poncho salteño', price: 400 },
+  { id: 'pano-casino', slot: 'pano', name: 'Paño de casino', price: 350 },
+  { id: 'pano-calcareo', slot: 'pano', name: 'Paño baldosa calcárea', price: 400 },
+  { id: 'pano-noche', slot: 'pano', name: 'Paño noche de campo', price: 450 },
+  { id: 'pano-madera', slot: 'pano', name: 'Mesa de bodegón', price: 300 },
   { id: 'dorso-azul', slot: 'dorso', name: 'Dorso azul', price: 100 },
   { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
   { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },

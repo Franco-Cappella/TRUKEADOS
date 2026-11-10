@@ -1357,9 +1357,12 @@ export class TrucoRoom extends DurableObject {
       const seat = Number(k);
       delete due[k];
       if (r.game.h.phase !== 'play' || r.game.h.mazo[seat] || r.game.h.duel) continue; // en el pica-pica no hay compañero en juego
-      // el bot mira a un compañero antes de hacer la seña
+      // en 3 vs 3 las señas se le hacen al pie: el pie no hace señas (las recibe)
+      if (r.game.n === 6 && isPie(r.game, seat)) continue;
+      // el bot mira a un compañero antes de hacer la seña (en 3 vs 3, a su pie)
       const partners = r.seats.map((_, j) => j).filter((j) => j !== seat && team(j) === team(seat));
-      const p = partners[Math.floor(rng() * partners.length)];
+      const pie = r.game.n === 6 ? partners.find((j) => isPie(r.game, j)) : undefined;
+      const p = pie ?? partners[Math.floor(rng() * partners.length)];
       this.setGaze(seat, p);
       this.broadcastRaw({ t: 'gaze', seat, target: p });
       this.deliverSena(seat, botSena(r.game, seat));

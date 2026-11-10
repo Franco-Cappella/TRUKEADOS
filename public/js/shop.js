@@ -7,6 +7,7 @@ import { $, esc, api, savedName } from './dom.js';
 import { currentMe } from './auth.js';
 import { LockerStage } from './locker.js';
 import { poster } from './poster.js';
+import { drawPano, paintBox } from './panos.js';
 import { openCreator } from './creator.js';
 
 let state = { owned: [], coins: 0, equipped: {} };
@@ -41,22 +42,19 @@ function drawBust(target, look) {
 function drawFelt(target, colors, look = null) {
   const ctx = target.getContext('2d');
   const { width: w, height: h } = target;
-  // paño con imagen: la imagen (como queda en la mesa), con las puntas redondeadas
-  if (look?.img) {
-    loadImg(look.img).then((img) => {
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(0, 0, w, h, 8);
-      ctx.clip();
-      const iw = look.turn ? img.height : img.width;
-      const ih = look.turn ? img.width : img.height;
-      const k = Math.max(w / iw, h / ih);
-      ctx.translate(w / 2, h / 2);
-      if (look.turn) ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, (-img.width * k) / 2, (-img.height * k) / 2, img.width * k, img.height * k);
-      ctx.restore();
-    }).catch(() => {});
-    colors = look.felt;
+  // paño pintado (panos.js): el dibujo como queda en la mesa (casi entero), con las puntas redondeadas
+  if (look?.draw) {
+    const full = document.createElement('canvas');
+    full.width = full.height = 640;
+    drawPano(full, look, 4, { seam: false });
+    const k = Math.max(w, h) / (full.width * paintBox(4).w * 0.97);
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w, h, 8);
+    ctx.clip();
+    ctx.drawImage(full, (w - full.width * k) / 2, (h - full.height * k) / 2, full.width * k, full.height * k);
+    ctx.restore();
+    return;
   }
   const g = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
   g.addColorStop(0, colors[0]);

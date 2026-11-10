@@ -286,6 +286,10 @@ créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarl
 - **Algo para la tienda**: una entrada en `COSMETICS` (config.js: id, ranura, nombre, precio) y cómo se ve en
   `COSMETIC_LOOK` (theme.js, misma clave). Ropa/gorro/anteojos se aplican con `dressed()` (characters.js); un objeto
   nuevo de la mesa necesita su forma en `tableObject()` (scene.js). Una ranura nueva, en `COSMETIC_SLOTS`.
+- **Un paño dibujado**: un pintor `nombre(ctx, w, h)` en `PANOS` de `public/js/panos.js` (llena el rectángulo que se ve
+  de la mesa: `paintBox`; el centro tranquilo para que se lean las cartas) y en COSMETIC_LOOK `{ felt, draw, thread }`.
+  `drawPano` le pone la trama, la sombra de los bordes y la costura; la escena los guarda armados (`feltCache`) porque
+  la mesa cambia al paño del que tiene el turno. Nada de imágenes: todo se pinta en canvas.
 - **Una seña**: agregala en `SENAS` de `config.js` con una `expr`; si la cara es nueva, dibujala en
   `characters.js` (`drawEyes`/`drawMouth`…). El servidor valida contra las mismas claves.
 - **Una regla**: `engine.js` (+ `actionsFor` si cambia qué botones hay) → test → `docs/REGLAS.md`.
