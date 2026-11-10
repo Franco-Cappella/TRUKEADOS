@@ -87,3 +87,24 @@ test('mesa de cada turno: paño, mazo y mapa del que juega; si no tiene mapa, ca
   assert.equal(tableOwner(null), null);
   assert.equal(tableOwner({ h: { turn: 3 } }), 3);
 });
+
+test('bots y rivales automáticos: siempre con su paño, su mazo y su mapa (se ven en su turno, también mirando)', async () => {
+  const { BOT_NAMES, botCos } = await import('../public/js/config.js');
+  for (const n of [...BOT_NAMES, 'Juancito', 'La Tana']) {
+    const c = botCos(n);
+    for (const slot of ['pano', 'dorso', 'mapa']) assert.ok(cleanEquipped({ [slot]: c[slot] })[slot], `${n}: ${slot}`);
+    assert.deepEqual(botCos(n), c, 'siempre lo mismo para el mismo nombre');
+  }
+  // un rival automático con ropa de la partida rápida también trae su mesa (sin perder lo que tenía)
+  const rival = botCos('Juancito', { gorro: 'boina' });
+  assert.equal(rival.gorro, 'boina');
+  assert.ok(rival.pano && rival.mapa && rival.dorso);
+  // la mesa cambia con cada turno: la del bot que juega (paño, mazo y mapa), para el que mira también
+  const seats = ['Tito', 'Coca', 'Pirulo', 'Beto'].map((n) => ({ name: n, cos: botCos(n) }));
+  for (let s = 0; s < 4; s++) {
+    const look = tableLook(seats, { owner: s, me: null, ambiente: 'bar' });
+    assert.equal(look.pano, seats[s].cos.pano);
+    assert.equal(look.dorso, seats[s].cos.dorso);
+    assert.equal(look.ambiente, mapaAmbiente(seats[s].cos.mapa));
+  }
+});

@@ -36,7 +36,7 @@ export const AMBIENTES = [
   { id: 'chinatown', name: 'Barrio Chino', shop: true },
 ];
 // Los mapas que quedan armados en la escena (el de cada turno) y cuánto dura el fundido al cambiar de uno a otro.
-export const AMBIENTE_CACHE = 5;
+export const AMBIENTE_CACHE = 8; // alcanza para todos: en 3 vs 3 cada uno puede traer su mapa
 export const AMBIENTE_FADE_MS = 560;
 /** Otro ambiente al azar (distinto del anterior, prev). Los de la tienda no salen. */
 export function pickAmbiente(rng = Math.random, prev = null) {
@@ -294,20 +294,35 @@ const nameHash = (s, salt) => {
   for (const ch of String(s)) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
   return (h >>> 0) / 4294967296;
 };
+// Los bots y los rivales automáticos tienen siempre puesta su mesa (paño, mazo y mapa: se ve en su turno, como la de
+// cualquiera) y BOT_SKIN.mesa de las veces algo delante y su propia baraja.
+export const BOT_TABLE = ['pano', 'dorso', 'mapa'];
+BOT_SKIN.mesa = 0.6;
 /** Lo que tiene puesto un bot: si su nombre tiene personaje 3D, ese; si no, algo de la tienda según su nombre. */
 export const botCos = (name, cos = {}) => {
-  if (BOT_PERSONAJES[name]) return { ...cos, personaje: BOT_PERSONAJES[name] };
-  if (Object.keys(cos).length) return cos;
-  const out = {};
   const pick = (slot, i) => {
     const items = COSMETICS.filter((c) => c.slot === slot);
     return items.length ? items[Math.floor(nameHash(name, i + 7) * items.length)].id : null;
   };
-  if (nameHash(name, 1) < BOT_SKIN.personaje) out.personaje = pick('personaje', 0);
-  ['ropa', 'gorro', 'anteojos'].forEach((slot, i) => {
-    const id = nameHash(name, i + 2) < BOT_SKIN.prenda ? pick(slot, i + 1) : null;
-    if (id) out[slot] = id;
-  });
+  let out;
+  if (BOT_PERSONAJES[name]) out = { ...cos, personaje: BOT_PERSONAJES[name] };
+  else if (Object.keys(cos).some((k) => !BOT_TABLE.includes(k))) out = { ...cos };
+  else {
+    out = { ...cos };
+    if (nameHash(name, 1) < BOT_SKIN.personaje) out.personaje = pick('personaje', 0);
+    ['ropa', 'gorro', 'anteojos'].forEach((slot, i) => {
+      const id = nameHash(name, i + 2) < BOT_SKIN.prenda ? pick(slot, i + 1) : null;
+      if (id) out[slot] = id;
+    });
+  }
+  // la mesa, siempre (lo que ya traía, se respeta)
+  // (con el nombre de la ranura en el azar: si no, todos caían en lo mismo)
+  const pickBy = (slot) => {
+    const items = COSMETICS.filter((c) => c.slot === slot);
+    return items.length ? items[Math.floor(nameHash(`${name}|${slot}`, 3) * items.length)].id : null;
+  };
+  for (const slot of BOT_TABLE) out[slot] ||= pickBy(slot);
+  for (const slot of ['objeto', 'baraja']) if (!out[slot] && nameHash(`${name}|${slot}?`, 5) < BOT_SKIN.mesa) out[slot] = pickBy(slot);
   return out;
 };
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];

@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.26.1 — la mesa de los bots
+- **Bots y rivales automáticos con su mesa**: todos traen paño, dorso del mazo y mapa (y muchos, algo delante y su
+  baraja), siempre lo mismo para el mismo nombre. En su turno la mesa entera se vuelve la suya, como la de cualquiera,
+  también para los que miran. Los mapas de la mesa quedan todos armados (`AMBIENTE_CACHE`) para que el cambio de turno
+  no trabe. La baraja sigue siendo de cada uno: las cartas que tirás se ven con la tuya.
+
 ## 1.26.0 — paños pintados a mano
 - **Paños dibujados a mano** (en canvas, sin imágenes, en alta resolución): se rehicieron la **alfombra persa** (medallón
   lobulado, esquinas, guarda de varias bandas con flores, flecos) y el **almendro en flor** (ramas nudosas, flores,

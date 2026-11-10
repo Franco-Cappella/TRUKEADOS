@@ -215,7 +215,8 @@ la sala (`pickAmbiente`, `r.ambiente`, va en `publicRoom`).
 ## La mesa de cada turno
 El paño, el dorso del mazo y el mapa son **los del que tiene el turno** (`tableOwner`, `tableLook` en config.js; lo
 aplica room-client.js en cada `state`): cuando te toca, todos ven tu mesa. Si el que juega no tiene mapa puesto, cada
-uno ve el suyo (y si tampoco, el que eligió la sala). En la sala de espera y cargando la partida, de fondo, tu mapa.
+uno ve el suyo (y si tampoco, el que eligió la sala). Los bots y los rivales automáticos tienen siempre su paño, mazo y mapa
+(`botCos`, `BOT_TABLE` en config.js; los agrega `publicRoom`). La baraja no cambia con el turno: es la de cada uno. En la sala de espera y cargando la partida, de fondo, tu mapa.
 La escena guarda armados hasta `AMBIENTE_CACHE` lugares (`envFor`; `prepareAmbientes` arma de antemano los de la mesa
 cuando la página está libre) y cambia con un fundido corto (`AMBIENTE_FADE_MS`).
 

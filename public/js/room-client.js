@@ -351,7 +351,7 @@ export class RoomClient {
       if (was !== undefined && name) this.toast(`Esta partida se juega en: <b>${esc(name)}</b>`, '', 3200);
     }
     // se arman de antemano los mapas de todos (así cambiar de turno no traba la mesa)
-    if (st.room.status !== 'lobby') scene.prepareAmbientes(seats.map((p) => mapaAmbiente(p?.cos?.mapa)).filter(Boolean));
+    if (st.room.status !== 'lobby') scene.prepareAmbientes([st.room.ambiente, ...seats.map((p) => mapaAmbiente(p?.cos?.mapa))].filter(Boolean));
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
