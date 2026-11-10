@@ -159,8 +159,12 @@
           <div id="rk-list" class="so-list"></div>
         </div>
 
-        <div class="m-card ap-panel h-panel hidden" data-panel="tienda">
-          <h3>Tienda <small>tenés <b id="shop-coins">0</b> monedas · ganás jugando y subiendo de ELO</small></h3>
+        <div class="ap-panel h-panel hidden sh" data-panel="tienda">
+          <header class="sh-top">
+            <div><small>Ganás monedas jugando y subiendo de ELO</small><h3>Tienda</h3></div>
+            <div class="sh-wallet" title="Tus monedas"><i class="sh-coin" aria-hidden="true"></i><b id="shop-coins">0</b></div>
+          </header>
+          <nav class="sh-cats" id="shop-cats" aria-label="Categorías"></nav>
           <div id="shop-list" class="sh-list"></div>
           <p class="a-msg" id="shop-msg" role="status"></p>
         </div>
@@ -296,6 +300,12 @@
 
   <dialog id="user-dialog" class="dl ud" aria-label="Perfil del jugador"><div id="ud-body"></div></dialog>
 
+  <!-- la ficha de una cosa de la tienda: vista grande (el personaje 3D gira), rareza, precio y comprar -->
+  <dialog id="shop-detail" class="dl sd" aria-label="Detalle"><div class="sd-in">
+    <div class="sd-view"><div class="lk-view" id="sd-stage"></div><canvas id="sd-canvas" width="480" height="360"></canvas></div>
+    <div class="sd-info" id="sd-info"></div>
+  </div></dialog>
+
   <dialog id="credits-dialog" class="dl cr-dialog" aria-labelledby="credits-title">
     <form method="dialog">
       <h2 id="credits-title">Créditos</h2>
@@ -421,6 +431,8 @@
     <!-- sala de espera: el escenario con los personajes (party.js) y, encima, la interfaz -->
     <div id="waiting" class="overlay pl hidden"><div class="pl-stage" id="pl-stage"></div><div class="pl-ui" id="pl-ui"></div></div>
     <div id="toast-area"></div>
+    <!-- en equipo: el pedido para rendirse (lo tienen que aceptar los compañeros) -->
+    <div id="surrender-vote" class="sv hidden" role="alertdialog" aria-live="assertive"></div>
     <div id="result" class="hidden"></div>
     <div id="help" class="overlay hidden"></div>
     <div id="wheel" class="hidden" role="dialog" aria-label="Frases"></div>

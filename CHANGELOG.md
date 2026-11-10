@@ -1,5 +1,15 @@
 # Cambios
 
+## 1.20.0 — rendirse en equipo y tienda nueva
+- **Rendirse en equipo es un pedido**: en 2 vs 2 tienen que estar de acuerdo los dos y en 3 vs 3, dos de los tres.
+  Al compañero le aparece "X quiere rendirse" con "Rendirnos" / "Seguir jugando" y una cuenta de 25 segundos; si no
+  sale, hay que esperar un minuto para volver a pedirlo. Los bots y los compañeros ausentes cuentan como que sí.
+  En 1 vs 1 sigue igual.
+- **Tienda nueva**, al estilo de la Taquilla: arriba tus monedas y las categorías (Todo, Personajes, Ropa, En la mesa,
+  Cartas); en "Todo", los personajes 3D en grande y "Del día" (unas cosas que cambian a la medianoche). Cada tarjeta
+  muestra su rareza y su precio, y al tocarla se abre la ficha: el personaje 3D girando, la baraja abierta o la cosa en
+  grande, con "Comprar" y, si ya es tuya, "Ponértelo" ahí mismo.
+
 ## 1.19.0 — sala de espera con personajes y amigos conectados
 - **Sala de espera nueva**: un escenario con una tarima por lugar y el personaje de cada uno (el 3D o el dibujado),
   los equipos enfrentados con un "VS" al medio, el código grande arriba para copiar y compartir, y en cada lugar libre

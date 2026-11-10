@@ -10,6 +10,10 @@ import { LockerStage } from './locker.js';
 let state = { owned: [], coins: 0, equipped: {} };
 let stage = null; // la tarima de la Taquilla (se arma la primera vez que se abre)
 let openSlot = 'personaje'; // la ranura que se está eligiendo en la Taquilla
+let shopCat = 'todo'; // la categoría que se está mirando en la Tienda
+let detailStage = null; // el personaje 3D que gira en la ficha de la tienda
+let detailId = null; // lo que muestra la ficha abierta
+let rotT = null; // el reloj de "cambia en …"
 
 // Rareza según el precio (en blanco y negro: se nota por el estilo del casillero).
 export const rarity = (it) => (!it ? null : it.price >= 1000 ? ['leg', 'Legendario'] : it.price >= 120 ? ['epi', 'Épico'] : it.price >= 60 ? ['raro', 'Raro'] : ['com', 'Común']);
@@ -142,43 +146,6 @@ function deckSpread(deck, suit = 'E') {
   return ready;
 }
 
-let peekEl = null;
-let peekFor = null;
-function showPeek(itemEl) {
-  const item = cosmeticById(itemEl.dataset.peek);
-  if (!item) return;
-  if (!peekEl) {
-    peekEl = document.createElement('div');
-    peekEl.className = 'sh-peek';
-    peekEl.setAttribute('aria-hidden', 'true');
-    peekEl.innerHTML = '<canvas></canvas><b></b>';
-    document.body.append(peekEl);
-  }
-  peekFor = itemEl;
-  deckSpread(item.id).then((src) => {
-    if (peekFor !== itemEl) return;
-    const cv = peekEl.querySelector('canvas');
-    cv.width = src.width;
-    cv.height = src.height;
-    cv.getContext('2d').drawImage(src, 0, 0);
-    peekEl.querySelector('b').textContent = item.name;
-    // arriba de la tarjeta si entra; si no, abajo. Sin salirse de la pantalla.
-    const r = itemEl.getBoundingClientRect();
-    const pw = peekEl.offsetWidth;
-    const ph = peekEl.offsetHeight;
-    const left = Math.min(Math.max(8, r.left + r.width / 2 - pw / 2), window.innerWidth - pw - 8);
-    const top = r.top - ph - 10 >= 8 ? r.top - ph - 10 : Math.min(r.bottom + 10, window.innerHeight - ph - 8);
-    peekEl.style.left = `${left}px`;
-    peekEl.style.top = `${top}px`;
-    peekEl.classList.add('on');
-  }).catch(() => {});
-}
-function hidePeek(itemEl) {
-  if (itemEl && peekFor !== itemEl) return;
-  peekFor = null;
-  peekEl?.classList.remove('on');
-}
-
 // Créditos: lo fijo está en index.html; lo de la tienda (barajas de otros autores) sale de COSMETICS.
 function initCredits() {
   const dialog = $('#credits-dialog');
@@ -230,41 +197,28 @@ function setCoins(coins) {
 export function initShop(paint) {
   onCoins = paint;
   initCredits();
-  const list = $('#shop-list');
-  list.addEventListener('pointerover', (e) => {
-    const it = e.target.closest('.sh-item[data-peek]');
-    if (it && it !== peekFor) showPeek(it);
-  });
-  list.addEventListener('pointerout', (e) => {
-    const it = e.target.closest('.sh-item[data-peek]');
-    if (it && !it.contains(e.relatedTarget)) hidePeek(it);
-  });
-  list.addEventListener('focusin', (e) => {
-    const it = e.target.closest('.sh-item[data-peek]');
-    if (it) showPeek(it);
-  });
-  list.addEventListener('focusout', (e) => {
-    const it = e.target.closest('.sh-item[data-peek]');
-    if (it && !it.contains(e.relatedTarget)) hidePeek(it);
-  });
-  window.addEventListener('scroll', () => hidePeek(), true);
-  $('#shop-list').addEventListener('click', async (e) => {
-    const b = e.target.closest('button[data-buy]');
+  $('#shop-cats').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-cat]');
     if (!b) return;
-    const item = cosmeticById(b.dataset.buy);
-    b.disabled = true;
-    try {
-      const r = await api(ROUTES.api.buy, { item: item.id });
-      state.owned.push(item.id);
-      setCoins(r.coins);
-      $('#shop-msg').textContent = `¡Compraste ${item.name}! Ponételo en la Taquilla.`;
-      $('#shop-msg').classList.remove('bad');
-      renderShop();
-    } catch (err) {
-      $('#shop-msg').textContent = err.message;
-      $('#shop-msg').classList.add('bad');
-      b.disabled = false;
-    }
+    shopCat = b.dataset.cat;
+    renderShop();
+  });
+  $('#shop-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-open]');
+    if (b) openDetail(b.dataset.open);
+  });
+  const dlg = $('#shop-detail');
+  dlg.addEventListener('click', async (e) => {
+    if (e.target === dlg || e.target.closest('[data-sdclose]')) return dlg.close();
+    const buy = e.target.closest('button[data-buy]');
+    const wear = e.target.closest('button[data-wear]');
+    if (buy) await buyItem(buy);
+    else if (wear) await wearItem(wear);
+  });
+  dlg.addEventListener('close', () => {
+    if (dlg.open) return; // se volvió a abrir antes de que llegara el aviso
+    detailId = null;
+    detailStage?.show({ personaje: null, look: baseLook() }); // que deje de girar
   });
   const goShop = () => document.querySelector('[data-tab="tienda"]')?.click();
   $('#lk-shop').addEventListener('click', goShop);
@@ -304,24 +258,179 @@ export async function loadShop(tab) {
   else renderCustomize();
 }
 
+// ---- Tienda
+// Categorías (filtros de arriba): cada una junta ranuras de COSMETIC_SLOTS.
+const SHOP_CATS = [
+  { key: 'todo', label: 'Todo' },
+  { key: 'personajes', label: 'Personajes', slots: ['personaje'] },
+  { key: 'ropa', label: 'Ropa', slots: ['ropa', 'gorro', 'anteojos'] },
+  { key: 'mesa', label: 'En la mesa', slots: ['objeto', 'pano'] },
+  { key: 'cartas', label: 'Cartas', slots: ['dorso', 'baraja'] },
+];
+const DAY_PICKS = 4; // cuántas cosas trae "Del día"
+const slotLabel = (slot) => COSMETIC_SLOTS.find((x) => x.key === slot)?.label || '';
+
+// "Del día": unas cosas que no tenés, elegidas con la fecha (todos ven las mismas; cambia a la medianoche).
+function dayPicks() {
+  const d = new Date();
+  let seed = d.getFullYear() * 1000 + d.getMonth() * 40 + d.getDate();
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const pool = COSMETICS.filter((c) => c.slot !== 'personaje');
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, DAY_PICKS);
+}
+const untilMidnight = () => {
+  const d = new Date();
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) - d;
+  const h = Math.floor(m / 3_600_000);
+  const min = Math.floor((m % 3_600_000) / 60_000);
+  return h ? `${h} h ${min} min` : `${min} min`;
+};
+
+// Precio (o "Ya lo tenés"/"Puesto") de una tarjeta.
+function priceTag(it) {
+  if (state.owned.includes(it.id)) return `<span class="sh-tag own">${state.equipped[it.slot] === it.id ? 'Puesto' : 'Ya lo tenés'}</span>`;
+  return `<span class="sh-tag ${state.coins >= it.price ? '' : 'short'}"><i class="sh-coin" aria-hidden="true"></i>${it.price}</span>`;
+}
+
+function card(it, big = false) {
+  const r = rarity(it);
+  const tall = TALL_SLOTS.includes(it.slot);
+  const [w, h] = big ? [360, 300] : tall ? [160, 176] : [176, 132];
+  return `<button type="button" class="sh-card ${r[0]} ${big ? 'big' : ''} ${state.owned.includes(it.id) ? 'owned' : ''}" data-open="${esc(it.id)}">
+    <canvas width="${w}" height="${h}" data-preview="${esc(it.id)}"></canvas>
+    <span class="sh-meta"><small>${esc(r[1])} · ${esc(slotLabel(it.slot))}</small><b>${esc(it.name)}</b>${priceTag(it)}</span>
+  </button>`;
+}
+
 function renderShop() {
-  hidePeek();
   $('#shop-coins').textContent = state.coins;
-  $('#shop-list').innerHTML = COSMETIC_SLOTS.map((s) => {
-    const items = COSMETICS.filter((c) => c.slot === s.key);
-    return `<section class="sh-slot"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-items">${items
-      .map((it) => {
-        const owned = state.owned.includes(it.id);
-        const worn = state.equipped[it.slot] === it.id;
-        const btn = owned
-          ? `<span class="sh-own">${worn ? 'Puesto' : 'Ya lo tenés'}</span>`
-          : `<button type="button" class="btn small ${state.coins >= it.price ? 'primary' : ''}" data-buy="${esc(it.id)}" ${state.coins >= it.price ? '' : 'disabled'}>${it.price} monedas</button>`;
-        const peek = it.slot === 'baraja' ? ` data-peek="${esc(it.id)}"` : '';
-        return `<div class="sh-item ${owned ? 'owned' : ''}"${peek}><canvas width="${TALL_SLOTS.includes(it.slot) ? 128 : 96}" height="${TALL_SLOTS.includes(it.slot) ? 140 : 64}" data-preview="${esc(it.id)}"></canvas><b>${esc(it.name)}</b>${btn}</div>`;
-      })
-      .join('')}</div></section>`;
-  }).join('');
+  $('#shop-cats').innerHTML = SHOP_CATS.map((c) => `<button type="button" class="${shopCat === c.key ? 'on' : ''}" data-cat="${c.key}" aria-pressed="${shopCat === c.key}">${esc(c.label)}</button>`).join('');
+  const cat = SHOP_CATS.find((c) => c.key === shopCat) || SHOP_CATS[0];
+  let html = '';
+  if (!cat.slots) {
+    // la vidriera: los personajes en grande y lo del día
+    const stars = COSMETICS.filter((c) => c.slot === 'personaje');
+    html += `<section class="sh-sec"><h4>Destacados <small>Personajes en 3D: los ven todos en la mesa</small></h4><div class="sh-feat">${stars.map((it) => card(it, true)).join('')}</div></section>`;
+    html += `<section class="sh-sec"><h4>Del día <small>Cambia en <span id="sh-rot">${untilMidnight()}</span></small></h4><div class="sh-grid">${dayPicks().map((it) => card(it)).join('')}</div></section>`;
+  }
+  const slots = cat.slots || COSMETIC_SLOTS.map((x) => x.key).filter((k) => k !== 'personaje');
+  for (const key of slots) {
+    const s = COSMETIC_SLOTS.find((x) => x.key === key);
+    // primero lo que no tenés, de lo más caro a lo más barato
+    const items = COSMETICS.filter((c) => c.slot === key).sort((a, b) => state.owned.includes(a.id) - state.owned.includes(b.id) || b.price - a.price);
+    if (!items.length) continue;
+    html += `<section class="sh-sec"><h4>${esc(s.label)} <small>${esc(s.where)}</small></h4><div class="sh-grid ${key === 'personaje' ? 'feat' : ''}">${items.map((it) => card(it, key === 'personaje')).join('')}</div></section>`;
+  }
+  $('#shop-list').innerHTML = html;
   for (const c of $('#shop-list').querySelectorAll('canvas[data-preview]')) preview(c, cosmeticById(c.dataset.preview));
+  clearInterval(rotT);
+  rotT = setInterval(() => {
+    const el = $('#sh-rot');
+    if (!el) return clearInterval(rotT);
+    el.textContent = untilMidnight();
+  }, 30_000);
+}
+
+// La ficha: la cosa en grande (el personaje 3D girando, la baraja abierta), qué es y comprar o ponértela.
+function openDetail(id) {
+  const it = cosmeticById(id);
+  if (!it) return;
+  detailId = id;
+  const dlg = $('#shop-detail');
+  const view = dlg.querySelector('.sd-view');
+  const r = rarity(it);
+  dlg.className = `dl sd ${r[0]}`;
+  const cv = $('#sd-canvas');
+  const is3d = it.slot === 'personaje';
+  view.classList.toggle('is3d', is3d);
+  if (is3d) {
+    detailStage ||= new LockerStage($('#sd-stage'));
+    detailStage.show({ personaje: it.id, look: baseLook() });
+  } else {
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (it.slot === 'baraja') {
+      deckSpread(it.id).then((src) => {
+        if (detailId !== id) return;
+        const k = Math.min(cv.width / src.width, cv.height / src.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(src, (cv.width - src.width * k) / 2, (cv.height - src.height * k) / 2, src.width * k, src.height * k);
+      }).catch(() => {});
+    } else {
+      // la figura entera con la ropa puesta; lo demás, grande al medio
+      const tmp = document.createElement('canvas');
+      tmp.width = TALL_SLOTS.includes(it.slot) ? 300 : 360;
+      tmp.height = TALL_SLOTS.includes(it.slot) ? 330 : 240;
+      preview(tmp, it);
+      const k = Math.min(cv.width / tmp.width, cv.height / tmp.height) * 0.92;
+      // drawBack (el de siempre) dibuja después de cargar: se copia en el próximo cuadro
+      requestAnimationFrame(() => detailId === id && ctx.drawImage(tmp, (cv.width - tmp.width * k) / 2, (cv.height - tmp.height * k) / 2, tmp.width * k, tmp.height * k));
+    }
+  }
+  renderDetailInfo(it);
+  if (!dlg.open) dlg.showModal();
+}
+
+function renderDetailInfo(it) {
+  const r = rarity(it);
+  const s = COSMETIC_SLOTS.find((x) => x.key === it.slot);
+  const owned = state.owned.includes(it.id);
+  const worn = state.equipped[it.slot] === it.id;
+  const missing = it.price - state.coins;
+  const offWith3d = CHARACTER_SLOTS.includes(it.slot) && cosmeticById(state.equipped.personaje);
+  let act;
+  if (worn) act = '<button type="button" class="btn big" disabled>Lo tenés puesto</button>';
+  else if (owned) act = `<button type="button" class="btn primary big" data-wear="${esc(it.id)}">Ponértelo</button>`;
+  else if (missing > 0) act = `<button type="button" class="btn big" disabled>Te faltan ${missing} monedas</button>`;
+  else act = `<button type="button" class="btn primary big" data-buy="${esc(it.id)}">Comprar · ${it.price}</button>`;
+  $('#sd-info').innerHTML = `
+    <button type="button" class="sd-x" data-sdclose="1" aria-label="Cerrar">×</button>
+    <span class="rar ${r[0]}">${esc(r[1])}</span>
+    <h2>${esc(it.name)}</h2>
+    <p class="sd-where"><b>${esc(s?.label || '')}</b> · ${esc(s?.where || '')}</p>
+    ${owned ? '' : `<p class="sd-price"><i class="sh-coin" aria-hidden="true"></i><b>${it.price}</b><small>tenés ${state.coins}</small></p>`}
+    ${offWith3d ? '<p class="sd-note">Con un personaje 3D puesto no se ve: es del personaje dibujado.</p>' : ''}
+    ${it.credit ? `<p class="sd-note">Arte: <a href="${esc(it.credit.url)}" target="_blank" rel="noopener">${esc(it.credit.text)}</a></p>` : ''}
+    <div class="sd-acts">${act}</div>
+    <p class="a-msg" id="sd-msg" role="status"></p>`;
+}
+
+async function buyItem(b) {
+  const item = cosmeticById(b.dataset.buy);
+  b.disabled = true;
+  try {
+    const r = await api(ROUTES.api.buy, { item: item.id });
+    state.owned.push(item.id);
+    setCoins(r.coins);
+    renderShop();
+    renderDetailInfo(item);
+    $('#sd-msg').textContent = `¡Es tuyo! Ponételo ahora o después en la Taquilla.`;
+  } catch (err) {
+    $('#sd-msg').textContent = err.message;
+    $('#sd-msg').classList.add('bad');
+    b.disabled = false;
+  }
+}
+
+async function wearItem(b) {
+  const item = cosmeticById(b.dataset.wear);
+  b.disabled = true;
+  try {
+    const r = await api(ROUTES.api.equip, { slot: item.slot, item: item.id });
+    state.equipped = r.equipped;
+    const p = currentMe()?.profile;
+    if (p) p.equipped = r.equipped;
+    renderShop();
+    renderDetailInfo(item);
+  } catch (err) {
+    $('#sd-msg').textContent = err.message;
+    $('#sd-msg').classList.add('bad');
+    b.disabled = false;
+  }
 }
 
 // Lo que está puesto en una ranura (o lo de siempre), dibujado en un canvas.

@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH, botCos, pickAmbiente } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -288,6 +288,12 @@ export class TrucoRoom extends DurableObject {
 
       case 'act': {
         if (r.status !== 'playing' || seat == null) return;
+        // en equipo, rendirse es un pedido: lo tienen que aceptar los compañeros
+        if (msg.a?.t === 'rendirse' && SURRENDER_NEED[r.cfg.mode] && r.game?.status === 'playing') {
+          const err = this.askSurrender(seat);
+          if (err) this.send(ws, { t: 'error', msg: err });
+          return this.commit();
+        }
         if (Date.now() < (r.dealUntil || 0)) {
           this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
           return this.sendState(ws); // el cliente pintó la jugada: el estado real lo corrige
@@ -325,6 +331,13 @@ export class TrucoRoom extends DurableObject {
             this.addSystemChat(`${r.seats[seat].name} volvió: deja de jugar el bot en su lugar`);
           }
         }
+        return this.commit();
+      }
+
+      // Contestar el pedido de rendirse de tu equipo.
+      case 'surrender-vote': {
+        if (seat == null || r.status !== 'playing') return;
+        this.voteSurrender(seat, !!msg.yes);
         return this.commit();
       }
 
@@ -468,6 +481,7 @@ export class TrucoRoom extends DurableObject {
 
   async tick() {
     const r = this.room;
+    if (r?.status === 'playing' && this.expireSurrender()) this.broadcastState(); // venció un pedido de rendirse
     if (r?.status === 'lobby' && r.quick) return this.quickTick();
     if (r?.status === 'ended' && r.rematchBotAt && Date.now() >= r.rematchBotAt) {
       r.seats.forEach((s, i) => {
@@ -1200,6 +1214,83 @@ export class TrucoRoom extends DurableObject {
     }
   }
 
+  // ---- rendirse en equipo: un pedido que tienen que aceptar SURRENDER_NEED del equipo (los bots y los que no
+  // están cuentan como que sí: si no, un compañero ausente te deja trabado)
+  teamSeatsOf(T) {
+    return this.room.seats.map((_, i) => i).filter((i) => team(i) === T);
+  }
+
+  askSurrender(seat) {
+    const r = this.room;
+    const T = team(seat);
+    const now = Date.now();
+    r.surrender ||= {};
+    const cur = r.surrender[T];
+    if (cur) return this.voteSurrender(seat, true), null;
+    if ((r.surrenderCool?.[T] || 0) > now) return 'Esperá un poco para volver a pedir rendirse';
+    r.surrender[T] = { by: seat, yes: [seat], no: [], until: now + TIMING.surrenderVote };
+    for (const i of this.teamSeatsOf(T)) if (i !== seat && (r.seats[i]?.bot || this.isAway(i, now))) r.surrender[T].yes.push(i);
+    const name = r.seats[seat]?.name;
+    this.notifyTeam(T, `${name} quiere rendirse`);
+    this.checkSurrender(T);
+    return null;
+  }
+
+  voteSurrender(seat, yes) {
+    const r = this.room;
+    const T = team(seat);
+    const cur = r.surrender?.[T];
+    if (!cur || cur.yes.includes(seat) || cur.no.includes(seat)) return;
+    (yes ? cur.yes : cur.no).push(seat);
+    if (!yes) this.notifyTeam(T, `${r.seats[seat]?.name} quiere seguir jugando`);
+    this.checkSurrender(T);
+  }
+
+  checkSurrender(T) {
+    const r = this.room;
+    const cur = r.surrender?.[T];
+    if (!cur) return;
+    const need = SURRENDER_NEED[r.cfg.mode] || 1;
+    const seats = this.teamSeatsOf(T);
+    if (cur.yes.length >= need) {
+      delete r.surrender[T];
+      const res = act(r.game, cur.by, { t: 'rendirse' });
+      if (res.ok) {
+        this.rec.step(cur.by, { t: 'rendirse' });
+        this.addSystemChat(`El equipo de ${r.seats[cur.by]?.name} se rindió`);
+        this.onGameChange();
+      }
+      return;
+    }
+    if (seats.length - cur.no.length < need) this.failSurrender(T);
+  }
+
+  failSurrender(T) {
+    const r = this.room;
+    delete r.surrender[T];
+    (r.surrenderCool ||= {})[T] = Date.now() + TIMING.surrenderCooldown;
+  }
+
+  expireSurrender(now = Date.now()) {
+    let any = false;
+    for (const [T, v] of Object.entries(this.room.surrender || {})) {
+      if (v && now >= v.until) {
+        this.failSurrender(Number(T));
+        any = true;
+      }
+    }
+    return any;
+  }
+
+  // Un aviso que ven solo los de un equipo.
+  notifyTeam(T, text) {
+    for (const ws of this.ctx.getWebSockets()) {
+      const pid = ws.deserializeAttachment()?.pid;
+      const s = pid ? this.seatOf(pid) : null;
+      if (s != null && team(s) === T) this.send(ws, { t: 'notice', msg: text });
+    }
+  }
+
   // Asiento al que le toca y que debe jugar el servidor (bot o humano ausente).
   autoActor() {
     const r = this.room;
@@ -1368,6 +1459,7 @@ export class TrucoRoom extends DurableObject {
       if (d != null) at = Math.min(at, Math.max(now + 200, d));
     }
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
+    for (const v of Object.values(r.surrender || {})) if (v) at = Math.min(at, Math.max(now + 100, v.until));
     for (const [s, since] of Object.entries(r.afkSince || {})) if (!r.afkBot?.[s]) at = Math.min(at, Math.max(now + 100, since + TIMING.afk));
     if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
     for (const T of [0, 1]) {
@@ -1467,6 +1559,11 @@ export class TrucoRoom extends DurableObject {
       game: r.game ? viewFor(r.game, seat) : null,
       // consulta al compañero: qué puede preguntar y la consulta abierta de su equipo
       ask: seat != null && r.status === 'playing' && r.game?.h ? this.askView(seat) : null,
+      // el pedido de rendirse de tu equipo (si hay uno abierto)
+      surrender: (() => {
+        const v = seat != null && r.status === 'playing' ? r.surrender?.[team(seat)] : null;
+        return v ? { by: v.by, yes: v.yes, no: v.no, need: SURRENDER_NEED[r.cfg.mode] || 1, of: this.teamSeatsOf(team(seat)).length, left: Math.max(0, v.until - Date.now()), voted: v.yes.includes(seat) || v.no.includes(seat) } : null;
+      })(),
       dealLeft: r.status === 'playing' ? Math.max(0, (r.dealUntil || 0) - Date.now()) : 0, // ms de reparto que faltan
       now: Date.now(),
     };

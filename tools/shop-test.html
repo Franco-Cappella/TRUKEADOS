@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de la tienda</title>
+<!-- La Tienda sola, con /api/shop de mentira (node tools/serve.mjs y abrir /tools/shop-test.html). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="/css/truco.css">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+<style>body { overflow: auto; padding: 20px; } .h-panel.hidden { display: flex; }</style>
+</head>
+<body>
+<div class="ap-panel h-panel sh" data-panel="tienda">
+  <header class="sh-top">
+    <div><small>Ganás monedas jugando y subiendo de ELO</small><h3>Tienda</h3></div>
+    <div class="sh-wallet" title="Tus monedas"><i class="sh-coin" aria-hidden="true"></i><b id="shop-coins">0</b></div>
+  </header>
+  <nav class="sh-cats" id="shop-cats" aria-label="Categorías"></nav>
+  <div id="shop-list" class="sh-list"></div>
+  <p class="a-msg" id="shop-msg" role="status"></p>
+</div>
+<dialog id="shop-detail" class="dl sd" aria-label="Detalle"><div class="sd-in">
+  <div class="sd-view"><div class="lk-view" id="sd-stage"></div><canvas id="sd-canvas" width="480" height="360"></canvas></div>
+  <div class="sd-info" id="sd-info"></div>
+</div></dialog>
+<div hidden><button id="lk-shop"></button><div id="cu-slots"></div><button id="credits-open"></button><dialog id="credits-dialog"></dialog><dl id="credits-list"></dl><p id="cu-msg"></p></div>
+<script type="module">
+  const state = { owned: ['mate', 'boina'], coins: 2600, equipped: { objeto: 'mate' } };
+  const json = (d) => new Response(JSON.stringify(d), { headers: { 'content-type': 'application/json' } });
+  const real = fetch;
+  window.fetch = async (url, opt = {}) => {
+    const body = opt.body ? JSON.parse(opt.body) : null;
+    if (url === '/api/shop') return json(state);
+    if (url === '/api/shop/buy') { state.owned.push(body.item); state.coins -= 100; return json({ coins: state.coins }); }
+    if (url === '/api/shop/equip') { state.equipped[body.slot] = body.item; return json({ equipped: state.equipped }); }
+    return real(url, opt);
+  };
+  const { initShop, loadShop } = await import('/js/shop.js');
+  initShop(() => {});
+  loadShop('tienda');
+</script>
+</body>
+</html>

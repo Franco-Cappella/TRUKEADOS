@@ -647,15 +647,8 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 }
 
 /* ---------- tienda y personalizar ---------- */
-.sh-list { display: flex; flex-direction: column; gap: 16px; }
-.sh-slot h4, .cu-slot h4 { margin: 0 0 8px 2px; font-size: 15px; font-weight: 600; }
-.sh-slot h4 small, .cu-slot h4 small { font-weight: 400; color: var(--text-dim); font-size: 13px; margin-left: 6px; }
-.sh-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
-.sh-item { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px; border-radius: var(--radius-soft); background: var(--surface-2); text-align: center; }
-.sh-item canvas { max-width: 100%; height: auto; }
-.sh-item b { font-weight: 600; font-size: 14px; }
-.sh-item .btn { border-radius: var(--radius); }
-.sh-own { font-size: 13px; color: var(--good-ink); padding: 7px 0; }
+.cu-slot h4 { margin: 0 0 8px 2px; font-size: 15px; font-weight: 600; }
+.cu-slot h4 small { font-weight: 400; color: var(--text-dim); font-size: 13px; margin-left: 6px; }
 /* ---------- taquilla: la tarima y los casilleros ---------- */
 /* entra entera en la pantalla: la tarima ocupa el alto y la columna de la derecha se desliza si hace falta */
 .lk { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr); gap: 0; height: calc(100dvh - 110px); min-height: 460px; max-height: 820px; background: var(--bg); border: 1px solid var(--line); }
@@ -729,7 +722,6 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .cu-pills button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 @media (max-width: 560px) {
   .cu-wrap { grid-template-columns: 1fr; }
-  .sh-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ---- nivel al registrarse ---- */
@@ -1152,12 +1144,17 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 @media (max-width: 480px) { .cr-list > div { grid-template-columns: 1fr; gap: 2px; } }
 
 /* Tienda: pasando el mouse por una baraja se ve la baraja abierta */
-.sh-item[data-peek] { cursor: zoom-in; }
-.sh-peek { position: fixed; z-index: 50; padding: 12px; border-radius: var(--radius-soft); background: var(--surface); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55); pointer-events: none; opacity: 0; transform: translateY(6px) scale(0.97); transition: opacity 0.14s ease, transform 0.14s ease; }
-.sh-peek.on { opacity: 1; transform: none; }
-.sh-peek canvas { display: block; width: min(360px, calc(100vw - 76px)); height: auto; padding: 10px; border-radius: var(--radius); background: #ececec; image-rendering: pixelated; box-sizing: content-box; }
-.sh-peek b { display: block; margin-top: 10px; font-size: 13px; font-weight: 600; text-align: center; color: var(--text-dim); }
-@media (prefers-reduced-motion: reduce) { .sh-peek { transition: none; transform: none; } }
+
+/* ---------- pedido para rendirse (en equipo) ---------- */
+.sv { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); z-index: 8; width: min(380px, calc(100% - 24px)); padding: 14px 16px; background: var(--bg); border: 1px solid var(--line-2); border-top: 3px solid var(--red); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; gap: 10px; animation: pop 0.18s ease-out; }
+.sv-h b { display: block; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.sv-h small { font-size: 12px; color: var(--text-dim); }
+.sv-dots { display: flex; gap: 6px; }
+.sv-dots i { flex: 1; height: 6px; background: var(--surface-2); }
+.sv-dots i.y { background: var(--red); }
+.sv-dots i.n { background: var(--text); }
+.sv-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sv-wait { margin: 0; font-size: 13px; color: var(--text-dim); }
 
 /* ---------- amigos conectados (panel de la derecha, en el menú y en la partida): friends.js ---------- */
 .fd { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.45); display: flex; justify-content: flex-end; }
@@ -1281,4 +1278,72 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
   .pl-plate .w-av { display: none; }
   .pl-rules { top: auto; bottom: 86px; max-height: 50%; }
   .pl-vs { display: none; }
+}
+
+/* ---------- tienda: vidriera con destacados, lo del día y categorías; cada cosa abre su ficha ---------- */
+.sh { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sh-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sh-top small { font-size: 11px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.sh-top h3 { margin: 2px 0 0; font-size: clamp(34px, 6vw, 56px); font-weight: 900; letter-spacing: -0.04em; line-height: 0.9; text-transform: uppercase; }
+.sh-wallet { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line-2); background: var(--surface); }
+.sh-wallet b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sh-coin { display: inline-block; flex: none; width: 0.95em; height: 0.95em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c8, #f2c230 45%, #b8860b); box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.25); vertical-align: -0.1em; }
+.sh-cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.sh-cats button { flex: none; padding: 8px 14px; border: 1px solid var(--line-2); background: none; color: var(--text-dim); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
+.sh-cats button:hover { color: var(--text); border-color: var(--text-dim); }
+.sh-cats button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sh-list { display: flex; flex-direction: column; gap: 22px; }
+.sh-sec h4 { margin: 0 0 10px; font-size: 13px; font-weight: 800; letter-spacing: var(--track); text-transform: uppercase; }
+.sh-sec h4 small { margin-left: 8px; font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-dim); }
+.sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.sh-feat, .sh-grid.feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.sh-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; text-align: left; background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; cursor: pointer; overflow: hidden; transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.14s; }
+.sh-card:hover, .sh-card:focus-visible { transform: translateY(-3px); border-color: var(--text); }
+.sh-card canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; background: #0d0d0d; }
+.sh-card.big canvas { aspect-ratio: 16 / 10; object-fit: cover; object-position: 50% 20%; }
+.sh-meta { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 10px; }
+.sh-meta small { font-size: 9px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
+.sh-meta b { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-card.big .sh-meta b { font-size: clamp(22px, 3vw, 30px); font-weight: 900; text-transform: uppercase; letter-spacing: -0.03em; }
+.sh-tag { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sh-tag.short { color: var(--muted); }
+.sh-tag.own { font-size: 11px; letter-spacing: var(--track); text-transform: uppercase; color: var(--text-dim); }
+.sh-card.owned canvas { opacity: 0.55; }
+/* rareza: la franja de abajo y el borde (igual que en la Taquilla) */
+.sh-card::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--line-2); }
+.sh-card.raro { border-color: var(--line-2); }
+.sh-card.raro::after { background: var(--text-dim); }
+.sh-card.epi .sh-meta { background: repeating-linear-gradient(135deg, #1d1d1d 0 6px, #141414 6px 12px); }
+.sh-card.epi::after { background: var(--text); }
+.sh-card.leg { border-color: var(--text); }
+.sh-card.leg .sh-meta { background: var(--text); color: var(--bg); }
+.sh-card.leg .sh-meta small, .sh-card.leg .sh-tag.short { color: #555; }
+.sh-card.leg::after { background: #f2c230; }
+@media (prefers-reduced-motion: reduce) { .sh-card { transition: none; } .sh-card:hover { transform: none; } }
+
+/* la ficha */
+.sd { width: min(860px, calc(100vw - 24px)); padding: 0; overflow: hidden; }
+.sd-in { display: grid; grid-template-columns: 1.3fr 1fr; min-height: min(440px, 80vh); }
+.sd-view { position: relative; background: radial-gradient(ellipse at 50% 85%, #2a2a2a, #0b0b0b 70%); min-height: 280px; }
+.sd.leg .sd-view { background: radial-gradient(ellipse at 50% 85%, #4a3a10, #0b0b0b 70%); }
+.sd-view .lk-view { display: none; }
+.sd-view.is3d .lk-view { display: block; }
+.sd-view.is3d #sd-canvas { display: none; }
+#sd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.sd-info { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 26px 22px 22px; }
+.sd-info .rar { margin: 0; }
+.sd-info h2 { margin: 0; font-size: clamp(30px, 5vw, 44px); font-weight: 900; line-height: 0.95; letter-spacing: -0.04em; text-transform: uppercase; }
+.sd-where { margin: 0; font-size: 14px; color: var(--text-dim); }
+.sd-where b { color: var(--text); }
+.sd-price { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 30px; }
+.sd-price b { font-weight: 900; font-variant-numeric: tabular-nums; }
+.sd-price small { margin-left: 4px; font-size: 13px; color: var(--muted); }
+.sd-note { margin: 0; font-size: 13px; color: var(--text-dim); }
+.sd-acts { display: grid; margin-top: auto; }
+.sd-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; background: none; color: var(--text-dim); font-size: 26px; line-height: 1; cursor: pointer; }
+.sd-x:hover { color: var(--text); }
+@media (max-width: 640px) {
+  .sd-in { grid-template-columns: 1fr; }
+  .sd-view { min-height: 240px; }
+  .sh-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

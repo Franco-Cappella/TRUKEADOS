@@ -262,6 +262,8 @@ export class RoomClient {
       case 'error':
         this.unlock();
         return this.toast(esc(m.msg), 'bad');
+      case 'notice': // un aviso para tu equipo (por ejemplo, que alguien quiere rendirse)
+        return this.toast(esc(m.msg), '', 3500);
       case 'chat-history':
         $('#chat-log').innerHTML = '';
         m.messages.forEach((x) => this.addChat(x, false));
@@ -771,6 +773,7 @@ export class RoomClient {
     this.renderPlates();
     this.renderWaiting();
     this.renderResult();
+    this.renderSurrender();
     const watching = st.room.spectators;
     $('#spect').innerHTML = watching ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>${Number(watching)}` : '';
     $('#spect').title = watching ? `${watching} ${watching === 1 ? 'persona mirando' : 'personas mirando'}` : '';
@@ -1196,6 +1199,27 @@ export class RoomClient {
       ${settings}
       <footer class="pl-bottom">${footer}</footer>`;
     this.placePlates(this.platePos);
+  }
+
+  // En equipo, rendirse se le pide al resto: a los que tienen que contestar, "Rendirnos" o "Seguir jugando"; al que ya
+  // contestó, cuántos están de acuerdo y cuánto falta para que venza el pedido.
+  renderSurrender() {
+    const el = $('#surrender-vote');
+    const v = this.st?.surrender;
+    clearInterval(this.svT);
+    if (!v || this.st.room.status !== 'playing') return el.classList.add('hidden');
+    el.classList.remove('hidden');
+    const until = Date.now() + v.left;
+    const who = v.by === this.you ? 'Pediste rendirte' : `${esc(this.nameOf(v.by))} quiere rendirse`;
+    const dots = Array.from({ length: v.of }, (_, k) => `<i class="${k < v.yes.length ? 'y' : k < v.yes.length + v.no.length ? 'n' : ''}"></i>`).join('');
+    const secs = () => Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    el.innerHTML = `<div class="sv-h"><b>${who}</b><small>Tienen que estar de acuerdo ${v.need} de ${v.of} · <span id="sv-left">${secs()}</span> s</small></div>
+      <div class="sv-dots" aria-label="${v.yes.length} de ${v.need}">${dots}</div>
+      ${v.voted ? '<p class="sv-wait">Esperando a tu equipo…</p>' : '<div class="sv-acts"><button type="button" class="btn ghost" data-sv="0">Seguir jugando</button><button type="button" class="btn danger" data-sv="1">Rendirnos</button></div>'}`;
+    this.svT = setInterval(() => {
+      const t = $('#sv-left');
+      if (t) t.textContent = secs();
+    }, 500);
   }
 
   // Pone cada cartel abajo de su tarima (lo llama el escenario en cada cuadro).

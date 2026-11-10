@@ -64,6 +64,7 @@ test/bots.test.js         aprendizaje, decisiones y trampas de los bots
 test/auth.test.js         verificación del token de Supabase y validación del nombre
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
 test/sala.test.js         la sala (TrucoRoom) de punta a punta: bots, consultas, señas, desconexiones
+test/rendirse.test.js     rendirse en equipo: el pedido que tienen que aceptar los compañeros (SURRENDER_NEED)
 test/helpers/             banco de pruebas de la sala en Node (storage, sockets, Lobby, cuentas y reloj de mentira)
 supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)
 docs/CUENTAS.md           cuentas: cómo está armado y cómo se configura Supabase
@@ -230,7 +231,8 @@ créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarl
   `node tools/build-skin.mjs <archivo.glb> <id>`: deja solo la malla con su esqueleto (estilo Mixamo, sin animaciones),
   achica la textura y busca en la cara los ojos, la boca y el color de piel (`extras.face`). La foto de la tienda
   (`<id>.webp`) sale del visor: `node tools/serve.mjs` y abrir `/tools/model-viewer.html` ("guardar foto").
-  `/tools/scene-test.html` arma la mesa de verdad con datos de mentira (personajes, tiros, señas y vistas).
+  `/tools/scene-test.html` arma la mesa de verdad con datos de mentira (personajes, tiros, señas y vistas);
+  `/tools/shop-test.html`, la Tienda con monedas y compras de mentira.
 - `models.js` (`Rig`) los posa por código con cinemática inversa de dos huesos: sentado, la izquierda con las cartas,
   la derecha que tira (`reach` en scene.js), la cabeza que mira. Las señas son capas dibujadas pegadas a la cabeza
   (`FaceLayer`): párpados, cejas, boca, cachetes y nariz, en el lugar que encontró la herramienta.

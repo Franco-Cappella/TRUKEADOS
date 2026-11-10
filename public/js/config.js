@@ -88,6 +88,8 @@ export const TIMING = {
   handPause: 5200, // pausa para ver cómo terminó la mano (y escuchar lo que dicen)
   showWindow: 15_000, // tiempo para mostrar los tantos o reclamar
   foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
+  surrenderVote: 25_000, // en equipo, cuánto dura el pedido para rendirse (lo tienen que aceptar los compañeros)
+  surrenderCooldown: 60_000, // si no salió, cuánto hay que esperar para volver a pedirlo
   afk: 40_000, // humano desconectado: después de esto pierde la partida (si le queda un compañero conectado, juega un bot por él)
   // con la pestaña oculta (sigue conectado) a los afk ms juega un bot por él, pero no pierde la partida.
   // Si le toca cantar los tantos y no está (oculto o desconectado), a los autoTanto ms se cantan solos: lo que tiene o "son buenas".
@@ -278,6 +280,8 @@ export const GRADES = [
   { key: 'perdida', ...S.perdida },
 ];
 export const HISTORY_PAGE = 20; // partidas por página en el historial
+// Rendirse en equipo: cuántos del equipo tienen que estar de acuerdo (en 1 vs 1 no hay votación).
+export const SURRENDER_NEED = { '2v2': 2, '3v3': 2 };
 export const FRIEND_POLL_MS = 20_000; // cada cuánto se revisa si llegó una solicitud de amistad (menú y partida)
 // Amigos conectados: cada navegador avisa dónde está cada ping ms; sin aviso por ttl ms, desconectado.
 // El chat entre amigos guarda los últimos dmKeep mensajes de cada pareja y, con el chat abierto, se revisa cada chatPoll ms.

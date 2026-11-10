@@ -117,13 +117,20 @@ function bindGameUI() {
   };
   sb.onclick = () => {
     if (!surrenderT) {
-      sb.textContent = '¿Seguro?';
+      // en equipo no te rendís solo: se lo pedís a tu equipo
+      sb.textContent = room?.st?.room.seats.length > 2 ? '¿Le pido a mi equipo?' : '¿Seguro?';
       surrenderT = setTimeout(disarm, 3000);
       return;
     }
     disarm();
     room?.act({ t: 'rendirse' });
   };
+
+  // contestar el pedido de rendirse de tu equipo
+  $('#surrender-vote').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sv]');
+    if (b) room?.send({ t: 'surrender-vote', yes: b.dataset.sv === '1' });
+  });
 
   // vista: primera persona o segunda (de frente, te ves la cara), con el botón o la tecla V
   const cb = $('#cam-btn');
