@@ -1,6 +1,6 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml } from './dom.js';
@@ -19,6 +19,18 @@ function loadMuted() {
   } catch {
     return [];
   }
+}
+
+// Lo que se despliega del cartel: las últimas 3 partidas (ganó o perdió, modo, tanteador, ELO y cuándo).
+function recentHtml(p) {
+  if (p.recent == null) return '<p class="np-none">Bot de la mesa</p>';
+  if (!p.recent.length) return '<p class="np-none">Todavía no terminó ninguna partida</p>';
+  const ago = (at) => {
+    const m = Math.max(1, Math.round((Date.now() - Date.parse(at)) / 60000));
+    return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
+  };
+  const rows = p.recent.map((r) => `<li class="${r.won ? 'w' : 'l'}"><b>${r.won ? 'G' : 'P'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${r.at ? ago(r.at) : ''}</small></li>`);
+  return `<h5>Últimas partidas</h5><ul>${rows.join('')}</ul>`;
 }
 
 // en equipo uno se va al mazo por todos (salvo en un duelo de pica-pica)
@@ -309,6 +321,15 @@ export class RoomClient {
     }
     if (st.you != null && seats[st.you]) scene.setMyLook(this.myLook());
     scene.setTable(st.room.table || {});
+    // el lugar de la partida (lo elige el servidor; en la sala de espera, el bar)
+    const amb = st.room.status === 'lobby' ? 'bar' : st.room.ambiente;
+    if (amb && amb !== this.ambiente) {
+      const first = this.ambiente === undefined;
+      this.ambiente = amb;
+      scene.setAmbiente(amb);
+      const name = AMBIENTES.find((a) => a.id === amb)?.name;
+      if (!first && name && st.room.status === 'playing') this.toast(`Esta partida se juega en: <b>${esc(name)}</b>`, '', 3200);
+    }
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
@@ -600,9 +621,13 @@ export class RoomClient {
     if (!l) {
       const el = document.createElement('div');
       el.className = 'tag3d';
-      el.innerHTML = '<div class="bubbles"></div><div class="nameplate"></div>';
+      // el cartel: foto, nombre y ELO; al pasarle el mouse (o tocarlo) se despliegan sus últimas partidas
+      el.innerHTML = '<div class="bubbles"></div><div class="nameplate"><span class="np-av"></span><span class="np-main"><b class="np-name"></b><span class="np-sub"></span></span><div class="np-drop"></div></div>';
       $('#labels').appendChild(el);
-      l = { el, plate: el.querySelector('.nameplate'), bubbles: el.querySelector('.bubbles') };
+      const plate = el.querySelector('.nameplate');
+      plate.addEventListener('click', () => plate.classList.toggle('open'));
+      plate.addEventListener('mouseleave', () => plate.classList.remove('open'));
+      l = { el, plate, bubbles: el.querySelector('.bubbles'), av: el.querySelector('.np-av'), name: el.querySelector('.np-name'), sub: el.querySelector('.np-sub'), drop: el.querySelector('.np-drop') };
       this.labels.set(seat, l);
     }
     return l;
@@ -1030,7 +1055,8 @@ export class RoomClient {
     st.room.seats.forEach((p, seat) => {
       if (seat === this.you) return;
       const l = this.labelFor(seat);
-      if (!p) return (l.plate.innerHTML = '');
+      l.plate.classList.toggle('hidden', !p);
+      if (!p) return;
       const chips = [];
       if (g?.h) {
         if (g.dealer === seat) chips.push('reparte');
@@ -1043,8 +1069,22 @@ export class RoomClient {
       if (this.you != null && team(seat) === team(this.you)) chips.unshift('compañero');
       const looking = this.you != null && this.gaze[seat] === this.you ? '<span class="chip eye">te mira</span>' : '';
       const turn = g && st.room.status === 'playing' && g.waiting.seats.includes(seat);
-      l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''}`;
-      l.plate.innerHTML = `${esc(p.name)} ${p.elo ? `<span class="chip">${esc(p.elo)}</span>` : ''} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online && !p.away ? '' : `<span class="off">${this.offText(seat)}</span>`}`;
+      const open = l.plate.classList.contains('open');
+      l.plate.className = `nameplate t${team(seat)} ${turn ? 'turn' : ''} ${open ? 'open' : ''}`;
+      // la foto se cambia solo si cambió (si no, parpadea con cada estado)
+      const avKey = p.avatar || `i:${p.name}`;
+      if (l.av.dataset.key !== avKey) {
+        l.av.dataset.key = avKey;
+        l.av.innerHTML = p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : esc(initial(p.name));
+      }
+      if (l.name.textContent !== p.name) l.name.textContent = p.name;
+      const sub = [p.elo ? `<span class="np-elo">${esc(p.elo)}</span>` : '', ...chips.map((c) => `<span class="chip">${c}</span>`), looking, p.online && !p.away ? '' : `<span class="off">${this.offText(seat)}</span>`].filter(Boolean).join('');
+      if (l.sub.innerHTML !== sub) l.sub.innerHTML = sub;
+      const dropKey = JSON.stringify(p.recent ?? null);
+      if (l.drop.dataset.key !== dropKey) {
+        l.drop.dataset.key = dropKey;
+        l.drop.innerHTML = recentHtml(p);
+      }
     });
   }
 

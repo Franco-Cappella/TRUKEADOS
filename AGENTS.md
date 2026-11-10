@@ -82,8 +82,9 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 5. Cada cambio de reglas lleva test en `test/` y una línea en `docs/REGLAS.md`. Una opción de sala nueva se
    agrega en `ROOM_OPTIONS` (config.js): el menú, la sala de espera y el servidor la toman de ahí.
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
-7. Estilo: una sola tipografía (Archivo, variable `--font`) y la paleta de `:root` (grises + colores de los
-   palos). Nada de itálicas decorativas, serif ni tonos marfil/latón.
+7. Estilo: blanco y negro, grotesk. Una sola tipografía (Hanken Grotesk, variable `--font`) y la paleta de `:root`
+   (negro, blanco y grises; el rojo solo para errores; esquinas rectas). Nada de itálicas decorativas, serif ni
+   colores de interfaz: el color lo ponen las cartas y los personajes.
 8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
    o texto nuevo sigue esas reglas.
 
@@ -183,6 +184,23 @@ Opción de sala de 3 vs 3 (`picapica`). La mano de pica-pica son tres manos segu
 `g.h.duel = { k, of, seats }` y los que no juegan quedan con `h.mazo[s] = true` (así el turno, el envido, la flor
 y los bots ya los saltean). `nextHand` arma la vuelta (`picaDue`, `picaDuel`). Una opción que solo vale para
 algunos modos lleva `modes` en `ROOM_OPTIONS` y se filtra con `optionForMode`.
+
+## Ambientes
+Cada partida se juega en un lugar distinto (`AMBIENTES` en config.js; los dibuja `public/js/ambientes.js`): bar
+notable, café porteño, parrilla, Bosques de Palermo, quincho, club de barrio y estancia. El servidor elige uno al
+empezar y otro distinto en la revancha (`pickAmbiente`, `r.ambiente`, va en `publicRoom`); en la sala de espera
+se ve el bar. Uno nuevo: una función en `BUILD` de ambientes.js (arma el grupo con luces y devuelve fondo y niebla)
+y una entrada en `AMBIENTES`. Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en
+`tools/shots/`).
+
+## Cartel de cada jugador
+Foto, nombre, ELO y estado; al pasarle el mouse (o tocarlo) muestra sus últimas 3 partidas (`recent` de cada
+asiento: `recentMatches` en matches.js al entrar, y se actualiza al terminar; los rivales automáticos tienen uno de
+mentira, `fakeRecent`, para no delatarse).
+
+## Legales
+`public/legal/`: términos, privacidad (Ley 25.326) y licencias. Enlazadas desde la entrada, el pie del menú y los
+créditos. Si cambia lo que se guarda o cómo funcionan las monedas, actualizarlas.
 
 ## Personajes 3D y vistas
 - Ranura `personaje` de la tienda (Volcho y Olcho). Los modelos viven en `public/models/<id>.glb` y se arman con

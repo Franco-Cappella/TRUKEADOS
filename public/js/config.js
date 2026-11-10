@@ -22,6 +22,23 @@ export const MAX_CHAT_HISTORY = 120;
 export const ROOM_CODE_LEN = 4; // solo números: fácil de dictar y de tipear en el celular
 export const ROOM_REUSE_MS = 3 * 60 * 60 * 1000; // una sala vacía e inactiva hace 3 h libera su código
 
+// ------------------------------------------------------------------ ambientes
+// Dónde se juega cada partida (uno al azar, distinto del anterior; los dibuja public/js/ambientes.js).
+export const AMBIENTES = [
+  { id: 'bar', name: 'Bar notable' },
+  { id: 'cafe', name: 'Café porteño' },
+  { id: 'parrilla', name: 'Parrilla de barrio' },
+  { id: 'parque', name: 'Bosques de Palermo' },
+  { id: 'quincho', name: 'Quincho' },
+  { id: 'club', name: 'Club de barrio' },
+  { id: 'campo', name: 'Estancia' },
+];
+/** Otro ambiente al azar (distinto del anterior, prev). */
+export function pickAmbiente(rng = Math.random, prev = null) {
+  const pool = AMBIENTES.filter((a) => a.id !== prev);
+  return pool[Math.floor(rng() * pool.length)].id;
+}
+
 // ------------------------------------------------------------------ rutas
 export const ROUTES = {
   room: (code) => `/sala/${code}`, // enlace para compartir

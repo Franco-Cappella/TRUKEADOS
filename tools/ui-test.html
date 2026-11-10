@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de interfaz</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="/css/truco.css">
+<style>
+  body { overflow: auto; padding: 24px; background: #3a3a3a; }
+  .row { display: flex; gap: 220px; align-items: flex-start; margin: 30px 0 240px 140px; }
+  .demo { position: relative; }
+  .tag3d { position: static; transform: none; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="demo tag3d"><div class="nameplate t0 open"><span class="np-av"><img src="/models/volcho.webp" alt=""></span><span class="np-main"><b class="np-name">theotrosman</b><span class="np-sub"><span class="np-elo">1342</span><span class="chip">compañero</span><span class="chip">mano</span></span></span>
+    <div class="np-drop"><h5>Últimas partidas</h5><ul>
+      <li class="w"><b>G</b><span>2 vs 2</span><span class="np-sc">30–18</span><span class="np-d">+14</span><small>2 h</small></li>
+      <li class="l"><b>P</b><span>1 vs 1</span><span class="np-sc">11–15</span><span class="np-d">−9</span><small>5 h</small></li>
+      <li class="w"><b>G</b><span>3 vs 3</span><span class="np-sc">15–7</span><span class="np-d">+11</span><small>1 d</small></li>
+    </ul></div></div></div>
+  <div class="demo tag3d"><div class="nameplate t1 turn"><span class="np-av">O</span><span class="np-main"><b class="np-name">Olcho</b><span class="np-sub"><span class="np-elo">1188</span><span class="chip">reparte</span></span></span></div></div>
+  <div class="demo tag3d"><div class="nameplate t1"><span class="np-av">T</span><span class="np-main"><b class="np-name">Tito</b><span class="np-sub"><span class="chip">bot</span><span class="off">desconectado · bot en 12 s</span></span></span></div></div>
+</div>
+<div class="btns">
+  <button class="btn primary big">Jugar</button>
+  <button class="btn big">Pedir revancha</button>
+  <button class="btn call">Truco</button>
+  <button class="btn good">Quiero</button>
+  <button class="btn danger">No quiero</button>
+  <button class="btn small ghost">Vista: 1ª</button>
+</div>
+</body>
+</html>

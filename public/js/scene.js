@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { drawCharacter, lookFor, dressed, sleeveOf, biteAt, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { loadModel, Rig } from './models.js';
+import { canvasTex, noise, seeded, toon, setAniso } from './draw3d.js';
+import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
 import { SENAS, SENA_MS, TIMING, ROUTES } from './config.js';
 import { newDeck, cardName } from './engine.js';
 import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
@@ -142,50 +144,6 @@ function setCardFace(card, id) {
   card.userData.front.material.needsUpdate = true;
 }
 
-function canvasTex(w, h, draw, repeat) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = maxAniso;
-  if (repeat) {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(repeat[0], repeat[1]);
-  }
-  return t;
-}
-
-function noise(ctx, w, h, amount, alpha) {
-  const img = ctx.getImageData(0, 0, w, h);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * amount;
-    img.data[i] += n;
-    img.data[i + 1] += n;
-    img.data[i + 2] += n;
-    img.data[i + 3] = alpha ?? img.data[i + 3];
-  }
-  ctx.putImageData(img, 0, 0);
-}
-
-// Azar con semilla: las texturas pintadas salen iguales en todas las máquinas.
-function seeded(seed) {
-  let s = seed;
-  return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-}
-
-// Sombreado por escalones (el de una ilustración): tres tonos con borde duro en lugar de un degradé.
-let toonRamp = null;
-function toon(color, extra = {}) {
-  if (!toonRamp) {
-    toonRamp = new THREE.DataTexture(new Uint8Array([120, 190, 255]), 3, 1, THREE.RedFormat);
-    toonRamp.minFilter = toonRamp.magFilter = THREE.NearestFilter;
-    toonRamp.needsUpdate = true;
-  }
-  return new THREE.MeshToonMaterial({ ...(color ? { color } : {}), gradientMap: toonRamp, ...extra });
-}
-
 // Paño: franjas planas del color dado, costura, guarda escalonada y el nombre al centro.
 // Sigue la forma de la mesa (la textura cubre el polígono entero: ver las UV en setLayout).
 function feltTex(colors, sides = 4) {
@@ -267,112 +225,6 @@ function feltTex(colors, sides = 4) {
     ctx.textBaseline = 'middle';
     ctx.fillText(SCENE.feltName.toUpperCase(), w / 2, h / 2 + 2);
   });
-}
-
-// Una botella plana: cuerpo, hombros, cuello, sombra dura de un lado y, a veces, etiqueta.
-function drawBottle(ctx, x, base, w, h, color, label) {
-  const neck = w * 0.3;
-  const shoulder = base - h * 0.62;
-  const top = base - h;
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(x, base);
-    ctx.lineTo(x, shoulder);
-    ctx.quadraticCurveTo(x, shoulder - h * 0.12, x + w / 2 - neck / 2, shoulder - h * 0.16);
-    ctx.lineTo(x + w / 2 - neck / 2, top);
-    ctx.lineTo(x + w / 2 + neck / 2, top);
-    ctx.lineTo(x + w / 2 + neck / 2, shoulder - h * 0.16);
-    ctx.quadraticCurveTo(x + w, shoulder - h * 0.12, x + w, shoulder);
-    ctx.lineTo(x + w, base);
-    ctx.closePath();
-  };
-  path();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.save();
-  path();
-  ctx.clip();
-  ctx.fillStyle = 'rgba(0,0,0,0.42)';
-  ctx.fillRect(x + w * 0.62, top, w, h);
-  ctx.fillStyle = 'rgba(240,220,180,0.22)';
-  ctx.fillRect(x + w * 0.14, shoulder - h * 0.04, w * 0.1, h * 0.46);
-  ctx.restore();
-  if (label) {
-    ctx.fillStyle = SCENE.bottleLabel;
-    ctx.fillRect(x + 2, base - h * 0.42, w - 4, h * 0.22);
-    ctx.fillStyle = 'rgba(0,0,0,0.34)';
-    ctx.fillRect(x + w * 0.62, base - h * 0.42, w * 0.38 - 2, h * 0.22);
-  }
-}
-
-// Los cuadros: láminas de dos tintas con marco de madera.
-function drawPicture(ctx, w, h, kind, bg, fg) {
-  ctx.fillStyle = SCENE.frame;
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = SCENE.frameLight;
-  ctx.fillRect(0, 0, w, 6);
-  ctx.fillRect(0, 0, 6, h);
-  const m = 34;
-  ctx.fillStyle = bg;
-  ctx.fillRect(m, m, w - m * 2, h - m * 2);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(m, m, w - m * 2, h - m * 2);
-  ctx.clip();
-  ctx.fillStyle = fg;
-  ctx.strokeStyle = fg;
-  const cx = w / 2;
-  const cy = h / 2;
-  if (kind === 'sol') {
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      const long = i % 2 ? 150 : 112;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a - 0.14) * 58, cy + Math.sin(a - 0.14) * 58);
-      ctx.lineTo(cx + Math.cos(a) * long, cy + Math.sin(a) * long);
-      ctx.lineTo(cx + Math.cos(a + 0.14) * 58, cy + Math.sin(a + 0.14) * 58);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.arc(cx, cy, 50, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (kind === 'guarda') {
-    const period = [0, 1, 2, 3, 4, 3, 2, 1];
-    for (const lx of [m + 26, w - m - 86]) {
-      for (let i = 0; i < 28; i++) ctx.fillRect(lx + period[i % 8] * 12, m + i * 16, 22, 16.5);
-    }
-    ctx.fillRect(cx - 5, m, 10, h - m * 2);
-  } else if (kind === 'espada') {
-    ctx.beginPath();
-    ctx.moveTo(cx, m + 34);
-    ctx.lineTo(cx + 19, cy + 70);
-    ctx.lineTo(cx - 19, cy + 70);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(cx - 62, cy + 70, 124, 15);
-    ctx.fillRect(cx - 9, cy + 85, 18, 58);
-    ctx.beginPath();
-    ctx.arc(cx, cy + 156, 16, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // pampa: luna, horizonte y un ombú
-    ctx.beginPath();
-    ctx.arc(w * 0.68, h * 0.3, 40, 0, Math.PI * 2);
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = SCENE.feltInk.replace(/[\d.]+\)$/, '0.75)');
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = fg;
-    ctx.fillRect(0, h * 0.68, w, h);
-    ctx.fillRect(w * 0.31, h * 0.48, 22, h * 0.22);
-    for (const [dx, dy, r] of [[0, -56, 60], [-56, -24, 46], [62, -22, 48], [-8, -14, 52]]) {
-      ctx.beginPath();
-      ctx.arc(w * 0.335 + dx, h * 0.48 + dy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  ctx.restore();
 }
 
 // Dorso de las cartas de la tienda: fondo, borde y rombos del color de la tinta, con el nombre al medio.
@@ -504,6 +356,7 @@ export class TableScene {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NoToneMapping;
     maxAniso = this.renderer.capabilities.getMaxAnisotropy();
+    setAniso(maxAniso);
     container.appendChild(this.renderer.domElement);
     this.pendingLabels = true;
 
@@ -544,7 +397,7 @@ export class TableScene {
     this.camMode = CAM_MODES.includes(store.get(KEYS.camMode)) ? store.get(KEYS.camMode) : 'first';
     this.headPos = new THREE.Vector3(0, EYE_Y, 1);
 
-    this.buildRoom();
+    this.setAmbiente('bar');
     this.tableGroup = new THREE.Group();
     this.scene.add(this.tableGroup);
     this.bindControls();
@@ -574,146 +427,21 @@ export class TableScene {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  // ------------------------------------------------------------ salón
-  buildRoom() {
-    const s = this.scene;
-    const ROOM = 5; // media pared: una habitación de verdad, con las molduras rectas
-    const WALL_H = 4.2;
-    s.add(new THREE.HemisphereLight(SCENE.hemiSky, SCENE.hemiGround, LIGHT.ambient));
-    const lamp = new THREE.SpotLight(SCENE.lamp, LIGHT.lamp, 7, Math.PI / 3.2, LIGHT.lampSoftness, 1.6);
-    lamp.position.set(0, 2.55, 0);
-    lamp.target.position.set(0, 0, 0);
-    lamp.castShadow = true;
-    lamp.shadow.mapSize.set(2048, 2048);
-    lamp.shadow.bias = -0.0004;
-    s.add(lamp, lamp.target);
-    const fill = new THREE.PointLight(SCENE.fill, LIGHT.fill, 9, 1.4);
-    fill.position.set(-2.5, 2.2, -2);
-    s.add(fill);
-
-    // lámpara colgante
-    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.26, 32, 1, true), toon(SCENE.lampShade, { side: THREE.DoubleSide }));
-    shade.position.set(0, 2.62, 0);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({ color: SCENE.bulb }));
-    bulb.position.set(0, 2.55, 0);
-    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.2), new THREE.MeshBasicMaterial({ color: SCENE.cord }));
-    cord.position.set(0, 3.3, 0);
-    s.add(shade, bulb, cord);
-
-    // piso de tablones, en pocos tonos
-    const floorTex = canvasTex(1024, 1024, (ctx, w, h) => {
-      const r = seeded(11);
-      const rows = 10;
-      for (let i = 0; i < rows; i++) {
-        const y = (i * h) / rows;
-        let x = -r() * 200;
-        while (x < w) {
-          const len = 260 + r() * 320;
-          ctx.fillStyle = SCENE.floor[Math.floor(r() * SCENE.floor.length)];
-          ctx.fillRect(x, y, len, h / rows);
-          ctx.fillStyle = SCENE.floorSeam;
-          ctx.fillRect(x, y, 4, h / rows);
-          x += len;
-        }
-        ctx.fillStyle = SCENE.floorSeam;
-        ctx.fillRect(0, y, w, 4);
-      }
-      noise(ctx, w, h, 8);
-    }, [4, 4]);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, ROOM * 2), toon(null, { map: floorTex }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    s.add(floor);
-
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, ROOM * 2), new THREE.MeshBasicMaterial({ color: SCENE.ceiling }));
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = WALL_H;
-    s.add(ceiling);
-
-    // boiserie oscura: paneles, dos molduras y zócalo. Sin luces: viene pintada.
-    const yAt = (m) => (1 - m / WALL_H) * 1024; // altura en metros -> píxel de la textura
-    const wallTex = canvasTex(1024, 1024, (ctx, w, h) => {
-      for (let x = 0; x < w; x += 128) {
-        ctx.fillStyle = (x / 128) % 2 ? SCENE.wallAlt : SCENE.wall;
-        ctx.fillRect(x, 0, 128, h);
-        ctx.fillStyle = SCENE.wallSeam;
-        ctx.fillRect(x, 0, 5, h);
-      }
-      ctx.fillStyle = SCENE.wallBase;
-      ctx.fillRect(0, yAt(0.92), w, h - yAt(0.92));
-      const rail = (m, thick) => {
-        const y = yAt(m);
-        ctx.fillStyle = SCENE.wallTrim;
-        ctx.fillRect(0, y, w, thick);
-        ctx.fillStyle = SCENE.wallTrimLight;
-        ctx.fillRect(0, y, w, 3);
-        ctx.fillStyle = SCENE.wallSeam;
-        ctx.fillRect(0, y + thick, w, thick * 0.9);
-      };
-      rail(2.96, 12);
-      rail(1.72, 14);
-      rail(0.92, 16);
-      // penumbra pintada arriba
-      for (const [from, to, a] of [[0, 180, 0.42], [180, 300, 0.2]]) {
-        ctx.fillStyle = `rgba(6,3,2,${a})`;
-        ctx.fillRect(0, from, w, to - from);
-      }
-      noise(ctx, w, h, 6);
-    }, [3, 1]);
-    const wallMat = new THREE.MeshBasicMaterial({ map: wallTex });
-    for (let k = 0; k < 4; k++) {
-      const a = (k * Math.PI) / 2;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(ROOM * 2, WALL_H), wallMat);
-      m.position.set(Math.sin(a) * ROOM, WALL_H / 2, Math.cos(a) * ROOM);
-      m.rotation.y = a + Math.PI;
-      s.add(m);
+  // ------------------------------------------------------------ ambiente (bar, café, parque...: ambientes.js)
+  setAmbiente(id) {
+    const want = AMBIENTE_IDS.includes(id) ? id : 'bar';
+    if (this.ambiente === want) return;
+    this.ambiente = want;
+    if (this.envGroup) {
+      this.scene.remove(this.envGroup);
+      disposeAmbiente(this.envGroup);
     }
-
-    // estantería de botellas en la pared de enfrente
-    const BAR_W = 6.4;
-    const BAR_H = 2.5;
-    const barTex = canvasTex(1536, 600, (ctx, w, h) => {
-      const r = seeded(37);
-      ctx.fillStyle = SCENE.shelfBack;
-      ctx.fillRect(0, 0, w, h);
-      const shelves = [190, 390, 584];
-      for (const base of shelves) {
-        let x = 24 + r() * 30;
-        while (x < w - 60) {
-          const bw = 30 + r() * 18;
-          const bh = 118 + r() * 46;
-          drawBottle(ctx, x, base, bw, bh, SCENE.bottles[Math.floor(r() * SCENE.bottles.length)], r() < 0.7);
-          x += bw + 12 + r() * (r() < 0.2 ? 90 : 26);
-        }
-        ctx.fillStyle = SCENE.shelf;
-        ctx.fillRect(0, base, w, 16);
-        ctx.fillStyle = SCENE.wallTrimLight;
-        ctx.fillRect(0, base, w, 2.5);
-      }
-      ctx.lineWidth = 16;
-      ctx.strokeStyle = SCENE.shelf;
-      ctx.strokeRect(8, 8, w - 16, h - 16);
-      for (const x of [w / 3, (2 * w) / 3]) {
-        ctx.fillStyle = SCENE.shelf;
-        ctx.fillRect(x - 8, 0, 16, h);
-      }
-      ctx.fillStyle = SCENE.barDim; // que no le gane a los personajes
-      ctx.fillRect(0, 0, w, h);
-      noise(ctx, w, h, 6);
-    });
-    const bar = new THREE.Mesh(new THREE.PlaneGeometry(BAR_W, BAR_H), new THREE.MeshBasicMaterial({ map: barTex }));
-    bar.position.set(0, 1.0 + BAR_H / 2, -ROOM + 0.04);
-    s.add(bar);
-
-    // cuadros ilustrados en las paredes de los costados
-    SCENE.pictures.forEach(([kind, bg, fg], i) => {
-      const t = canvasTex(384, 512, (ctx, w, h) => drawPicture(ctx, w, h, kind, bg, fg));
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.2), new THREE.MeshBasicMaterial({ map: t }));
-      const side = i < 2 ? -1 : 1;
-      m.position.set(side * (ROOM - 0.04), 2.3, i % 2 ? 1.9 : -1.9);
-      m.rotation.y = -side * (Math.PI / 2);
-      s.add(m);
-    });
+    const env = buildAmbiente(want);
+    this.envGroup = env.group;
+    this.scene.add(env.group);
+    this.scene.background = new THREE.Color(env.background);
+    this.scene.fog = new THREE.Fog(env.fog[0], env.fog[1], env.fog[2]);
+    this.shadowDirty = true;
   }
 
   // ------------------------------------------------------------ mesa según cantidad de jugadores

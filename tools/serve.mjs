@@ -12,13 +12,17 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
 http.createServer((req, res) => {
   const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   // el visor guarda la foto de un personaje para la tienda: PUT /models/<id>.webp
+  // (y capturas para revisar a mano, que no van al juego: PUT /tools/shots/<nombre>.png)
   if (req.method === 'PUT') {
     const m = url.match(/^\/models\/([a-z0-9-]+)\.webp$/);
-    if (!m) return void res.writeHead(400).end('no');
+    const shot = url.match(/^\/tools\/shots\/([a-z0-9-]+)\.png$/);
+    if (!m && !shot) return void res.writeHead(400).end('no');
+    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
     const parts = [];
     req.on('data', (d) => parts.push(d));
     req.on('end', () => {
-      fs.writeFileSync(path.join(ROOT, 'public', 'models', `${m[1]}.webp`), Buffer.concat(parts));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, Buffer.concat(parts));
       res.writeHead(200).end('ok');
     });
     return;

@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.17.0 — blanco y negro, ambientes y cartel nuevo
+- **Diseño nuevo**: blanco y negro con tipografía grotesk (Hanken Grotesk), esquinas rectas, partida rápida en un
+  bloque blanco. La mesa también: paño grafito con líneas blancas y marco negro.
+- **Ambientes**: cada partida se juega en un lugar distinto, al azar: bar notable, café porteño, parrilla de barrio,
+  Bosques de Palermo, quincho, club de barrio y estancia. En la revancha cambia.
+- **Cartel de cada jugador** con su foto bien visible, nombre y ELO; al pasarle el mouse (o tocarlo) muestra cómo le
+  fue en sus últimas 3 partidas.
+- **Legales**: términos y condiciones, política de privacidad y licencias, enlazados desde la entrada y el menú.
+
 ## 1.16.0 — personajes 3D y vistas
 - **Volcho y Olcho**: personajes en 3D en la tienda (ranura "Personaje", 2500 monedas cada uno). Se sientan a la mesa,
   sostienen las cartas, estiran la mano para tirar y giran la cabeza hacia quien miran. Las señas se hacen en su cara:

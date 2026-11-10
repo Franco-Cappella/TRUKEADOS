@@ -9,7 +9,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
   <link rel="stylesheet" href="/css/truco.css">
   <script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
 </head>
@@ -34,6 +34,7 @@
         </form>
         <p class="a-msg" id="login-msg" role="status"></p>
         <p class="a-switch"><span id="login-switch-text">¿Primera vez?</span> <button type="button" class="a-link" id="login-switch">Creá tu cuenta</button></p>
+        <p class="a-legal">Al entrar aceptás los <a href="/legal/terminos" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">Política de privacidad</a>. Tenés que tener 13 años o más.</p>
       </div>
     </div>
   </section>
@@ -258,6 +259,8 @@
 
         <footer class="credits">
           <button type="button" class="credits-link" id="credits-open">Créditos y licencias</button>
+          <a class="credits-link" href="/legal/terminos" target="_blank" rel="noopener">Términos</a>
+          <a class="credits-link" href="/legal/privacidad" target="_blank" rel="noopener">Privacidad</a>
         </footer>
       </main>
     </div>
@@ -284,7 +287,8 @@
         <div><dt>Voces</dt><dd>Generadas con Piper y sherpa-onnx, voz davefx (CC0). <a href="/voz/LICENCIAS.txt" target="_blank" rel="noopener">Licencias</a></dd></div>
         <div><dt>3D</dt><dd>three.js, licencia MIT. <a href="/vendor/three.LICENSE.txt" target="_blank" rel="noopener">Licencia</a></dd></div>
         <div><dt>Cuentas</dt><dd>Supabase Auth, licencia MIT. <a href="/vendor/supabase-auth.LICENSE.txt" target="_blank" rel="noopener">Licencia</a></dd></div>
-        <div><dt>Tipografía</dt><dd>Archivo, de Omnibus-Type (Google Fonts), SIL Open Font License.</dd></div>
+        <div><dt>Tipografía</dt><dd>Hanken Grotesk, de Hanken Design Co. (Google Fonts), SIL Open Font License.</dd></div>
+        <div><dt>Legales</dt><dd><a href="/legal/terminos" target="_blank" rel="noopener">Términos y condiciones</a> · <a href="/legal/privacidad" target="_blank" rel="noopener">Privacidad</a> · <a href="/legal/licencias" target="_blank" rel="noopener">Licencias</a></dd></div>
       </dl>
       <div class="dl-foot"><button class="btn primary" value="ok" autofocus>Listo</button></div>
     </form>

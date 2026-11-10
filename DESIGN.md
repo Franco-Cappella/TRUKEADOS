@@ -22,6 +22,15 @@ gana esto (y por encima de esto, lo que pida el usuario en el momento).
 
 ## Las reglas en una pantalla
 
+> **Noviembre 2026: blanco y negro, grotesk.** Esto reemplaza lo de abajo donde choque: tipografía **Hanken
+> Grotesk** (400 a 800, títulos en mayúsculas grandes y apretados, rótulos en mayúsculas con aire); paleta **negro,
+> blanco y grises**; el acento es el blanco (botón principal blanco con letra negra); equipos en blanco y gris; el
+> rojo solo para errores; **esquinas rectas** (2 px). La mesa: paño grafito con líneas blancas y marco negro; los
+> ambientes (ambientes.js) en grises con un tono apenas distinto cada uno. El color lo ponen las cartas y los
+> personajes. Valores en `:root` de `public/css/truco.css` y en `public/js/theme.js`. Falta pasar `brand/` y la
+> landing a este sistema.
+
+
 - **Nombre**: Trukeados. Bajada: "Truco argentino online, en 3D."
 - **Logo**: dos naipes cruzados con el ancho de espada (hoja azul, guarda y pomo oro) + TRUKEADOS en
   Archivo Expanded Black. Siempre desde los SVG de `brand/logo/`.

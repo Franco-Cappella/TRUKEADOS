@@ -20,6 +20,7 @@
   <button id="mythrow">tiro yo</button>
   <button id="sena">seña ciego (1)</button>
   <button id="look">1 me mira</button>
+  <select id="amb"><option>bar</option><option>cafe</option><option>parrilla</option><option>parque</option><option>quincho</option><option>club</option><option>campo</option></select>
   <select id="mode"><option>1v1</option><option selected>2v2</option><option>3v3</option></select>
   <select id="me"><option value="">yo: dibujado</option><option value="volcho" selected>yo: volcho</option><option value="olcho">yo: olcho</option></select>
 </div>
@@ -53,6 +54,7 @@ function refresh() {
   scene.syncTable(table, { animate: true });
 }
 $('mode').onchange = setup;
+$('amb').onchange = () => scene.setAmbiente($('amb').value);
 $('me').onchange = refresh;
 $('cam').onclick = () => ($('cam').textContent = scene.cycleCamMode());
 $('throw').onclick = () => {
@@ -68,6 +70,24 @@ $('mythrow').onclick = () => {
 $('sena').onclick = () => scene.showSena(1, 'ciego', 3000);
 $('look').onclick = () => scene.setGaze(1, 0);
 setup();
+// Captura para revisar sin mirar la pantalla (la guarda tools/serve.mjs en tools/shots/<nombre>.png).
+window.shoot = async (name, { amb, mode = 'back', yaw = 0, pitch = -0.3 } = {}) => {
+  if (amb) scene.setAmbiente(amb);
+  scene.setCamMode(mode);
+  scene.yaw = scene.tYaw = yaw;
+  scene.pitch = scene.tPitch = pitch;
+  scene.renderer.setPixelRatio(1);
+  scene.renderer.setSize(960, 600, false);
+  scene.camera.aspect = 960 / 600;
+  scene.camera.updateProjectionMatrix();
+  scene.applyCamera();
+  for (let i = 0; i < 3; i++) scene.frame();
+  scene.renderer.shadowMap.needsUpdate = true;
+  scene.renderer.render(scene.scene, scene.camera);
+  const blob = await new Promise((ok) => scene.renderer.domElement.toBlob(ok, 'image/png'));
+  await fetch(`/tools/shots/${name}.png`, { method: 'PUT', body: blob });
+  return name;
+};
 </script>
 </body>
 </html>

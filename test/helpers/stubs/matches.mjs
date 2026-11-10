@@ -10,3 +10,8 @@ export async function listMatches() {
 export async function getMatch() {
   return null;
 }
+
+// las últimas partidas de cada uno (para el cartel de la mesa): en las pruebas, ninguna
+export async function recentMatches() {
+  return [];
+}

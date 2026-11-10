@@ -5,59 +5,30 @@ import { APP_NAME } from './config.js';
 // Si cambiás la paleta, tocá los dos lados para que todo combine.
 
 // Tipografía para lo que se dibuja en canvas (la misma que --font en truco.css).
-export const FONT = "'Archivo', system-ui, sans-serif";
+export const FONT = "'Hanken Grotesk', system-ui, sans-serif";
 
 // Tinta de los contornos de personajes y manos.
 export const INK = '#17100b';
 
-// Escena 3D (el bar)
+// Escena 3D: la mesa y lo que hay arriba. Blanco y negro: el color lo ponen las cartas y los personajes.
+// Los lugares (bar, café, parque...) tienen sus tonos en ambientes.js.
 export const SCENE = {
-  background: '#0c0806',
-  fog: '#0c0806',
-  hemiSky: '#ffe6c4',
-  hemiGround: '#4a3626',
-  lamp: '#ffdcaa',
-  fill: '#c98a58',
-  lampShade: '#27352b',
-  bulb: '#fff3d0',
-  cord: '#0c0806',
-  wall: '#1b120d',
-  wallAlt: '#20150f',
-  wallSeam: '#0e0906',
-  wallBase: '#120b08',
-  wallTrim: '#4a2f1c',
-  wallTrimLight: '#6e4a2c',
-  ceiling: '#0a0705',
-  floor: ['#2e1e14', '#35241a', '#281a11'],
-  floorSeam: '#120b07',
-  shelf: '#2c1b11',
-  shelfBack: '#100a07',
-  barDim: 'rgba(8,4,2,0.56)',
-  bottles: ['#3a2c17', '#26382a', '#4a1f1b', '#51401f', '#2c2a33'],
-  bottleLabel: '#a8946f',
-  frame: '#2c1b11',
-  frameLight: '#5c3d24',
-  // cuadros de la pared: [dibujo, fondo, tinta]
-  pictures: [
-    ['sol', '#c9a267', '#3a2413'],
-    ['guarda', '#241a15', '#c9ae88'],
-    ['espada', '#5e2520', '#dcc8a8'],
-    ['pampa', '#a8794a', '#21150d'],
-  ],
-  felt: ['#27523e', '#204534', '#1a4529'], // centro -> borde del paño (franjas planas)
-  feltInk: 'rgba(226,204,166,0.2)',
+  background: '#080808',
+  fog: '#080808',
+  felt: ['#2e2e2e', '#262626', '#1d1d1d'], // centro -> borde del paño (franjas planas)
+  feltInk: 'rgba(255,255,255,0.22)',
   feltName: APP_NAME, // lo que está escrito en el paño
-  wood: '#452a17',
-  woodStreak: ['#2c1a0e', '#5a3a22'],
-  woodDark: '#8a6a55',
-  chair: '#34200f',
-  glass: '#d6d8cc',
-  wine: '#3f0f15',
-  bottle: '#1a3325',
-  mate: '#5a3c22',
-  yerba: '#6c7f3c',
-  bombilla: '#b9b2a0',
-  deckSide: '#dccbaa',
+  wood: '#141414',
+  woodStreak: ['#0a0a0a', '#262626'],
+  woodDark: '#4a4a4a',
+  chair: '#1f1f1f',
+  glass: '#e6e6e6',
+  wine: '#2a0e12',
+  bottle: '#1a1a1a',
+  mate: '#2b2b2b',
+  yerba: '#55603a',
+  bombilla: '#c8c8c8',
+  deckSide: '#ececec',
 };
 
 // Luces del bar: sin mapeo de tonos, para que la paleta quede tal cual se eligió.

@@ -91,6 +91,27 @@ export async function listMatches(env, userId, before) {
   return (await res.json()).map((r) => ({ ...r, match: forClient(r.match) }));
 }
 
+// Una fila de match_players -> lo que se muestra en el cartel de la mesa.
+export const recentRow = (r) => {
+  const m = r.match || {};
+  const score = Array.isArray(m.score) ? m.score : [0, 0];
+  const t = r.team ?? 0;
+  return {
+    won: !!r.won,
+    mode: m.mode || null,
+    score: [score[t] ?? 0, score[1 - t] ?? 0],
+    delta: m.rated && r.elo_after != null && r.elo_before != null ? r.elo_after - r.elo_before : null,
+    at: r.ended_at || null,
+  };
+};
+
+/** Las últimas n partidas de alguien, para el cartel de la mesa: [{ won, mode, score: [suyos, rivales], delta, at }]. */
+export async function recentMatches(env, userId, n = 3) {
+  const res = await rest(env, `match_players?user_id=eq.${userId}&select=team,won,elo_before,elo_after,ended_at,match:matches(mode,rated,score)&order=ended_at.desc&limit=${n}`);
+  if (!res.ok) return [];
+  return (await res.json()).map(recentRow);
+}
+
 /** Una partida con su registro, solo si el jugador estuvo sentado en ella. */
 export async function getMatch(env, userId, id) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;

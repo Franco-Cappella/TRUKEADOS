@@ -50,9 +50,20 @@ function rivalCos(rng) {
 // Siempre que se pueda, uno de los usuarios del plantel (los del ranking).
 export function rivalSeat(base, rng, used, mode = '1v1') {
   const p = rosterPick(base, MATCH.eloSpread * 1.6, mode, rng, used);
-  if (p) return { bot: true, disguised: true, name: p.username, elo: p[`elo_${mode}`], cos: rivalCos(rng) };
-  return { bot: true, disguised: true, name: rivalName(rng, used), elo: rivalElo(base, rng), cos: rivalCos(rng) };
+  if (p) return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: p.username, elo: p[`elo_${mode}`], cos: rivalCos(rng) };
+  return { bot: true, disguised: true, recent: fakeRecent(rng, mode), name: rivalName(rng, used), elo: rivalElo(base, rng), cos: rivalCos(rng) };
 }
 
 /** Lo que tarda en aparecer el próximo rival (el primero tarda más: se está buscando). */
 export const nextRivalIn = (first, rng) => (first ? MATCH.waitMin + rng() * MATCH.waitRand : MATCH.gapMin + rng() * MATCH.gapRand);
+
+// Las últimas partidas de un rival automático (como las de una persona: si no, se notaría que es un bot).
+export function fakeRecent(rng, mode) {
+  const target = rng() < 0.5 ? 15 : 30;
+  return Array.from({ length: 3 }, (_, i) => {
+    const won = rng() < 0.52;
+    const loser = Math.floor(rng() * (target - 2));
+    const delta = Math.round((6 + rng() * 14) * (won ? 1 : -1));
+    return { won, mode, score: won ? [target, loser] : [loser, target], delta, at: new Date(Date.now() - (i + 1) * (3 + rng() * 40) * 3600e3).toISOString() };
+  });
+}
