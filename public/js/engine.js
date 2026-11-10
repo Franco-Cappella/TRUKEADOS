@@ -548,6 +548,8 @@ function actInner(g, seat, a) {
       const win = otherTeam(T);
       const pts = tr.pending && tr.pending.byTeam === win ? tr.pending.level - 1 : tr.level;
       if (h.r === 0 && e.state === 'none' && h.flor.state === 'none') h.pending.push({ team: win, pts: 1, why: 'envido-mazo' });
+      // "me voy y muestro": al terminar la mano da vuelta lo que tenía (para lucirse o cargar al rival)
+      if (a.show) h.lucirAfter = [...(h.lucirAfter || []), seat];
       endHand(g, win, pts, 'mazo');
       return { ok: true };
     }
@@ -893,6 +895,8 @@ function finishHand(g, penalty) {
   };
   // primero la flor y el envido, después el truco
   for (const p of entries) addPoints(g, p.team, p.pts, p.why);
+  // los que se fueron al mazo mostrando las cartas
+  for (const s of h.lucirAfter || []) if (hiddenOf(g, s).length) lucir(g, s);
 }
 
 // ---------------------------------------------------------------- vista por jugador

@@ -133,8 +133,13 @@ test('calificaciones, como en chess.com: por chance de ganar perdida', () => {
   // costando un poco, si se la creyeron también
   assert.equal(classify({ ...base, a: truco, best: play, loss: 0.02, strength: 0.1, folded: true }), 'brillante');
   assert.equal(classify({ ...base, a: truco, best: play, loss: 0.04, strength: 0.1 }), 'arriesgada');
-  // farolear carísimo es insensato, no arriesgado
+  // farolear carísimo es insensato, no arriesgado... salvo que salga
   assert.equal(classify({ ...base, a: truco, best: play, loss: 0.3, strength: 0.1 }), 'insensata');
+  // una falta envido de farol que no quisieron es brillante, aunque arriesgara mucho
+  const falta = { t: 'envido', kind: 'falta' };
+  assert.equal(classify({ ...base, a: falta, best: play, loss: 0.3, strength: 0.08, folded: true }), 'brillante');
+  // con cartas, si no la quisieron, al menos buena
+  assert.equal(classify({ ...base, a: falta, best: play, loss: 0.2, strength: 0.6, folded: true }), 'buena');
   // tenía para cantar y no cantó
   assert.equal(classify({ ...base, best: truco, loss: 0.05, strength: 0.9 }), 'perdida');
   assert.equal(new Set(GRADES.map((g) => g.key)).size, GRADES.length);

@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.18.3 — irse mostrando
+- Al irte al mazo, además de "Sí, me voy" está **"Me voy y muestro"**: te vas y das vuelta las cartas que no tiraste
+  ("¡Mirá lo que tenía!"), para lucirte o cargar al rival. No cambia ningún punto.
+
+## 1.18.2 — análisis y cartel
+- **Análisis**: un canto que salió (no lo quisieron o se fueron al mazo) es buena jugada. Si era mentira (por ejemplo,
+  una falta envido de farol), es una mentira brillante aunque arriesgara mucho, y no te baja la precisión.
+- En las últimas partidas del cartel y del perfil: + y − en vez de G y P.
+
 ## 1.18.1 — perfiles, color y un arreglo
 - **Perfil de otros jugadores**: tocando un nombre (ranking, amigos, el cartel de la mesa) se ve su foto, su ELO y
   partidas de cada modo y sus últimas partidas, con el botón para agregarlo de amigo.

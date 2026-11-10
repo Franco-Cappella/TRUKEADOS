@@ -208,3 +208,18 @@ test('GIF: lo que arma gif.js se lee igual y el servidor lo acepta', () => {
 test('tanto() sigue igual para los tantos solos', () => {
   assert.equal(tanto(['7E', '6E', '4C']).value, 33);
 });
+
+test('irse al mazo mostrando: se da vuelta lo que no tiraste y no cambia el tanteador', () => {
+  const g = newGame({ mode: '1v1', dealer: 1 });
+  g.h.cards = [['1E', '7E', '3C'], ['4B', '5C', '6O']];
+  g.h.inHand = g.h.cards.map((c) => c.slice());
+  ok(act(g, 0, { t: 'play', card: '3C' }));
+  ok(act(g, 1, { t: 'play', card: '4B' }));
+  const before = g.score.slice();
+  ok(act(g, 0, { t: 'mazo', show: true }));
+  assert.equal(g.h.phase, 'ended');
+  assert.deepEqual(g.score.map((v, i) => v - before[i]), [0, 1], 'el mazo vale lo mismo');
+  const seen = viewFor(g, 1).h.table[0].map((p) => p.c).sort();
+  assert.deepEqual(seen, ['1E', '3C', '7E']);
+  assert.ok(g.ev.some((e) => e.type === 'lucir' && e.seat === 0));
+});

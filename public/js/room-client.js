@@ -33,7 +33,7 @@ function recentHtml(p, mode) {
     const m = Math.max(1, Math.round((Date.now() - Date.parse(at)) / 60000));
     return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`;
   };
-  const rows = p.recent.map((r) => `<li class="${r.won ? 'w' : 'l'}"><b>${r.won ? 'G' : 'P'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${r.at ? ago(r.at) : ''}</small></li>`);
+  const rows = p.recent.map((r) => `<li class="${r.won ? 'w' : 'l'}"><b title="${r.won ? 'Ganó' : 'Perdió'}">${r.won ? '+' : '−'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${r.at ? ago(r.at) : ''}</small></li>`);
   return `${elos}<h5>Últimas partidas</h5><ul>${rows.join('')}</ul>${more}`;
 }
 
@@ -1007,6 +1007,13 @@ export class RoomClient {
         }, MAZO_CONFIRM_MS);
         this.render();
       });
+      // irse mostrando las cartas que no tiraste ("mirá lo que tenía")
+      if (this.mazoArmed) {
+        add('mano', 'Mano', 'Me voy y muestro', 'danger', () => {
+          this.mazoArmed = false;
+          this.act({ t: 'mazo', show: true });
+        }, 'Te vas al mazo y das vuelta las cartas que no tiraste, para que todos vean lo que tenías');
+      }
     }
     if (a.play && this.choosingTop) {
       add('mano', 'Mano', 'Cancelar', '', () => {

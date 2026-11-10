@@ -597,7 +597,7 @@ export class TableScene {
     mate.traverse((o) => (o.castShadow = true));
     g.add(mate);
 
-    // personajes: todos (el tuyo solo se ve en tercera o segunda persona, o con un personaje 3D)
+    // personajes: todos (el tuyo solo se ve en segunda persona, o con un personaje 3D)
     for (let s = 0; s < n; s++) this.addCharacter(s);
     this.placeCamera();
   }
@@ -1733,7 +1733,7 @@ export class TableScene {
         }
         continue;
       }
-      // el tuyo (dibujado) solo se ve en tercera o segunda persona
+      // el tuyo (dibujado) solo se ve en segunda persona (de frente)
       if (c.self) {
         c.mesh.visible = c.present && this.camMode !== 'first';
         if (!c.mesh.visible) continue;

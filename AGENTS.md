@@ -111,7 +111,7 @@ Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLef
 
 Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada = quemada), `play2 {bottom, top}`
 (top = jugada quemada de la ronda siguiente),
-`truco`, `envido {kind}`, `flor {kind: flor|quiero|achico|contraflor|resto|noquiero}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo`, `denuncia {target}`,
+`truco`, `envido {kind}`, `flor {kind: flor|quiero|achico|contraflor|resto|noquiero}`, `quiero`, `noquiero`, `cantar {value?}`, `buenas`, `mazo {show?}` (show: al terminar la mano da vuelta lo que no tiró), `denuncia {target}`,
 `mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`, `lucir` (terminada la mano, dar vuelta las cartas que no tiró).
 
 ## Probar

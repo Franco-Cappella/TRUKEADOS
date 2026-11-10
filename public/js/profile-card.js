@@ -25,7 +25,7 @@ function render(p, msg = '') {
     .map((m) => `<span><small>${esc(modeLabel(m))}</small><b>${esc(p[`elo_${m}`] ?? ELO_START)}</b><em>${esc(p[`games_${m}`] ?? 0)} partidas</em></span>`)
     .join('');
   const rows = (p.recent || [])
-    .map((r) => `<li class="${r.won ? 'w' : 'l'}"><b>${r.won ? 'G' : 'P'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${esc(ago(r.at))}</small></li>`)
+    .map((r) => `<li class="${r.won ? 'w' : 'l'}"><b title="${r.won ? 'Ganó' : 'Perdió'}">${r.won ? '+' : '−'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${esc(ago(r.at))}</small></li>`)
     .join('');
   $('#ud-body').innerHTML = `
     <header class="ud-head">

@@ -37,6 +37,20 @@ export const gradeOf = (loss) => ANALYSIS.grades.find((g) => loss <= g.max);
 
 const isCall = (a) => a?.t === 'truco' || a?.t === 'envido';
 
+// Qué contestó el otro equipo al canto del cuadro i: 'fold' (no quiso o se fue al mazo), 'accept', 'raise' o null.
+function answerTo(frames, i, seat) {
+  for (let j = i + 1; j < frames.length; j++) {
+    const f = frames[j];
+    if (f.seat == null || !f.a || team(f.seat) === team(seat)) continue;
+    const t = f.a.t;
+    if (t === 'noquiero' || t === 'mazo') return 'fold';
+    if (t === 'quiero') return 'accept';
+    if (t === 'envido' || t === 'truco' || t === 'flor') return 'raise';
+    return null;
+  }
+  return null;
+}
+
 /**
  * Calificación de una jugada. loss: chance de ganar perdida (0 a 1). gap: cuánto peor era la segunda opción.
  * strength: chance de ganar lo que se está cantando (la mano o el envido), con lo que veía. folded: no se lo quisieron.
@@ -44,7 +58,13 @@ const isCall = (a) => a?.t === 'truco' || a?.t === 'envido';
 export function classify({ a, best, loss, gap, strength, folded }) {
   const S = ANALYSIS;
   const bluff = isCall(a) && strength < S.bluffStrength;
-  if (bluff && (loss <= S.grades[0].max || (folded && loss <= S.grades[2].max))) return 'brillante';
+  // un canto que salió (no lo quisieron) es buena jugada: si era mentira, brillante; si no, al menos buena
+  if (isCall(a) && folded) {
+    if (bluff) return 'brillante';
+    if (loss > S.grades[2].max) return 'buena';
+    return loss <= S.grades[0].max && gap >= S.onlyMoveGap ? 'genial' : gradeOf(loss).key;
+  }
+  if (bluff && loss <= S.grades[0].max) return 'brillante';
   if (bluff && loss <= S.grades[3].max) return 'arriesgada';
   if (!isCall(a) && isCall(best) && strength >= 0.6 && loss >= S.missLoss) return 'perdida';
   if (loss <= S.grades[0].max && gap >= S.onlyMoveGap) return 'genial';
@@ -69,13 +89,18 @@ export function analyzeHand(hand, seats, seed = 1) {
     const chosen = chosenOption(ev.options, f.a);
     if (!chosen) continue;
     const best = ev.options.reduce((x, y) => (y.ev > x.ev ? y : x));
-    const points = Math.max(0, best.ev - chosen.ev);
-    const loss = points * ev.slope;
+    let points = Math.max(0, best.ev - chosen.ev);
+    let loss = points * ev.slope;
     const others = ev.options.filter((o) => o !== chosen).map((o) => o.ev);
     const gap = Math.max(0, (chosen.ev - Math.max(...others)) * ev.slope);
-    const folded = frames[i + 1]?.a?.t === 'noquiero';
+    const folded = isCall(f.a) && answerTo(frames, i, f.seat) === 'fold';
     const strength = f.a.t === 'envido' ? ev.envidoWin : ev.handWin;
     const grade = classify({ a: f.a, best: best.a, loss, gap, strength, folded });
+    // si el canto salió, no cuenta como chance perdida en la precisión (o cuenta poco, si no era mentira)
+    if (folded) {
+      loss = strength < ANALYSIS.bluffStrength ? 0 : Math.min(loss, ANALYSIS.grades[2].max);
+      points = ev.slope ? loss / ev.slope : 0;
+    }
     const before = frames[i - 1].g;
     const tr = before.h.truco;
     const ctx = { calls: before.h.envido.calls, trucoNext: TRUCO_NAMES[(tr.pending?.level ?? tr.level) + 1] };
