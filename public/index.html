@@ -76,6 +76,7 @@
           <button type="button" data-tab="perfil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 4-8 8-8s8 3 8 8"/></svg><span>Perfil</span></button>
           <button type="button" data-tab="ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Ajustes</span></button>
         </nav>
+        <button class="fd-mini" id="fd-mini" type="button" title="Amigos conectados"></button>
         <button class="ap-user" type="button" data-tab="perfil" title="Tu perfil">
           <span id="me-av"></span>
           <span class="ap-uname"><b id="me-name"></b><small id="me-sub"></small></span>
@@ -140,7 +141,7 @@
         </div>
 
         <div class="m-card ap-panel h-panel hidden" data-panel="amigos" id="panel-amigos">
-          <h3>Amigos</h3>
+          <h3>Amigos <button type="button" class="btn small fr-online" data-fd-open="1">Conectados y chat</button></h3>
           <form id="fr-form" class="ho-join">
             <input id="fr-name" maxlength="20" placeholder="Nombre de usuario" autocomplete="off" spellcheck="false" aria-label="Nombre de usuario">
             <button class="btn primary">Agregar</button>
@@ -285,6 +286,14 @@
     </form>
   </dialog>
 
+  <!-- amigos conectados y chat con ellos (menú y partida): friends.js -->
+  <aside id="fd" class="fd hidden" aria-label="Amigos" aria-hidden="true">
+    <div class="fd-panel">
+      <header class="fd-head"><h3>Amigos</h3><small id="fd-count"></small><button type="button" class="fd-x" data-fd-close="1" aria-label="Cerrar">✕</button></header>
+      <div id="fd-body" class="fd-body"></div>
+    </div>
+  </aside>
+
   <dialog id="user-dialog" class="dl ud" aria-label="Perfil del jugador"><div id="ud-body"></div></dialog>
 
   <dialog id="credits-dialog" class="dl cr-dialog" aria-labelledby="credits-title">
@@ -362,6 +371,7 @@
       <button class="btn small ghost" id="cam-btn" title="Cambiar la vista: primera persona o de frente (segunda persona, te ves la cara). Tecla V">Vista: 1ª</button>
       <button class="btn small ghost" id="zoom-btn" title="Mantené apretada la tecla Z (o este botón) para hacer zoom">Zoom <kbd>Z</kbd></button>
       <button class="btn small ghost" id="help-btn" title="Ayuda">?</button>
+      <button class="btn small ghost fd-btn" id="fd-btn" type="button" title="Amigos conectados y chat con ellos">Amigos</button>
       <button class="btn small ghost" id="chat-toggle" title="Chat">Chat<i id="chat-badge" class="badge hidden"></i></button>
       <button class="btn small danger hidden" id="surrender-btn" type="button" title="Abandonar la partida: tu equipo la pierde">Rendirse</button>
     </div>
@@ -408,7 +418,8 @@
       <form id="chat-form"><input id="chat-input" maxlength="280" placeholder="Escribí algo…" autocomplete="off"><button class="btn primary small">Enviar</button></form>
     </aside>
 
-    <div id="waiting" class="overlay hidden"></div>
+    <!-- sala de espera: el escenario con los personajes (party.js) y, encima, la interfaz -->
+    <div id="waiting" class="overlay pl hidden"><div class="pl-stage" id="pl-stage"></div><div class="pl-ui" id="pl-ui"></div></div>
     <div id="toast-area"></div>
     <div id="result" class="hidden"></div>
     <div id="help" class="overlay hidden"></div>

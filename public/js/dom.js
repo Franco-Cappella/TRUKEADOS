@@ -40,6 +40,7 @@ export const KEYS = {
   lastMode: 'truco-last-mode', // último modo elegido (para armar la mesa)
   camMode: 'truco-cam-mode', // vista: first, back o front
   muted: 'truco-muted',
+  dmRead: 'truco-dm-read', // hasta dónde leíste el chat con cada amigo (JSON id -> fecha)
   friendSeen: 'truco-friend-seen', // solicitudes de amistad a las que dijiste "Ahora no" (JSON de ids) // nombres de usuario silenciados en el chat (JSON)
 };
 

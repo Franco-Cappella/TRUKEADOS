@@ -65,6 +65,9 @@ export const ROUTES = {
     invitesDone: '/api/invites/done',
     ranking: (mode) => `/api/ranking?mode=${mode}`,
     user: (name) => `/api/users/${encodeURIComponent(name)}`,
+    presence: '/api/presence',
+    dm: '/api/dm',
+    dmWith: (id, after = 0) => `/api/dm?with=${encodeURIComponent(id)}&after=${after}`,
     shop: '/api/shop',
     buy: '/api/shop/buy',
     equip: '/api/shop/equip',
@@ -276,6 +279,9 @@ export const GRADES = [
 ];
 export const HISTORY_PAGE = 20; // partidas por página en el historial
 export const FRIEND_POLL_MS = 20_000; // cada cuánto se revisa si llegó una solicitud de amistad (menú y partida)
+// Amigos conectados: cada navegador avisa dónde está cada ping ms; sin aviso por ttl ms, desconectado.
+// El chat entre amigos guarda los últimos dmKeep mensajes de cada pareja y, con el chat abierto, se revisa cada chatPoll ms.
+export const PRESENCE = { ping: 20_000, ttl: 70_000, dmKeep: 60, chatPoll: 3000 };
 
 // ------------------------------------------------------------------ tienda y personalización
 // Se compra con las monedas que se ganan jugando (COINS). Lo que tenés puesto lo ven todos en la mesa: la ropa,

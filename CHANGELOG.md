@@ -1,5 +1,14 @@
 # Cambios
 
+## 1.19.0 — sala de espera con personajes y amigos conectados
+- **Sala de espera nueva**: un escenario con una tarima por lugar y el personaje de cada uno (el 3D o el dibujado),
+  los equipos enfrentados con un "VS" al medio, el código grande arriba para copiar y compartir, y en cada lugar libre
+  "Pasarme acá", "+ bot" o "Invitar". "Buscando rivales" usa el mismo escenario, con siluetas que laten.
+- **Amigos conectados**: en el menú (al costado) y en la partida (botón "Amigos") ves quién está conectado y qué está
+  haciendo (en el menú, esperando en una sala, jugando y cómo va). Podés unirte a su sala, mirar su partida o
+  invitarlo a la tuya.
+- **Chat con amigos**: desde la lista, un chat con cada uno, que llega aunque esté jugando (con aviso de mensaje nuevo).
+
 ## 1.18.5 — avisos de amistad
 - **Solicitudes de amistad**: se revisan cada 20 segundos. En el menú aparece un cartel con quién te la mandó y
   "Aceptar" / "Ahora no"; en la partida, un aviso una sola vez; y el número va en "Amigos" y en el título de la pestaña,

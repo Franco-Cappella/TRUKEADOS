@@ -6,6 +6,7 @@ import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml, DEFAULT_AVATAR } from './dom.js';
 import { audio, flick, ding, say, hush, myVoice, setSeatVoices } from './audio.js';
 import { palitos, drawFace } from './hud.js';
+import { PartyStage } from './party.js';
 
 const ACTION_LOCK_MS = 4000; // si el servidor no contesta, se destraban los botones igual
 const MAZO_CONFIRM_MS = 3500;
@@ -36,6 +37,10 @@ function recentHtml(p, mode) {
   const rows = p.recent.map((r) => `<li class="${r.won ? 'w' : 'l'}"><b title="${r.won ? 'Ganó' : 'Perdió'}">${r.won ? '+' : '−'}</b><span>${esc(r.mode ? modeLabel(r.mode) : '')}</span><span class="np-sc">${esc(r.score[0])}–${esc(r.score[1])}</span><span class="np-d">${r.delta == null ? '' : `${r.delta >= 0 ? '+' : ''}${esc(r.delta)}`}</span><small>${r.at ? ago(r.at) : ''}</small></li>`);
   return `${elos}<h5>Últimas partidas</h5><ul>${rows.join('')}</ul>${more}`;
 }
+
+// El escenario de la sala de espera: uno solo (cada sala nueva lo reusa; así no se juntan contextos de WebGL).
+let party = null;
+const partyStage = () => (party ||= new PartyStage($('#pl-stage')));
 
 // en equipo uno se va al mazo por todos (salvo en un duelo de pica-pica)
 const mazoText = (g) => (g.n > 2 && !g.h?.duel ? 'Nos vamos al mazo' : 'Me voy al mazo');
@@ -1122,39 +1127,38 @@ export class RoomClient {
       return el.classList.add('hidden');
     }
     el.classList.remove('hidden');
-    if (st.room.quick && st.you != null) return this.renderSearching();
     const r = st.room;
+    const searching = !!r.quick && st.you != null;
+    // el escenario: una tarima por lugar con el personaje de cada uno
+    const stage = partyStage();
+    stage.onFrame = (pos) => this.placePlates(pos);
+    stage.set(r.seats.map((p, i) => ({ seat: i, team: team(i), kind: p ? 'player' : searching ? 'search' : 'empty', name: p?.name, cos: p?.cos, me: i === st.you })));
+    if (searching) return this.renderSearching();
     const cfg = r.cfg;
     const host = st.isHost;
     const seated = st.you != null;
     const hostName = r.seats.find((p) => p?.host)?.name;
     const free = r.seats.filter((p) => !p).length;
 
-    // Un lugar: avatar + nombre, o un "lugar libre" que se toca para sentarse.
-    const seatHtml = (i) => {
-      const p = r.seats[i];
+    // abajo de cada tarima: el cartel del que está (o los botones del lugar libre)
+    const plate = (p, i) => {
       if (!p) {
-        return `<div class="w-seat free" data-seat="${i}">
-          <button type="button" class="w-sit" data-sit="${i}"><span class="w-av">+</span>${seated ? 'Pasarme acá' : 'Sentarme acá'}</button>
-          ${host ? `<button type="button" class="w-mini" data-bot="${i}" title="Sentar un bot en este lugar">+ bot</button>` : ''}</div>`;
+        return `<div class="pl-plate pl-free w-seat free" data-seat="${i}" data-slot="${i}">
+          <button type="button" class="pl-sit" data-sit="${i}">${seated ? 'Pasarme acá' : 'Sentarme acá'}</button>
+          <span class="pl-row">${host ? `<button type="button" class="w-mini" data-bot="${i}" title="Sentar un bot en este lugar">+ bot</button>` : ''}${seated ? '<button type="button" class="w-mini" data-fd-open="1" title="Invitar a un amigo">Invitar</button>' : ''}</span>
+        </div>`;
       }
       const me = i === st.you;
       const tags = [me && 'vos', p.host && 'anfitrión', p.bot && 'bot', !p.online && 'desconectado'].filter(Boolean);
-      return `<div class="w-seat ${me ? 'me' : ''} ${p.online ? '' : 'off'} ${host ? 'drag' : ''}" data-seat="${i}" ${host ? 'title="Arrastralo a otro lugar para cambiarlo de equipo"' : ''}>
-        ${host ? '<span class="w-grip" aria-hidden="true">⠿</span>' : ''}${avatarHtml(p)}
-        <span class="w-nm">${esc(p.name)}${tags.length ? `<small>${tags.join(' · ')}</small>` : ''}</span>
+      return `<div class="pl-plate w-seat t${team(i)} ${me ? 'me' : ''} ${p.online ? '' : 'off'} ${host ? 'drag' : ''}" data-seat="${i}" data-slot="${i}" ${host ? 'title="Arrastralo a otro lugar para cambiarlo de equipo"' : ''}>
+        ${avatarHtml(p)}
+        <span class="pl-nm"><b class="${p.bot ? '' : 'u-link'}" ${p.bot ? '' : `data-user="${esc(p.name)}"`}>${esc(p.name)}</b><small>${[p.elo ? `ELO ${esc(p.elo)}` : '', ...tags].filter(Boolean).join(' · ')}</small></span>
         ${host && p.bot ? `<button type="button" class="w-mini" data-unbot="${i}" title="Sacar el bot">Sacar</button>` : ''}
-        ${host && !p.bot && !me && !p.host ? `<button type="button" class="w-mini" data-kick="${i}" title="Echar de la mesa">Echar</button>` : ''}</div>`;
+        ${host && !p.bot && !me && !p.host ? `<button type="button" class="w-mini" data-kick="${i}" title="Echar de la mesa">Echar</button>` : ''}
+      </div>`;
     };
-    const teams = [0, 1]
-      .map((t) => {
-        const idx = r.seats.map((_, i) => i).filter((i) => team(i) === t);
-        const label = cfg.mode === '1v1' ? '' : `<h3>Equipo ${t === 0 ? 'A' : 'B'}</h3>`;
-        return `<div class="w-team t${t}">${label}${idx.map(seatHtml).join('')}</div>`;
-      })
-      .join('<div class="w-vs">vs</div>');
 
-    // Ajustes (solo el anfitrión los cambia; el resto los ve en el resumen de arriba).
+    // las reglas (solo el anfitrión las cambia; el resto las ve en el resumen de arriba)
     const seg = (name, opts, cur) =>
       `<div class="seg" data-cfg="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const pill = (attr, on, text, title) =>
@@ -1162,44 +1166,48 @@ export class RoomClient {
     const pills = ROOM_OPTIONS.filter((o) => optionForMode(o, cfg.mode)).map((o) => pill(`data-opt="${o.key}"`, o.invert ? cfg[o.key] === false : cfg[o.key] === true, o.short[0].toUpperCase() + o.short.slice(1), o.label));
     if (cfg.mode !== '1v1') pills.push(pill('data-trucoseg', cfg.trucoDesdeSegunda, 'Truco desde segunda', 'En equipos, el truco se canta recién desde la segunda ronda'));
     const settings = host && this.showRules
-      ? `<div class="w-settings">
+      ? `<aside class="pl-rules w-settings">
           <h3>Reglas de la mesa</h3>
           <div class="w-row">${seg('mode', Object.keys(MODES).map((m) => [m, modeLabel(m)]), cfg.mode)}</div>
           <div class="w-row two">${seg('target', [[15, 'A 15'], [30, 'A 30']], cfg.target)}${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
           <div class="w-row">${seg('rated', [[1, 'Por ELO'], [0, 'Sin puntuar']], cfg.rated !== false ? 1 : 0)}</div>
           <div class="w-pills n${pills.length}">${pills.join('')}</div>
-        </div>`
+        </aside>`
       : '';
 
     const summary = [modeLabel(cfg.mode), `a ${cfg.target}`, cfg.rated !== false ? 'por ELO' : 'sin puntuar', cfg.isPublic ? 'pública' : 'privada', roomOptionsText(cfg)].filter(Boolean).join(' · ');
     const startLabel = free ? `Empezar con ${free} bot${free > 1 ? 's' : ''}` : 'Empezar';
     const footer = host
-      ? `<div class="w-actions">
-          <button type="button" class="btn big w-rules ${this.showRules ? 'on' : ''}" data-rules="1" aria-expanded="${!!this.showRules}">${this.showRules ? 'Listo' : 'Reglas'}</button>
-          <button class="btn primary big w-start" data-start="${free ? 1 : 0}">${startLabel}</button>
-        </div>`
-      : `<p class="w-note">${seated ? `Esperando que ${esc(hostName || 'el anfitrión')} empiece…` : 'Estás mirando. Tocá un lugar libre para sumarte.'}</p>`;
+      ? `<button type="button" class="btn big w-rules ${this.showRules ? 'on' : ''}" data-rules="1" aria-expanded="${!!this.showRules}">${this.showRules ? 'Listo' : 'Reglas'}</button>
+         <button class="btn primary big pl-start" data-start="${free ? 1 : 0}">${startLabel}</button>`
+      : `<p class="pl-note">${seated ? `Esperando que ${esc(hostName || 'el anfitrión')} empiece…` : 'Estás mirando. Tocá un lugar libre para sumarte.'}</p>`;
 
-    el.innerHTML = `<div class="card-box w-box">
-      <header class="w-head">
-        <div>
-          <h2>${hostName ? `La mesa de ${esc(hostName)}` : 'La mesa'}</h2>
-          <div class="muted">${esc(summary)}</div>
+    $('#pl-ui').innerHTML = `
+      <header class="pl-top">
+        <div class="pl-title"><small>${esc(summary)}</small><h2>${hostName ? `La mesa de ${esc(hostName)}` : 'La mesa'}</h2></div>
+        <div class="pl-code">
+          <button type="button" class="pl-codebtn" data-copy="${esc(r.code)}" title="Copiar el código"><small>Código</small><b>${esc(r.code)}</b></button>
+          ${navigator.share ? '<button type="button" class="btn" data-share="1">Compartir</button>' : `<button type="button" class="btn" data-copy="${esc(this.link)}">Copiar enlace</button>`}
+          <button type="button" class="btn ghost" data-exit="1">Salir</button>
         </div>
-        <button type="button" class="w-exit" data-exit="1" title="Salir de la sala">Salir</button>
       </header>
-      ${settings || `<div class="w-invite">
-        <button type="button" class="w-code" data-copy="${esc(r.code)}" title="Copiar código">
-          <small>Código · tocá para copiar</small>
-          <b>${esc(r.code)}</b>
-        </button>
-        <div class="w-share">
-          ${navigator.share ? '<button type="button" class="btn small" data-share="1">Compartir</button>' : `<button type="button" class="btn small" data-copy="${esc(this.link)}">Copiar enlace</button>`}
-        </div>
-      </div>
-      <div class="w-teams">${teams}</div>`}
-      <footer class="w-foot">${footer}</footer>
-    </div>`;
+      <div class="pl-vs" data-vs="1">VS</div>
+      ${r.seats.map(plate).join('')}
+      ${settings}
+      <footer class="pl-bottom">${footer}</footer>`;
+    this.placePlates(this.platePos);
+  }
+
+  // Pone cada cartel abajo de su tarima (lo llama el escenario en cada cuadro).
+  placePlates(pos) {
+    if (!pos) return;
+    this.platePos = pos;
+    for (const el of document.querySelectorAll('#pl-ui [data-slot]')) {
+      const p = pos[el.dataset.slot];
+      if (p) el.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px) translate(-50%, 0)`;
+    }
+    const vs = document.querySelector('#pl-ui [data-vs]');
+    if (vs && pos.vs) vs.style.transform = `translate(${Math.round(pos.vs.x)}px, ${Math.round(pos.vs.y)}px) translate(-50%, -50%)`;
   }
 
   // Partida rápida: se busca gente de tu nivel hasta que la mesa se llena (arranca sola).
@@ -1212,20 +1220,21 @@ export class RoomClient {
       const s = Math.max(0, Math.floor((Date.now() - skew - r.quick.startedAt) / 1000));
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     };
-    const seat = (p, i) =>
+    const plate = (p, i) =>
       p
-        ? `<li class="qs-seat ${i === st.you ? 'me' : ''}">${avatarHtml(p)}<span><b>${esc(p.name)}</b><small>${i === st.you ? 'vos' : team(i) === team(st.you) ? 'compañero' : 'rival'}${p.elo ? ` · ${esc(p.elo)}` : ''}</small></span></li>`
-        : '<li class="qs-seat empty"><span class="w-av">?</span><span><small>Buscando…</small></span></li>';
-    $('#waiting').innerHTML = `<div class="card-box w-box qs-box">
-      <header class="w-head">
-        <div><h2>Buscando rivales</h2><div class="muted">${esc(modeLabel(r.cfg.mode))} · a ${r.cfg.target} · por ELO</div></div>
-        <button type="button" class="w-exit" data-exit="1">Cancelar</button>
+        ? `<div class="pl-plate t${team(i)} ${i === st.you ? 'me' : ''}" data-slot="${i}">${avatarHtml(p)}<span class="pl-nm"><b>${esc(p.name)}</b><small>${i === st.you ? 'vos' : team(i) === team(st.you) ? 'compañero' : 'rival'}${p.elo ? ` · ELO ${esc(p.elo)}` : ''}</small></span></div>`
+        : `<div class="pl-plate pl-searching" data-slot="${i}"><span class="pl-nm"><b>Buscando…</b><small>${team(i) === team(st.you) ? 'compañero' : 'rival'}</small></span></div>`;
+    const invite = this.teamInviteHtml();
+    $('#pl-ui').innerHTML = `
+      <header class="pl-top">
+        <div class="pl-title"><small>${esc(modeLabel(r.cfg.mode))} · a ${r.cfg.target} · por ELO</small><h2>Buscando rivales</h2></div>
+        <div class="pl-code"><button type="button" class="btn ghost" data-exit="1">Cancelar</button></div>
       </header>
-      <div class="qs-pulse" aria-hidden="true"><i></i><i></i><i></i></div>
-      <p class="qs-time"><b id="qs-time">${elapsed()}</b><small>${free === 1 ? 'Falta 1 jugador' : `Faltan ${free} jugadores`} de tu nivel</small></p>
-      <ul class="qs-seats">${r.seats.map(seat).join('')}</ul>
-      ${this.teamInviteHtml()}
-    </div>`;
+      <div class="pl-clock"><div class="qs-pulse" aria-hidden="true"><i></i><i></i><i></i></div><b id="qs-time">${elapsed()}</b><small>${free === 1 ? 'Falta 1 jugador' : `Faltan ${free} jugadores`} de tu nivel</small></div>
+      <div class="pl-vs" data-vs="1">VS</div>
+      ${r.seats.map(plate).join('')}
+      ${invite ? `<aside class="pl-rules">${invite}</aside>` : ''}`;
+    this.placePlates(this.platePos);
     clearInterval(this.searchT);
     this.searchT = setInterval(() => {
       const t = $('#qs-time');
@@ -1239,7 +1248,7 @@ export class RoomClient {
     const st = this.st;
     const r = st.room;
     if (r.seats.length <= 2 || !st.isHost) return '';
-    if (!r.quick.holding) return r.seats.some((p, i) => !p && team(i) === team(st.you)) ? '<button type="button" class="btn" data-teamhold="1">Invitar a mi equipo</button>' : '';
+    if (!r.quick.holding) return r.seats.some((p, i) => !p && team(i) === team(st.you)) ? '<button type="button" class="btn primary" data-teamhold="1">Invitar a mi equipo</button>' : '';
     const link = `${this.link}?equipo=1`;
     const friends = (this.friends || []).map((f) => `<li>${avatarHtml(f)}<span>${esc(f.username)}</span><button type="button" class="btn small" data-invite="${esc(f.id)}" ${this.invitedFriends.has(f.id) ? 'disabled' : ''}>${this.invitedFriends.has(f.id) ? 'Invitado' : 'Invitar'}</button></li>`).join('');
     return `<section class="qs-invite">

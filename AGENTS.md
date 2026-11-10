@@ -207,6 +207,15 @@ mentira, `fakeRecent`, para no delatarse; también el ELO de cada modo, `elos`, 
 elemento con `data-user="nombre"` lo abre. Los usuarios automáticos tienen un perfil como cualquiera (del plantel o
 inventado a partir del nombre) y se les puede mandar solicitud (queda pendiente).
 
+## Sala de espera y amigos conectados
+- `public/js/party.js` (`PartyStage`): el escenario de la sala de espera (una tarima por lugar, personajes 3D o
+  dibujados, siluetas al buscar). Es uno solo para todas las salas (`#pl-stage`); la interfaz va en `#pl-ui` y
+  `placePlates` (room-client.js) pone cada cartel abajo de su tarima en cada cuadro.
+- `public/js/friends.js`: cada `PRESENCE.ping` avisa dónde estás (`POST /api/presence`) y trae a los amigos con su
+  presencia y el último mensaje (`GET /api/friends`). El Lobby guarda la presencia en memoria (`ping`,
+  `presenceOf`, se vence a los `PRESENCE.ttl`) y el chat entre amigos (`dmSend`, `dmGet`, `dmLast`, ruta `/api/dm`,
+  solo entre amigos de verdad).
+
 ## Avisos de amistad
 `startFriendWatch` (social.js) revisa `/api/friends` cada `FRIEND_POLL_MS`: pinta el número de Amigos y el del título
 de la pestaña, un cartel por solicitud en `#friend-notes` (los de "Ahora no" se guardan en `KEYS.friendSeen`) y, en

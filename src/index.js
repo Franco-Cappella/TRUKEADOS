@@ -103,7 +103,44 @@ async function handle(request, env) {
   // amigos: por nombre de usuario; una solicitud que se acepta
   if (path === '/api/friends' && method === 'GET') {
     const auth = await requireUser(env, request);
-    return auth.error || json(await listFriends(env, auth.user.id));
+    if (auth.error) return auth.error;
+    const list = await listFriends(env, auth.user.id);
+    // de cada amigo: si está conectado y qué hace, y el último mensaje del chat
+    const ids = list.friends.map((f) => f.id);
+    if (ids.length) {
+      const lobby = lobbyStub(env);
+      const [pres, last] = await Promise.all([lobby.presenceOf(ids), lobby.dmLast(auth.user.id, ids)]);
+      for (const f of list.friends) {
+        f.presence = pres[f.id] || { online: false };
+        f.lastMsg = last[f.id] || null;
+      }
+    }
+    return json(list);
+  }
+
+  // presencia: el navegador avisa dónde está (menú o sala) para que lo vean sus amigos
+  if (path === '/api/presence' && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const body = await request.json().catch(() => ({}));
+    await lobbyStub(env).ping(auth.user.id, body);
+    return json({ ok: true });
+  }
+
+  // chat entre amigos (solo entre amigos de verdad)
+  if (path === '/api/dm') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const url = new URL(request.url);
+    const body = method === 'POST' ? await request.json().catch(() => ({})) : {};
+    const other = method === 'POST' ? body.to : url.searchParams.get('with');
+    if (!(await areFriends(env, auth.user.id, other))) return json({ error: 'Solo podés hablar con tus amigos' }, 403);
+    const lobby = lobbyStub(env);
+    if (method === 'POST') {
+      const msg = await lobby.dmSend(auth.user.id, other, body.text);
+      return msg ? json({ msg }) : json({ error: 'Escribí algo' }, 400);
+    }
+    return json({ me: auth.user.id, messages: await lobby.dmGet(auth.user.id, other, Number(url.searchParams.get('after')) || 0) });
   }
   if (path.startsWith('/api/friends') && method === 'POST') {
     const auth = await requireUser(env, request);

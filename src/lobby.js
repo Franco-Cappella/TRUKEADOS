@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newBrain, train, BRAIN_VERSION } from '../public/js/brain.js';
-import { MATCH } from '../public/js/config.js';
+import { MATCH, PRESENCE, MAX_CHAT_TEXT, MODES } from '../public/js/config.js';
 import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from './show-tables.js';
 import { rng } from './util.js';
 
@@ -140,6 +140,75 @@ export class Lobby extends DurableObject {
   }
 
   // Partida rápida: la mesa de partida rápida de ese modo y de un ELO parecido a la que le falta menos gente.
+  // ---- presencia: quién está conectado y qué está haciendo (en memoria: si el Lobby se reinicia, se vuelve a
+  // llenar sola con los próximos avisos de cada navegador)
+  presenceMap() {
+    this._presence ||= new Map();
+    return this._presence;
+  }
+
+  /** Aviso de un navegador: dónde está (menu o room) y, en una sala, cuál y cómo va. */
+  async ping(uid, info = {}, now = Date.now()) {
+    if (typeof uid !== 'string') return false;
+    const where = info.where === 'room' ? 'room' : 'menu';
+    const p = { at: now, where };
+    if (where === 'room') {
+      if (/^\d{4}$/.test(String(info.code))) p.code = String(info.code);
+      if (MODES[info.mode]) p.mode = info.mode;
+      p.status = ['lobby', 'playing', 'ended'].includes(info.status) ? info.status : 'lobby';
+      p.spectating = !!info.spectating;
+      if (Array.isArray(info.score) && info.score.length === 2) p.score = info.score.map((v) => Math.max(0, Math.min(30, Number(v) || 0)));
+    }
+    this.presenceMap().set(uid, p);
+    return true;
+  }
+
+  /** { id: { online, where, code, mode, status, score, spectating } } de esos ids. */
+  async presenceOf(ids = [], now = Date.now()) {
+    const m = this.presenceMap();
+    const out = {};
+    for (const id of ids) {
+      const p = m.get(id);
+      out[id] = p && now - p.at < PRESENCE.ttl ? { online: true, ...p } : { online: false };
+    }
+    return out;
+  }
+
+  // ---- chat entre amigos: los últimos PRESENCE.dmKeep mensajes de cada pareja
+  dmKey(a, b) {
+    return 'dm:' + (a < b ? `${a}|${b}` : `${b}|${a}`);
+  }
+
+  async dmSend(from, to, text, now = Date.now()) {
+    const t = String(text ?? '').trim().slice(0, MAX_CHAT_TEXT);
+    if (!t) return null;
+    const key = this.dmKey(from, to);
+    const list = (await this.ctx.storage.get(key)) || [];
+    const msg = { from, text: t, at: now };
+    list.push(msg);
+    await this.ctx.storage.put(key, list.slice(-PRESENCE.dmKeep));
+    return msg;
+  }
+
+  async dmGet(a, b, after = 0) {
+    const list = (await this.ctx.storage.get(this.dmKey(a, b))) || [];
+    return list.filter((m) => m.at > after);
+  }
+
+  /** El último mensaje con cada amigo: { id: { at, from } } (para marcar los que no leíste). */
+  async dmLast(uid, ids = []) {
+    const out = {};
+    for (let i = 0; i < ids.length; i += 100) {
+      const keys = ids.slice(i, i + 100).map((id) => this.dmKey(uid, id));
+      const got = await this.ctx.storage.get(keys);
+      ids.slice(i, i + 100).forEach((id, k) => {
+        const last = got.get(keys[k])?.at(-1);
+        if (last) out[id] = { at: last.at, from: last.from };
+      });
+    }
+    return out;
+  }
+
   async findOpen(mode, elo) {
     const { open } = await this.list();
     const near = (x) => x.quick && (elo == null || x.elo == null || Math.abs(x.elo - elo) <= MATCH.joinRange);

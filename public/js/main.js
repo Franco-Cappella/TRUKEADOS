@@ -17,6 +17,7 @@ import { initHistory, showReplay, hideReplay } from './history.js';
 import { RoomClient } from './room-client.js';
 import { initProfiles } from './profile-card.js';
 import { startFriendWatch } from './social.js';
+import { initFriends } from './friends.js';
 
 let scene = null;
 let room = null;
@@ -353,6 +354,19 @@ function openMatch(id) {
 initMenu(go, logout);
 initProfiles(); // tocar el nombre de alguien abre su perfil
 startFriendWatch(); // avisos de solicitudes de amistad (menú, partida y título de la pestaña)
+// amigos conectados y chat: dónde estás vos (para que te vean tus amigos), entrar a su mesa o mirarla
+initFriends({
+  go,
+  spectate: (code) => {
+    sessionStorage.setItem(KEYS.spectate, code);
+    go(code);
+  },
+  where: () => {
+    const st = room?.st;
+    if (!room || !st) return { where: 'menu' };
+    return { where: 'room', code: room.code, status: st.room.status, mode: st.room.cfg?.mode, score: st.game?.score, spectating: st.you == null };
+  },
+});
 initHistory(openMatch, () => {
   // volver al historial (o atrás, si se llegó desde ahí)
   sessionStorage.setItem('truco-menu-tab', 'partidas');

@@ -1,5 +1,5 @@
 // Del menú: amigos por nombre de usuario, ranking y foto de perfil.
-import { ROUTES, AVATAR, MODES, modeLabel, ELO_START, FRIEND_POLL_MS } from './config.js';
+import { ROUTES, AVATAR, MODES, modeLabel, ELO_START } from './config.js';
 import { $, esc, api, avatarHtml, KEYS, store } from './dom.js';
 import { shrinkGif, canShrinkGif } from './gif.js';
 import { loadMe, currentMe } from './auth.js';
@@ -33,7 +33,7 @@ export async function loadFriends() {
 }
 
 // ------------------------------------------------------------------ avisos de solicitudes de amistad
-// Se revisa cada FRIEND_POLL_MS (en el menú y en la partida): el número de "Amigos", el del título de la pestaña,
+// Los trae friends.js cada PRESENCE.ping (en el menú y en la partida): el número de "Amigos", el del título de la pestaña,
 // un cartel en el menú por cada solicitud (Aceptar / Ahora no) y, en la partida, un aviso una sola vez.
 let pendingCount = 0;
 const toasted = new Set(); // las que ya se avisaron en la partida (en esta pestaña)
@@ -96,8 +96,7 @@ let watching = false;
 export function startFriendWatch() {
   if (watching) return;
   watching = true;
-  checkFriends();
-  setInterval(checkFriends, FRIEND_POLL_MS);
+  // la consulta periódica la hace friends.js (junto con los amigos conectados): acá solo los avisos
   const title = document.querySelector('title');
   if (title) new MutationObserver(applyTitle).observe(title, { childList: true });
   $('#friend-notes').addEventListener('click', async (e) => {
