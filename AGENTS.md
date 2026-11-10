@@ -213,12 +213,13 @@ la sala (`pickAmbiente`, `r.ambiente`, va en `publicRoom`).
   fotos de la tienda en `public/img/mapas/<id>.webp`).
 
 ## La mesa de cada turno
-El paño, el dorso del mazo y el mapa son **los del que tiene el turno** (`tableOwner`, `tableLook` en config.js; lo
-aplica room-client.js en cada `state`): cuando te toca, todos ven tu mesa. Si el que juega no tiene mapa puesto, cada
-uno ve el suyo (y si tampoco, el que eligió la sala). Los bots y los rivales automáticos tienen siempre su paño, mazo y mapa
-(`botCos`, `BOT_TABLE` en config.js; los agrega `publicRoom`). La baraja no cambia con el turno: es la de cada uno. En la sala de espera y cargando la partida, de fondo, tu mapa.
-La escena guarda armados hasta `AMBIENTE_CACHE` lugares (`envFor`; `prepareAmbientes` arma de antemano los de la mesa
-cuando la página está libre) y cambia con un fundido corto (`AMBIENTE_FADE_MS`).
+El paño y el dorso del mazo son **los del que tiene el turno** (`tableOwner`, `tableLook` en config.js; lo aplica
+room-client.js en cada `state`): cuando te toca, todos ven tu paño y tu mazo, también los que miran. El **mapa** (el
+fondo) no cambia con el turno: es el que eligió la sala, el mismo para todos, salvo que tengas uno comprado y puesto
+(ranura "mapa"): ese lo ves vos, siempre, también en la sala de espera. Los bots y los rivales automáticos tienen siempre
+su paño y su mazo (`botCos`, `BOT_TABLE` en config.js; los agrega `publicRoom`). La baraja no cambia con el turno: es
+la de cada uno. La escena guarda armados hasta `AMBIENTE_CACHE` lugares (`envFor`) y los paños (`feltCache`); al cambiar
+de lugar, un fundido corto (`AMBIENTE_FADE_MS`).
 
 ## Creador de personaje
 `public/js/creator.js` (pantalla `#creator`): tu personaje dibujado en una tarima con un cono de luz; cada parte (piel,

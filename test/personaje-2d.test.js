@@ -1,4 +1,4 @@
-// El creador de personaje (profiles.look) y la mesa de cada turno (mapa, paño y mazo del que juega).
+// El creador de personaje (profiles.look) y la mesa de cada turno (paño y mazo del que juega; el mapa, el de la sala o el tuyo).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LOOK_OPTS, cleanLook, randomLook, AMBIENTES, pickAmbiente, COSMETICS, COSMETIC_SLOTS, cleanEquipped, mapaAmbiente, tableLook, tableOwner, CREATOR } from '../public/js/config.js';
@@ -65,17 +65,18 @@ test('mapas: el Barrio Chino es de la tienda y no sale en el sorteo', () => {
   assert.deepEqual(cleanEquipped({ mapa: 'pano-azul' }), {}, 'cada cosa en su ranura');
 });
 
-test('mesa de cada turno: paño, mazo y mapa del que juega; si no tiene mapa, cada uno ve el suyo', () => {
+test('mesa de cada turno: paño y mazo del que juega; el mapa no cambia: el de la sala, o el tuyo si tenés uno', () => {
   const seats = [
     { cos: { mapa: 'mapa-chinatown', pano: 'pano-azul' } },
     { cos: { pano: 'pano-bordo', dorso: 'dorso-negro', mapa: 'mapa-campo' } },
     { cos: {} },
     null,
   ];
-  // le toca al 1: todo lo suyo, lo ve todo el mundo
-  assert.deepEqual(tableLook(seats, { owner: 1, me: 0, ambiente: 'bar' }), { pano: 'pano-bordo', dorso: 'dorso-negro', ambiente: 'campo' });
-  assert.deepEqual(tableLook(seats, { owner: 1, me: 2, ambiente: 'bar' }), { pano: 'pano-bordo', dorso: 'dorso-negro', ambiente: 'campo' });
-  // le toca al 2 (sin nada): paño y mazo de siempre; el mapa, el de cada uno o el de la sala
+  // le toca al 1: su paño y su mazo los ve todo el mundo; su mapa, no (el 0 ve el suyo, el 2 el de la sala)
+  assert.deepEqual(tableLook(seats, { owner: 1, me: 0, ambiente: 'bar' }), { pano: 'pano-bordo', dorso: 'dorso-negro', ambiente: 'chinatown' });
+  assert.deepEqual(tableLook(seats, { owner: 1, me: 2, ambiente: 'bar' }), { pano: 'pano-bordo', dorso: 'dorso-negro', ambiente: 'bar' });
+  assert.equal(tableLook(seats, { owner: 1, me: 1, ambiente: 'bar' }).ambiente, 'campo', 'el suyo lo ve él');
+  // le toca al 2 (sin nada): paño y mazo de siempre; el mapa no cambia
   assert.deepEqual(tableLook(seats, { owner: 2, me: 0, ambiente: 'bar' }), { pano: null, dorso: null, ambiente: 'chinatown' });
   assert.deepEqual(tableLook(seats, { owner: 2, me: 2, ambiente: 'bar' }), { pano: null, dorso: null, ambiente: 'bar' });
   // el que mira (sin asiento) ve el de la sala
@@ -88,23 +89,23 @@ test('mesa de cada turno: paño, mazo y mapa del que juega; si no tiene mapa, ca
   assert.equal(tableOwner({ h: { turn: 3 } }), 3);
 });
 
-test('bots y rivales automáticos: siempre con su paño, su mazo y su mapa (se ven en su turno, también mirando)', async () => {
+test('bots y rivales automáticos: siempre con su paño y su mazo (se ven en su turno, también mirando)', async () => {
   const { BOT_NAMES, botCos } = await import('../public/js/config.js');
   for (const n of [...BOT_NAMES, 'Juancito', 'La Tana']) {
     const c = botCos(n);
-    for (const slot of ['pano', 'dorso', 'mapa']) assert.ok(cleanEquipped({ [slot]: c[slot] })[slot], `${n}: ${slot}`);
+    for (const slot of ['pano', 'dorso']) assert.ok(cleanEquipped({ [slot]: c[slot] })[slot], `${n}: ${slot}`);
     assert.deepEqual(botCos(n), c, 'siempre lo mismo para el mismo nombre');
   }
   // un rival automático con ropa de la partida rápida también trae su mesa (sin perder lo que tenía)
   const rival = botCos('Juancito', { gorro: 'boina' });
   assert.equal(rival.gorro, 'boina');
-  assert.ok(rival.pano && rival.mapa && rival.dorso);
-  // la mesa cambia con cada turno: la del bot que juega (paño, mazo y mapa), para el que mira también
+  assert.ok(rival.pano && rival.dorso);
+  // la mesa cambia con cada turno: el paño y el mazo del bot que juega, para el que mira también; el fondo, el de la sala
   const seats = ['Tito', 'Coca', 'Pirulo', 'Beto'].map((n) => ({ name: n, cos: botCos(n) }));
   for (let s = 0; s < 4; s++) {
     const look = tableLook(seats, { owner: s, me: null, ambiente: 'bar' });
     assert.equal(look.pano, seats[s].cos.pano);
     assert.equal(look.dorso, seats[s].cos.dorso);
-    assert.equal(look.ambiente, mapaAmbiente(seats[s].cos.mapa));
+    assert.equal(look.ambiente, 'bar');
   }
 });

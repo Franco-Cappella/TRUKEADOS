@@ -36,7 +36,7 @@ export const AMBIENTES = [
   { id: 'chinatown', name: 'Barrio Chino', shop: true },
 ];
 // Los mapas que quedan armados en la escena (el de cada turno) y cuánto dura el fundido al cambiar de uno a otro.
-export const AMBIENTE_CACHE = 8; // alcanza para todos: en 3 vs 3 cada uno puede traer su mapa
+export const AMBIENTE_CACHE = 3; // el de la sala, el tuyo y el anterior (la revancha cambia de lugar)
 export const AMBIENTE_FADE_MS = 560;
 /** Otro ambiente al azar (distinto del anterior, prev). Los de la tienda no salen. */
 export function pickAmbiente(rng = Math.random, prev = null) {
@@ -294,9 +294,9 @@ const nameHash = (s, salt) => {
   for (const ch of String(s)) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
   return (h >>> 0) / 4294967296;
 };
-// Los bots y los rivales automáticos tienen siempre puesta su mesa (paño, mazo y mapa: se ve en su turno, como la de
+// Los bots y los rivales automáticos tienen siempre puesta su mesa (paño y mazo: se ven en su turno, como los de
 // cualquiera) y BOT_SKIN.mesa de las veces algo delante y su propia baraja.
-export const BOT_TABLE = ['pano', 'dorso', 'mapa'];
+export const BOT_TABLE = ['pano', 'dorso'];
 BOT_SKIN.mesa = 0.6;
 /** Lo que tiene puesto un bot: si su nombre tiene personaje 3D, ese; si no, algo de la tienda según su nombre. */
 export const botCos = (name, cos = {}) => {
@@ -457,8 +457,8 @@ export const PRESENCE = { ping: 20_000, ttl: 70_000, dmKeep: 60, chatPoll: 3000 
 
 // ------------------------------------------------------------------ tienda y personalización
 // Se compra con las monedas que se ganan jugando (COINS). Lo que tenés puesto lo ven todos en la mesa: la ropa,
-// el gorro, los anteojos y lo que tenés delante, siempre; el paño, el mazo y el mapa, cuando es tu turno (la mesa
-// entera se vuelve la tuya: ver tableLook).
+// el gorro, los anteojos y lo que tenés delante, siempre; el paño y el mazo, cuando es tu turno; el mapa (el fondo), lo
+// ves vos (los demás ven el de la sala). Ver tableLook.
 // Los colores y las formas de cada cosa están en theme.js (COSMETIC_LOOK), con la misma clave.
 export const COSMETIC_SLOTS = [
   { key: 'personaje', label: 'Personaje', where: 'Un personaje en 3D en vez del dibujado: lo ven todos' },
@@ -466,7 +466,7 @@ export const COSMETIC_SLOTS = [
   { key: 'gorro', label: 'Gorro', where: 'Tu personaje' },
   { key: 'anteojos', label: 'Anteojos', where: 'Tu personaje' },
   { key: 'objeto', label: 'En la mesa', where: 'Delante tuyo' },
-  { key: 'mapa', label: 'Mapa', where: 'Dónde se juega: lo ven todos en tu turno, y vos siempre' },
+  { key: 'mapa', label: 'Mapa', where: 'El fondo de la partida: con uno puesto, siempre jugás ahí (lo ves vos)' },
   { key: 'pano', label: 'Paño', where: 'La mesa: la ven todos en tu turno' },
   { key: 'dorso', label: 'Mazo', where: 'El dorso de las cartas: lo ven todos en tu turno' },
   { key: 'baraja', label: 'Baraja', where: 'Las cartas que tirás vos: las ven todos' },
@@ -520,9 +520,9 @@ export const mapaAmbiente = (itemId) => cosmeticById(itemId)?.ambiente || null;
  */
 export const tableOwner = (game) => (game?.h && Number.isInteger(game.h.turn) ? game.h.turn : null);
 /**
- * Cómo se ve la mesa: el paño, el mazo y el mapa del dueño de la mesa (tableOwner). Si el dueño no tiene mapa, cada
- * uno ve el suyo (me: tu asiento o null si mirás), y si tampoco, el que eligió la sala (ambiente). Sin dueño (sala de
- * espera, cargando la partida), el paño y el mazo del anfitrión y tu mapa.
+ * Cómo se ve la mesa: el paño y el mazo del dueño de la mesa (tableOwner: el que tiene el turno; sin dueño, en la sala
+ * de espera, los del anfitrión). El mapa (el fondo) no cambia con el turno: es el que eligió la sala (ambiente), el
+ * mismo para todos, salvo que tengas uno puesto: ese lo ves vos (me: tu asiento, o null si mirás).
  */
 export function tableLook(seats, { owner = null, me = null, ambiente = 'bar', host = null } = {}) {
   const cosOf = (s) => (s != null && seats[s] ? seats[s].cos || {} : {});
@@ -531,7 +531,7 @@ export function tableLook(seats, { owner = null, me = null, ambiente = 'bar', ho
   return {
     pano: who.pano || null,
     dorso: who.dorso || null,
-    ambiente: (owner != null && mapaAmbiente(cosOf(owner).mapa)) || mapaAmbiente(mine.mapa) || ambiente,
+    ambiente: mapaAmbiente(mine.mapa) || ambiente,
   };
 }
 /** Lo que tiene puesto, limpio: solo ids que existen, cada uno en su ranura (y, si se pasa, solo lo comprado). */

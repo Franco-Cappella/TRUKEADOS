@@ -1,6 +1,6 @@
 // Una sala abierta en el navegador: conexión WebSocket, estado del servidor y todo el HUD de la partida.
 // El servidor es la única fuente de verdad: el cliente solo muestra `state` y manda acciones.
-import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES, tableOwner, tableLook, mapaAmbiente } from './config.js';
+import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES, tableOwner, tableLook } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
 import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml, DEFAULT_AVATAR } from './dom.js';
@@ -347,11 +347,9 @@ export class RoomClient {
     if (roomAmb && roomAmb !== this.roomAmbiente) {
       const was = this.roomAmbiente;
       this.roomAmbiente = roomAmb;
-      const name = AMBIENTES.find((a) => a.id === roomAmb)?.name;
+      const name = AMBIENTES.find((a) => a.id === look.ambiente)?.name; // el que ves (el tuyo, si tenés uno puesto)
       if (was !== undefined && name) this.toast(`Esta partida se juega en: <b>${esc(name)}</b>`, '', 3200);
     }
-    // se arman de antemano los mapas de todos (así cambiar de turno no traba la mesa)
-    if (st.room.status !== 'lobby') scene.prepareAmbientes([st.room.ambiente, ...seats.map((p) => mapaAmbiente(p?.cos?.mapa))].filter(Boolean));
 
     if (g?.h) {
       // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
