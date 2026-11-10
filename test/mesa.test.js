@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { AMBIENTES, pickAmbiente, cosmeticById } from '../public/js/config.js';
+import { AMBIENTES, pickAmbiente, cosmeticById, COSMETICS } from '../public/js/config.js';
 import { recentRow } from '../src/matches.js';
 import { fakeRecent } from '../src/matchmaking.js';
 import { makeRoom } from './helpers/room-harness.mjs';
@@ -87,9 +87,10 @@ test('bots: casi siempre te piden los tantos (zafar es 1 de cada 20)', async () 
   assert.ok(n / N > 0.92 && n / N < 0.98, `reclamó ${n} de ${N}`);
 });
 
-test('jugadores falsos: ELO de cada modo y, unos pocos, personaje 3D', async () => {
+test('jugadores falsos: ELO de cada modo y, bastantes, un personaje 3D de la tienda (todos salen)', async () => {
   const { rivalSeat } = await import('../src/matchmaking.js');
   let with3d = 0;
+  const seen = new Set();
   for (let i = 0; i < 400; i++) {
     const s = rivalSeat(1200, Math.random, new Set(), '2v2');
     assert.deepEqual(Object.keys(s.elos).sort(), ['1v1', '2v2', '3v3']);
@@ -98,10 +99,12 @@ test('jugadores falsos: ELO de cada modo y, unos pocos, personaje 3D', async () 
     assert.equal(s.avatar, undefined, 'sin foto: la predeterminada');
     if (s.cos.personaje) {
       with3d++;
+      seen.add(s.cos.personaje);
       assert.equal(cosmeticById(s.cos.personaje)?.slot, 'personaje'); // cualquiera de la tienda (Volcho, Olcho, el Gato Melón)
     }
   }
-  assert.ok(with3d > 5 && with3d < 70, `con personaje 3D: ${with3d} de 400`);
+  assert.ok(with3d > 80 && with3d < 220, `con personaje 3D: ${with3d} de 400`);
+  for (const c of COSMETICS.filter((x) => x.slot === 'personaje')) assert.ok(seen.has(c.id), `ningún rival usa ${c.id}`);
 });
 
 test('perfil de otro: un usuario automático tiene perfil como cualquiera y se lo puede agregar', async () => {

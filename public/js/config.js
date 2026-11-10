@@ -181,8 +181,30 @@ export const BOT = {
 
 // Bots que juegan con un personaje 3D de la tienda (por su nombre).
 export const BOT_PERSONAJES = { Volcho: 'volcho', Olcho: 'olcho' };
-/** Lo que tiene puesto un bot: si su nombre tiene personaje 3D, ese. */
-export const botCos = (name, cos = {}) => (BOT_PERSONAJES[name] ? { ...cos, personaje: BOT_PERSONAJES[name] } : cos);
+// Los demás bots se visten con lo que haya en la tienda (COSMETICS), siempre lo mismo para el mismo nombre: un
+// personaje 3D (cualquiera, también los que se agreguen después) BOT_SKIN.personaje de las veces, y algo de ropa.
+export const BOT_SKIN = { personaje: 0.45, prenda: 0.5 };
+const nameHash = (s, salt) => {
+  let h = 2166136261 ^ salt;
+  for (const ch of String(s)) h = Math.imul(h ^ ch.codePointAt(0), 16777619);
+  return (h >>> 0) / 4294967296;
+};
+/** Lo que tiene puesto un bot: si su nombre tiene personaje 3D, ese; si no, algo de la tienda según su nombre. */
+export const botCos = (name, cos = {}) => {
+  if (BOT_PERSONAJES[name]) return { ...cos, personaje: BOT_PERSONAJES[name] };
+  if (Object.keys(cos).length) return cos;
+  const out = {};
+  const pick = (slot, i) => {
+    const items = COSMETICS.filter((c) => c.slot === slot);
+    return items.length ? items[Math.floor(nameHash(name, i + 7) * items.length)].id : null;
+  };
+  if (nameHash(name, 1) < BOT_SKIN.personaje) out.personaje = pick('personaje', 0);
+  ['ropa', 'gorro', 'anteojos'].forEach((slot, i) => {
+    const id = nameHash(name, i + 2) < BOT_SKIN.prenda ? pick(slot, i + 1) : null;
+    if (id) out[slot] = id;
+  });
+  return out;
+};
 export const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené', 'Cacho', 'Mirta', 'Pirulo', 'Tota', 'Rulo', 'Sancho', 'Volcho', 'Olcho', 'Carlitos', 'Tronco'];
 
 // ------------------------------------------------------------------ cuentas (Supabase Auth)
@@ -221,7 +243,7 @@ export const ELO = {
 };
 // Partida rápida: lo que se espera gente antes de que completen la mesa rivales automáticos.
 export const MATCH = {
-  personajeChance: 0.07, // los rivales automáticos con personaje 3D (Volcho u Olcho): pocos
+  personajeChance: 0.35, // los rivales automáticos con personaje 3D (cualquiera de la tienda, también los nuevos)
   waitMin: 6000, // primer rival: entre 6 y 22 s
   waitRand: 16000,
   gapMin: 1500, // los siguientes, más seguidos

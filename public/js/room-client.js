@@ -1336,10 +1336,10 @@ export class RoomClient {
       <div class="final">${g.score[w]} – ${g.score[1 - w]}</div>
       ${gains}
       ${mine ? `<p><button class="btn" data-replay="${esc(this.match.id)}">Ver la partida y el análisis</button></p>` : ''}
-      <div class="row center">
-        ${this.rematchButton()}
-        ${st.isHost && !st.room.quick ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}
-        <button class="btn big" data-exit="1">Salir</button>
+      ${this.rematchButton()}
+      <div class="r-exit">
+        ${st.isHost && !st.room.quick ? '<button class="btn ghost" data-tolobby="1">Volver a la sala</button>' : ''}
+        <button class="btn ghost" data-exit="1">Salir</button>
       </div></div>`;
   }
 
@@ -1350,15 +1350,28 @@ export class RoomClient {
     const votes = st.room.rematch || [];
     const people = st.room.seats.map((p, i) => (p && !p.bot ? i : -1)).filter((i) => i >= 0);
     const yes = people.filter((i) => votes.includes(i)).length;
-    if (!votes.length) return '<button class="btn primary big" data-rematch="1">Pedir revancha</button>';
-    if (votes.includes(this.you)) {
-      const missing = people.filter((i) => !votes.includes(i)).map((i) => esc(this.nameOf(i)));
-      return `<button class="btn big" disabled>Esperando ${missing.length ? `a ${missing.join(', ')}` : 'a los demás'} · ${yes}/${people.length}</button>`;
+    if (!votes.length) {
+      return `<div class="rm"><button class="btn primary big rm-ask" data-rematch="1">Pedir revancha</button>
+        <small class="rm-note">Se juega si aceptan todos los de la mesa</small></div>`;
     }
-    const by = esc(this.nameOf(votes[0]));
-    return `<p class="r-ask"><b>${by}</b> pide revancha · ${yes}/${people.length} aceptaron</p>
-      <button class="btn primary big" data-rematch="1">Acepto</button>
-      <button class="btn big" data-rematchno="1">No</button>`;
+    // cada persona de la mesa con su estado: el que la pidió, los que aceptaron y los que faltan
+    const list = people
+      .map((i) => {
+        const ok = votes.includes(i);
+        const who = i === this.you ? 'Vos' : esc(this.nameOf(i));
+        const what = i === votes[0] ? 'La pidió' : ok ? 'Aceptó' : 'Pensando…';
+        return `<li class="${ok ? 'ok' : 'wait'} t${team(i)}"><i class="rm-mark" aria-hidden="true">${ok ? '✓' : ''}</i><b>${who}</b><small>${what}</small></li>`;
+      })
+      .join('');
+    const mineIn = votes.includes(this.you);
+    const head = mineIn ? (yes === people.length ? '¡Arranca la revancha!' : 'Esperando a los demás') : `${esc(this.nameOf(votes[0]))} pide revancha`;
+    const acts = mineIn
+      ? ''
+      : '<div class="rm-acts"><button class="btn primary big" data-rematch="1">Acepto</button><button class="btn big" data-rematchno="1">No, gracias</button></div>';
+    return `<div class="rm ${mineIn ? 'in' : 'asked'}" role="status">
+      <div class="rm-head"><b>${head}</b><span class="rm-count">${yes}/${people.length}</span></div>
+      <div class="rm-bar"><i style="width:${Math.round((yes / people.length) * 100)}%"></i></div>
+      <ul class="rm-people">${list}</ul>${acts}</div>`;
   }
 
   // html: el que llama escapa lo que venga de otros jugadores.

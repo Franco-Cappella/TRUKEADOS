@@ -23,7 +23,12 @@ test('personajes: los bots Volcho y Olcho los usan', () => {
   assert.ok(BOT_NAMES.includes('Volcho') && BOT_NAMES.includes('Olcho'));
   assert.equal(botCos('Volcho').personaje, 'volcho');
   assert.equal(botCos('Olcho', { gorro: 'boina' }).personaje, 'olcho');
-  assert.equal(botCos('Tito').personaje, undefined);
+  // los demás: algo de la tienda según su nombre (siempre lo mismo), y entre todos usan los personajes 3D
+  assert.deepEqual(botCos('Tito'), botCos('Tito'));
+  const ids = new Set(COSMETICS.map((c) => c.id));
+  for (const n of BOT_NAMES) for (const id of Object.values(botCos(n))) assert.ok(ids.has(id), `${n}: ${id}`);
+  const used = new Set(Array.from({ length: 300 }, (_, i) => botCos('bot' + i).personaje).filter(Boolean));
+  for (const c of COSMETICS.filter((x) => x.slot === 'personaje')) assert.ok(used.has(c.id), `ningún bot usa ${c.id}`);
 });
 
 test('personajes: la sala manda el personaje de los bots que se llaman así', async () => {
@@ -37,7 +42,7 @@ test('personajes: la sala manda el personaje de los bots que se llaman así', as
   const seats = h.state(ws).room.seats;
   assert.equal(seats[1].cos.personaje, 'volcho');
   assert.equal(seats[2].cos.personaje, 'olcho');
-  assert.equal(seats[3].cos.personaje, undefined);
+  assert.deepEqual(seats[3].cos, botCos('Tito'));
 });
 
 test('personajes: los modelos están preparados (GLB liviano con esqueleto y la cara encontrada)', () => {
