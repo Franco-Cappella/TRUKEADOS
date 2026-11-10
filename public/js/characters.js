@@ -4,8 +4,8 @@
 // Se dibujan en un canvas según hacia dónde está girado el cuerpo y la cabeza respecto de quien mira,
 // hacia dónde mira y qué cara pone (señas y hablar).
 // No parpadean solos: los ojos cerrados son SOLO la seña "ciego", para que no se confunda.
-import { INK, PALETTE, FACE, OUTFIT, COSMETIC_LOOK, mix } from './theme.js';
-import { SENA_BITE_MS } from './config.js';
+import { INK, PALETTE, FACE, OUTFIT, COSMETIC_LOOK, mix, AVATAR_COLORS, AVATAR_GRAY, FLAG_LOOK } from './theme.js';
+import { SENA_BITE_MS, cleanLook } from './config.js';
 
 export const W = 512;
 export const H = 1200;
@@ -40,7 +40,42 @@ export function sleeveOf(look) {
   return look.shirt === 'jacket' ? look.cloth2 : look.cloth;
 }
 
-export function lookFor(name, seat) {
+// custom: el personaje que eligió la persona en el creador (profiles.look). Lo que no eligió sale de su nombre.
+export function lookFor(name, seat, custom = null) {
+  const base = randomFor(name, seat);
+  const c = custom ? cleanLook(custom) : null;
+  return c ? applyLook(base, c) : base;
+}
+
+/** El personaje elegido (cleanLook) aplicado sobre uno armado al azar. */
+export function applyLook(base, c) {
+  const soft = c.soft;
+  return {
+    ...base,
+    skin: AVATAR_COLORS.skins[c.skin] || base.skin,
+    hair: AVATAR_COLORS.hairs[c.hair] || base.hair,
+    old: AVATAR_GRAY.includes(c.hair),
+    style: c.style,
+    shirt: c.shirt,
+    cloth: AVATAR_COLORS.clothes[c.cloth] || base.cloth,
+    cloth2: AVATAR_COLORS.clothes[c.cloth2] || base.cloth2,
+    vest: mix(AVATAR_COLORS.clothes[c.cloth2] || base.vest, 0.6),
+    poncho: mix(AVATAR_COLORS.clothes[c.cloth2] || base.poncho, 0.7),
+    beard: !soft && c.beard === 'beard',
+    stubble: !soft && c.beard === 'stubble',
+    mustache: !soft && c.mustache,
+    glasses: c.glasses,
+    soft,
+    flag: c.flag !== 'none' ? c.flag : null,
+    fw: c.fw ?? base.fw,
+    fh: c.fh ?? base.fh,
+    jaw: c.jaw ?? base.jaw,
+    scowl: c.scowl ?? base.scowl,
+    custom: true,
+  };
+}
+
+function randomFor(name, seat) {
   const h = hash(String(name).replace(/\s*\(bot\)$/i, '') + '#' + seat);
   const pick = (arr, k) => arr[(h >>> k) % arr.length];
   const style = pick(STYLES, 11);
@@ -209,6 +244,7 @@ export function drawCharacter(ctx, look, state) {
   drawTorso(ctx, look, bx, bodyYaw);
   drawNeck(ctx, look, bx, hx, hy);
   drawCollarOver(ctx, look, bx, bodyYaw);
+  if (look.flag) drawFlagPin(ctx, look.flag, bx, bodyYaw);
   drawHead(ctx, look, hx, hy, headYaw, down, expr, talking, bite);
   drawArms(ctx, look, bx, bodyYaw, cards);
   if (look.shirt === 'gaucho') drawPoncho(ctx, look, bx, bodyYaw);
@@ -221,6 +257,90 @@ export function drawCharacter(ctx, look, state) {
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
+}
+
+// Pin con la bandera (la nacionalidad que eligió), del lado izquierdo del pecho.
+export function drawFlag(ctx, id, x, y, w, h) {
+  const f = FLAG_LOOK[id];
+  if (!f) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  if (f.v) f.v.forEach((col, i) => ((ctx.fillStyle = col), ctx.fillRect(x + (w * i) / f.v.length, y, w / f.v.length + 0.5, h)));
+  else f.h.forEach((col, i) => ((ctx.fillStyle = col), ctx.fillRect(x, y + (h * i) / f.h.length, w, h / f.h.length + 0.5)));
+  if (f.canton) {
+    ctx.fillStyle = f.canton[0];
+    ctx.fillRect(x, y, w * f.canton[1], h * f.canton[2]);
+  }
+  if (f.diamond) {
+    ctx.fillStyle = f.diamond;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y + h * 0.12);
+    ctx.lineTo(x + w * 0.9, y + h / 2);
+    ctx.lineTo(x + w / 2, y + h * 0.88);
+    ctx.lineTo(x + w * 0.1, y + h / 2);
+    ctx.fill();
+  }
+  if (f.cross) {
+    ctx.strokeStyle = f.cross[0];
+    ctx.lineWidth = h * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y + h);
+    ctx.moveTo(x + w, y);
+    ctx.lineTo(x, y + h);
+    ctx.stroke();
+    ctx.fillStyle = f.cross[0];
+    ctx.fillRect(x + w * 0.4, y, w * 0.2, h);
+    ctx.fillRect(x, y + h * 0.35, w, h * 0.3);
+    ctx.fillStyle = f.cross[1];
+    ctx.fillRect(x + w * 0.45, y, w * 0.1, h);
+    ctx.fillRect(x, y + h * 0.42, w, h * 0.16);
+  }
+  if (f.sun) {
+    const cx = f.canton ? x + (w * f.canton[1]) / 2 : x + w / 2;
+    const cy = f.canton ? y + (h * f.canton[2]) / 2 : y + h / 2;
+    ctx.fillStyle = f.sun;
+    ctx.beginPath();
+    ctx.arc(cx, cy, h * (f.canton ? 0.16 : 0.2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (f.star) {
+    ctx.fillStyle = f.star;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? h * 0.1 : h * 0.24;
+      ctx.lineTo(x + w * 0.22 + Math.cos(a) * rr, y + h * 0.3 + Math.sin(a) * rr);
+    }
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawFlagPin(ctx, id, bx, yaw) {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  const w = 44 * Math.max(0.35, c);
+  const h = 30;
+  const x = bx + s * 34 - shoulderW(c) * 0.5 - w / 2;
+  const y = TOP + 70;
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.rotate(-0.06);
+  ctx.translate(-(x + w / 2), -(y + h / 2));
+  // sombrita del pin sobre la ropa
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x + 3, y + 4, w, h);
+  drawFlag(ctx, id, x, y, w, h);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x, y, w, h);
+  // brillo del esmalte
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.fillRect(x + 3, y + 3, w - 6, 5);
+  ctx.restore();
 }
 
 // ------------------------------------------------------------------ cuerpo

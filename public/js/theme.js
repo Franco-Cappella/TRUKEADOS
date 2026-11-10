@@ -86,6 +86,50 @@ export const OUTFIT = {
   cardBackInk: 'rgba(220,200,165,0.28)',
 };
 
+// El creador de personaje (creator.js): los colores que se pueden elegir. Tienen que ser tantos como dice
+// LOOK_OPTS.counts en config.js (el servidor valida índices; lo verifica test/personaje-2d.test.js).
+export const AVATAR_COLORS = {
+  // tonos de piel [luz, sombra], del más claro al más oscuro
+  skins: [
+    ['#f3dcc4', '#c9a184'], ['#ecceb0', '#c09a78'], ['#e6c7a3', '#bb9069'], ['#dfb68e', '#b07c56'], ['#d0a077', '#9d6c49'],
+    ['#bd8a60', '#88593a'], ['#a1704b', '#70482e'], ['#8a5c3c', '#5c3a24'], ['#6e4630', '#47291a'], ['#4f3222', '#301c12'],
+  ],
+  hairs: [
+    '#18110d', '#2b1c14', '#3b271a', '#523524', '#6e4c31', '#8a5a36', '#b07a45', '#c9a15a', '#e0c27e', '#9a3b1f',
+    '#c05a2a', '#8d8375', '#bdb5a8', '#ece8e0', '#2f5fa8', '#6b3fa0', '#d0608f', '#3c8a5a',
+  ],
+  clothes: [
+    '#c9ae8a', '#6b2a25', '#3a4a3b', '#2a2320', '#7b684d', '#303b48', '#85472b', '#4a3a30', '#a58f70', '#572c37',
+    '#e8e2d6', '#2f6fa0', '#b8402f', '#d9a63a', '#3f7d5a', '#7a4f9a',
+  ],
+};
+// Canas: estos índices de AVATAR_COLORS.hairs son grises o blancos (el personaje se ve más grande).
+export const AVATAR_GRAY = [11, 12, 13];
+
+// Banderas para el pin del pecho (LOOK_OPTS.flags en config.js). h: franjas horizontales, v: verticales; sun: un
+// círculo en el medio; canton: un rectángulo arriba a la izquierda [color, ancho, alto] (en partes de la bandera);
+// diamond: un rombo en el medio; cross: cruz [blanca, roja].
+export const FLAG_LOOK = {
+  ar: { h: ['#74acdf', '#ffffff', '#74acdf'], sun: '#f6b40e' },
+  uy: { h: ['#ffffff', '#0038a8', '#ffffff', '#0038a8', '#ffffff'], canton: ['#ffffff', 0.38, 0.6], sun: '#fcd116' },
+  cl: { h: ['#ffffff', '#d52b1e'], canton: ['#0039a6', 0.34, 0.5] },
+  py: { h: ['#d52b1e', '#ffffff', '#0038a8'], sun: '#2e7d32' },
+  bo: { h: ['#d52b1e', '#f9e300', '#007934'] },
+  pe: { v: ['#d91023', '#ffffff', '#d91023'] },
+  br: { h: ['#009c3b'], diamond: '#ffdf00', sun: '#002776' },
+  co: { h: ['#fcd116', '#fcd116', '#003893', '#ce1126'] },
+  ve: { h: ['#ffcc00', '#00247d', '#cf142b'] },
+  mx: { v: ['#006847', '#ffffff', '#ce1126'], sun: '#8c5a2b' },
+  es: { h: ['#aa151b', '#f1bf00', '#f1bf00', '#aa151b'] },
+  it: { v: ['#009246', '#ffffff', '#ce2b37'] },
+  fr: { v: ['#0055a4', '#ffffff', '#ef4135'] },
+  de: { h: ['#000000', '#dd0000', '#ffce00'] },
+  us: { h: ['#b22234', '#ffffff', '#b22234', '#ffffff', '#b22234', '#ffffff', '#b22234'], canton: ['#3c3b6e', 0.42, 0.55] },
+  uk: { h: ['#012169'], cross: ['#ffffff', '#c8102e'] },
+  cn: { h: ['#de2910'], star: '#ffde00' },
+  jp: { h: ['#ffffff'], sun: '#bc002d' },
+};
+
 // Paletas de los personajes: sepia y tierras, pocos colores saturados. Cada piel: [luz, sombra].
 export const PALETTE = {
   skins: [

@@ -142,6 +142,88 @@ export const SENA_MS = 2200; // cuánto dura la cara de una seña
 // Las señas se ven mirando al que la hace, no de reojo: la carita está entera hasta `clear` grados del centro de la
 // vista y se borra del todo a los `gone` (más allá, se le ve la cara de siempre). Así hay que girar para pescarla.
 export const SENA_GLANCE = { clear: 9, gone: 20 };
+// ------------------------------------------------------------------ tu personaje (creator.js)
+// Lo que se puede elegir de tu personaje dibujado. Se guarda en profiles.look (lo valida cleanLook, también en el
+// servidor) y lo dibuja characters.js (lookFor con el look elegido). Los colores están en AVATAR_COLORS (theme.js).
+export const LOOK_OPTS = {
+  counts: { skin: 10, hair: 18, cloth: 16 },
+  styles: [
+    { id: 'short', label: 'Corto' }, { id: 'swept', label: 'Para atrás' }, { id: 'wavy', label: 'Ondulado' },
+    { id: 'curly', label: 'Rulos' }, { id: 'long', label: 'Largo' }, { id: 'bun', label: 'Rodete' },
+    { id: 'receding', label: 'Con entradas' }, { id: 'buzz', label: 'Rapado' }, { id: 'boina', label: 'Boina' },
+    { id: 'cap', label: 'Gorra' }, { id: 'sombrero', label: 'Sombrero' },
+  ],
+  shirts: [
+    { id: 'button', label: 'Camisa' }, { id: 'tee', label: 'Remera' }, { id: 'polo', label: 'Chomba' },
+    { id: 'sweater', label: 'Pulóver' }, { id: 'vest', label: 'Chaleco' }, { id: 'jacket', label: 'Saco' },
+    { id: 'gaucho', label: 'Gaucho' },
+  ],
+  beards: [{ id: 'none', label: 'Nada' }, { id: 'stubble', label: 'Sin afeitar' }, { id: 'beard', label: 'Barba' }],
+  flags: [
+    { id: 'none', name: 'Ninguna' }, { id: 'ar', name: 'Argentina' }, { id: 'uy', name: 'Uruguay' }, { id: 'cl', name: 'Chile' },
+    { id: 'py', name: 'Paraguay' }, { id: 'bo', name: 'Bolivia' }, { id: 'pe', name: 'Perú' }, { id: 'br', name: 'Brasil' },
+    { id: 'co', name: 'Colombia' }, { id: 've', name: 'Venezuela' }, { id: 'mx', name: 'México' }, { id: 'es', name: 'España' },
+    { id: 'it', name: 'Italia' }, { id: 'fr', name: 'Francia' }, { id: 'de', name: 'Alemania' }, { id: 'us', name: 'Estados Unidos' },
+    { id: 'uk', name: 'Reino Unido' }, { id: 'cn', name: 'China' }, { id: 'jp', name: 'Japón' },
+  ],
+  // forma de la cara: ancho, alto y mandíbula (los de lookFor), y cuánto frunce las cejas
+  face: { fw: [52, 66], fh: [74, 92], jaw: [0.5, 0.86], scowl: [0, 7] },
+};
+const pickIn = (list, v, def) => (list.some((x) => x.id === v) ? v : def);
+const intIn = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : null);
+const numIn = (v, [a, b]) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : null);
+
+/** Un personaje elegido, limpio (lo que no sirve, afuera). null si no hay nada que guardar. */
+export function cleanLook(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const c = LOOK_OPTS.counts;
+  const out = {
+    v: 1,
+    skin: intIn(raw.skin, c.skin) ?? 3,
+    hair: intIn(raw.hair, c.hair) ?? 1,
+    style: pickIn(LOOK_OPTS.styles, raw.style, 'short'),
+    shirt: pickIn(LOOK_OPTS.shirts, raw.shirt, 'button'),
+    cloth: intIn(raw.cloth, c.cloth) ?? 0,
+    cloth2: intIn(raw.cloth2, c.cloth) ?? 3,
+    beard: pickIn(LOOK_OPTS.beards, raw.beard, 'none'),
+    mustache: raw.mustache === true,
+    glasses: raw.glasses === true,
+    soft: raw.soft === true,
+    flag: pickIn(LOOK_OPTS.flags, raw.flag, 'none'),
+  };
+  for (const [k, range] of Object.entries(LOOK_OPTS.face)) {
+    const n = numIn(raw[k], range);
+    if (n != null) out[k] = k === 'jaw' ? Math.round(n * 100) / 100 : Math.round(n);
+  }
+  return out;
+}
+
+/** Un personaje al azar (el botón "Aleatorio" del creador). */
+export function randomLook(rng = Math.random) {
+  const c = LOOK_OPTS.counts;
+  const any = (list) => list[Math.floor(rng() * list.length)].id;
+  const inRange = ([a, b], round = true) => (round ? Math.round(a + rng() * (b - a)) : Math.round((a + rng() * (b - a)) * 100) / 100);
+  const style = any(LOOK_OPTS.styles);
+  const soft = style === 'long' || style === 'bun' ? rng() < 0.8 : rng() < 0.15;
+  return cleanLook({
+    skin: Math.floor(rng() * c.skin),
+    hair: rng() < 0.85 ? Math.floor(rng() * 14) : Math.floor(rng() * c.hair), // de fantasía, pocas veces
+    style,
+    shirt: any(LOOK_OPTS.shirts),
+    cloth: Math.floor(rng() * c.cloth),
+    cloth2: Math.floor(rng() * c.cloth),
+    beard: soft ? 'none' : any(LOOK_OPTS.beards),
+    mustache: !soft && rng() < 0.25,
+    glasses: rng() < 0.18,
+    soft,
+    flag: rng() < 0.6 ? 'ar' : any(LOOK_OPTS.flags),
+    fw: inRange(LOOK_OPTS.face.fw),
+    fh: inRange(LOOK_OPTS.face.fh),
+    jaw: inRange(LOOK_OPTS.face.jaw, false),
+    scowl: inRange(LOOK_OPTS.face.scowl),
+  });
+}
+
 export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
 // Antitrampas (los aplica la sala; ver "Antitrampas" en AGENTS.md). Las señas viajan solo a los que miran al que la
 // hace; esto evita además que un cliente modificado "barra" la mesa cambiando de mirada a toda velocidad para pescarlas.
