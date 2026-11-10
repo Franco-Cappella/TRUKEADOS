@@ -8,7 +8,7 @@
 - **Tienda nueva**, al estilo de la Taquilla: arriba tus monedas y las categorías (Todo, Personajes, Ropa, En la mesa,
   Cartas); en "Todo", los personajes 3D en grande y "Del día" (unas cosas que cambian a la medianoche). Cada tarjeta
   muestra su rareza y su precio, y al tocarla se abre la ficha: el personaje 3D girando, la baraja abierta o la cosa en
-  grande, con "Comprar" y, si ya es tuya, "Ponértelo" ahí mismo.
+  grande, con "Comprar" y, si ya es tuya, "Equipar" ahí mismo.
 
 ## 1.19.0 — sala de espera con personajes y amigos conectados
 - **Sala de espera nueva**: un escenario con una tarima por lugar y el personaje de cada uno (el 3D o el dibujado),

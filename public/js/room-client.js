@@ -1238,6 +1238,8 @@ export class RoomClient {
   renderSearching() {
     const st = this.st;
     const r = st.room;
+    const mine = (i) => team(i) === team(st.you);
+    const canHold = r.seats.length > 2 && st.isHost && !r.quick.holding;
     const free = r.seats.filter((p) => !p).length;
     const skew = Date.now() - st.now; // el reloj del servidor contra el tuyo
     const elapsed = () => {
@@ -1247,7 +1249,9 @@ export class RoomClient {
     const plate = (p, i) =>
       p
         ? `<div class="pl-plate t${team(i)} ${i === st.you ? 'me' : ''}" data-slot="${i}">${avatarHtml(p)}<span class="pl-nm"><b>${esc(p.name)}</b><small>${i === st.you ? 'vos' : team(i) === team(st.you) ? 'compañero' : 'rival'}${p.elo ? ` · ELO ${esc(p.elo)}` : ''}</small></span></div>`
-        : `<div class="pl-plate pl-searching" data-slot="${i}"><span class="pl-nm"><b>Buscando…</b><small>${team(i) === team(st.you) ? 'compañero' : 'rival'}</small></span></div>`;
+        : mine(i) && r.quick.holding
+          ? `<div class="pl-plate pl-held" data-slot="${i}"><span class="pl-nm"><b>Lugar guardado</b><small>para tu amigo</small></span></div>`
+          : `<div class="pl-plate pl-searching ${canHold && mine(i) ? 'pl-can' : ''}" data-slot="${i}"><span class="pl-nm"><b>Buscando…</b><small>${mine(i) ? 'compañero' : 'rival'}</small></span>${canHold && mine(i) ? '<button type="button" class="pl-sit" data-teamhold="1">+ Invitar a un amigo</button>' : ''}</div>`;
     const invite = this.teamInviteHtml();
     $('#pl-ui').innerHTML = `
       <header class="pl-top">
@@ -1257,7 +1261,7 @@ export class RoomClient {
       <div class="pl-clock"><div class="qs-pulse" aria-hidden="true"><i></i><i></i><i></i></div><b id="qs-time">${elapsed()}</b><small>${free === 1 ? 'Falta 1 jugador' : `Faltan ${free} jugadores`} de tu nivel</small></div>
       <div class="pl-vs" data-vs="1">VS</div>
       ${r.seats.map(plate).join('')}
-      ${invite ? `<aside class="pl-rules">${invite}</aside>` : ''}`;
+      ${invite ? `<footer class="pl-team">${invite}</footer>` : ''}`;
     this.placePlates(this.platePos);
     clearInterval(this.searchT);
     this.searchT = setInterval(() => {
@@ -1272,14 +1276,13 @@ export class RoomClient {
     const st = this.st;
     const r = st.room;
     if (r.seats.length <= 2 || !st.isHost) return '';
-    if (!r.quick.holding) return r.seats.some((p, i) => !p && team(i) === team(st.you)) ? '<button type="button" class="btn primary" data-teamhold="1">Invitar a mi equipo</button>' : '';
+    if (!r.quick.holding) return '';
     const link = `${this.link}?equipo=1`;
     const friends = (this.friends || []).map((f) => `<li>${avatarHtml(f)}<span>${esc(f.username)}</span><button type="button" class="btn small" data-invite="${esc(f.id)}" ${this.invitedFriends.has(f.id) ? 'disabled' : ''}>${this.invitedFriends.has(f.id) ? 'Invitado' : 'Invitar'}</button></li>`).join('');
     return `<section class="qs-invite">
-      <h3>Tu equipo</h3>
-      <p>Te guardamos ${r.quick.holding === 1 ? 'el lugar' : `${r.quick.holding} lugares`} un minuto y medio. Pasales el enlace o invitá a un amigo.</p>
-      <div class="qs-actions"><button type="button" class="btn small primary" data-copy="${esc(link)}">Copiar enlace</button><button type="button" class="btn small ghost" data-teamcancel="1">Seguir sin invitar</button></div>
+      <div class="qs-head"><h3>Tu equipo</h3><p>Te guardamos ${r.quick.holding === 1 ? 'el lugar' : `${r.quick.holding} lugares`} un minuto y medio.</p></div>
       ${friends ? `<ul class="qs-friends">${friends}</ul>` : ''}
+      <div class="qs-actions"><button type="button" class="btn small primary" data-copy="${esc(link)}">Copiar enlace</button><button type="button" class="btn small ghost" data-teamcancel="1">Seguir sin invitar</button></div>
     </section>`;
   }
 

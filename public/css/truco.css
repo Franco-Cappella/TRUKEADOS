@@ -1266,6 +1266,24 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .pl-rules .qs-invite { display: flex; flex-direction: column; gap: 10px; }
 .pl-rules .qs-invite h3 { margin: 0; font-size: 12px; letter-spacing: var(--track); text-transform: uppercase; }
 .pl-rules .qs-invite p { margin: 0; color: var(--text-dim); font-size: 14px; }
+/* partida rápida: invitar a tu equipo desde su tarima; con el lugar guardado, la barra de abajo */
+.pl-searching.pl-can { flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; animation: none; border-style: solid; border-color: var(--line-2); }
+.pl-held { justify-content: center; background: rgba(10, 10, 10, 0.85); border: 1px solid var(--text); }
+.pl-team { position: absolute; left: 50%; bottom: clamp(12px, 2.6vh, 26px); transform: translateX(-50%); width: min(920px, calc(100% - 24px)); padding: 12px 14px; background: rgba(14, 14, 14, 0.96); border: 1px solid var(--line-2); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+.pl:has(.pl-team) .pl-stage { bottom: 120px; } /* el escenario sube para que la barra no tape los carteles */
+.pl-team .qs-invite { flex-direction: row; align-items: center; gap: 14px; padding: 0; border: 0; }
+.pl-team .qs-head { flex: none; max-width: 210px; }
+.pl-team .qs-head h3 { margin: 0 0 2px; font-size: 12px; letter-spacing: var(--track); text-transform: uppercase; }
+.pl-team .qs-head p { margin: 0; font-size: 13px; color: var(--text-dim); }
+.pl-team .qs-friends { flex: 1; min-width: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; scrollbar-width: thin; }
+.pl-team .qs-friends li { flex: none; }
+.pl-team .qs-actions { flex: none; margin-left: auto; flex-wrap: nowrap; }
+@media (max-width: 760px) {
+  .pl:has(.pl-team) .pl-stage { bottom: 230px; }
+  .pl-team .qs-invite { flex-direction: column; align-items: stretch; }
+  .pl-team .qs-head { max-width: none; }
+  .pl-team .qs-actions { margin-left: 0; }
+}
 .pl-clock { position: absolute; left: 50%; top: clamp(70px, 12vh, 120px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .pl-clock b { font-size: clamp(44px, 6vw, 72px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .pl-clock small { font-size: 13px; color: var(--text-dim); }

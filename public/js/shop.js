@@ -383,8 +383,8 @@ function renderDetailInfo(it) {
   const missing = it.price - state.coins;
   const offWith3d = CHARACTER_SLOTS.includes(it.slot) && cosmeticById(state.equipped.personaje);
   let act;
-  if (worn) act = '<button type="button" class="btn big" disabled>Lo tenés puesto</button>';
-  else if (owned) act = `<button type="button" class="btn primary big" data-wear="${esc(it.id)}">Ponértelo</button>`;
+  if (worn) act = '<button type="button" class="btn big" disabled>Equipado</button>';
+  else if (owned) act = `<button type="button" class="btn primary big" data-wear="${esc(it.id)}">Equipar</button>`;
   else if (missing > 0) act = `<button type="button" class="btn big" disabled>Te faltan ${missing} monedas</button>`;
   else act = `<button type="button" class="btn primary big" data-buy="${esc(it.id)}">Comprar · ${it.price}</button>`;
   $('#sd-info').innerHTML = `
@@ -408,7 +408,7 @@ async function buyItem(b) {
     setCoins(r.coins);
     renderShop();
     renderDetailInfo(item);
-    $('#sd-msg').textContent = `¡Es tuyo! Ponételo ahora o después en la Taquilla.`;
+    $('#sd-msg').textContent = `¡Es tuyo! Equipalo ahora o después en la Taquilla.`;
   } catch (err) {
     $('#sd-msg').textContent = err.message;
     $('#sd-msg').classList.add('bad');
