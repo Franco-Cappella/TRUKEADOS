@@ -39,6 +39,17 @@ function goHome() {
 }
 
 function route() {
+  // una partida compartida la ve cualquiera, con cuenta o sin ella
+  const sm = location.pathname.match(ROUTES.sharedRe);
+  if (sm) {
+    room?.close();
+    room = null;
+    showEntry(null);
+    $('#gate').classList.add('hidden');
+    scene?.pause();
+    const at = Number(new URLSearchParams(location.search).get('j')) || 0;
+    return showReplay(sm[1], { shared: true, at });
+  }
   // sin sesión: a entrar; con sesión pero sin nombre: a elegirlo. La ruta (/sala/CÓDIGO) se mantiene.
   const me = currentMe();
   if (!me?.profile) {

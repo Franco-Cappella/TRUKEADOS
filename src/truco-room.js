@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -24,7 +24,8 @@ const BOT_CLAIM_DELAY = 6000; // + hasta 4 s al azar: un bot rival reclama si el
 export class TrucoRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.gaze = {}; // asiento -> a quién mira (asiento, 'table' o null). Vive en memoria.
+    this.resetGaze(); // a quién mira cada asiento y desde cuándo (vive en memoria)
+    this.limits = new WeakMap(); // socket -> ventana de mensajes (antitrampas: ver ANTICHEAT en config.js)
     this.brains = null; // lo que los bots saben de cada persona (pid -> cerebro, + global). Lo guarda el Lobby.
     this.learnBuf = []; // lo que hicieron las personas en esta mano, para aprender al terminarla
     this.rec = new MatchRecorder(ctx.storage); // la partida en curso, para el historial (ver recorder.js)
@@ -42,7 +43,7 @@ export class TrucoRoom extends DurableObject {
     // código reciclado: se arranca de cero (sin chat ni miradas de la sala anterior)
     this.chat = [];
     this.specChat = [];
-    this.gaze = {};
+    this.resetGaze();
     await this.ctx.storage.put({ chat: this.chat, specChat: this.specChat });
     await this.ctx.storage.deleteAlarm();
     this.room = {
@@ -76,7 +77,7 @@ export class TrucoRoom extends DurableObject {
     if (cur && !cur.show && !this.reusable()) return { ok: false };
     this.chat = [];
     this.specChat = [];
-    this.gaze = {};
+    this.resetGaze();
     await this.ctx.storage.put({ chat: this.chat, specChat: this.specChat });
     await this.ctx.storage.deleteAlarm();
     this.room = {
@@ -155,6 +156,7 @@ export class TrucoRoom extends DurableObject {
     }
     if (msg.t === 'ping') return this.send(ws, { t: 'pong', now: Date.now() });
     if (!this.room) return this.send(ws, { t: 'notfound' });
+    if (msg.t !== 'join' && this.flooding(ws)) return; // un cliente que manda de más: se descarta lo que sobra
 
     // entrar pide sesión: el jugador es el id de la cuenta y el nombre, el de su perfil (ver src/auth.js)
     let account = null;
@@ -345,12 +347,19 @@ export class TrucoRoom extends DurableObject {
         if (seat == null) return;
         const tgt = msg.target === 'table' ? 'table' : Number.isInteger(msg.target) && msg.target >= 0 && msg.target < r.seats.length ? msg.target : null;
         if (this.gaze[seat] === tgt) return;
-        this.gaze[seat] = tgt;
+        // barrer la mesa mirando a todos a toda velocidad no sirve: la mirada se mueve igual (los demás la ven),
+        // pero el que cambia de más queda un rato sin ver señas
+        this.setGaze(seat, tgt, !this.lookAllowed(seat));
         return this.broadcastRaw({ t: 'gaze', seat, target: tgt }, ws);
       }
 
       case 'sena': {
         if (seat == null || !SENAS[msg.sena] || r.status !== 'playing') return;
+        // solo el que juega la mano (no el que se fue al mazo ni el que mira un duelo del pica-pica), y sin ráfagas
+        if (!r.game?.h || r.game.h.mazo[seat]) return;
+        const now = Date.now();
+        if (now - (this.lastSena[seat] || 0) < ANTICHEAT.senaGap) return;
+        this.lastSena[seat] = now;
         this.deliverSena(seat, msg.sena);
         return this.save();
       }
@@ -1331,7 +1340,7 @@ export class TrucoRoom extends DurableObject {
       let tgt = 'table';
       if (roll > 0.55 && roll < 0.75 && partners.length) tgt = partners[Math.floor(rng() * partners.length)];
       else if (roll >= 0.75) tgt = others[Math.floor(rng() * others.length)];
-      this.gaze[i] = tgt;
+      this.setGaze(i, tgt);
       this.broadcastRaw({ t: 'gaze', seat: i, target: tgt });
     });
   }
@@ -1347,15 +1356,59 @@ export class TrucoRoom extends DurableObject {
       // el bot mira a un compañero antes de hacer la seña
       const partners = r.seats.map((_, j) => j).filter((j) => j !== seat && team(j) === team(seat));
       const p = partners[Math.floor(rng() * partners.length)];
-      this.gaze[seat] = p;
+      this.setGaze(seat, p);
       this.broadcastRaw({ t: 'gaze', seat, target: p });
       this.deliverSena(seat, botSena(r.game, seat));
     }
   }
 
-  // La seña solo la ven los que en ese momento están mirando al que la hace.
+  // ---- antitrampas (ver ANTICHEAT en config.js y "Antitrampas" en AGENTS.md) ----
+  resetGaze() {
+    this.gaze = {}; // asiento -> a quién mira (asiento, 'table' o null)
+    this.gazeSince = {}; // asiento -> desde cuándo mira ahí
+    this.lookLog = {}; // asiento -> cuándo cambió de mirada últimamente
+    this.lastSena = {}; // asiento -> cuándo hizo la última seña
+  }
+
+  // penalty: cambió de mirada de más (ver lookAllowed): no ve señas hasta ANTICHEAT.lookPenalty ms después.
+  setGaze(seat, tgt, penalty = false) {
+    if (this.gaze[seat] !== tgt || penalty) this.gazeSince[seat] = Date.now() + (penalty ? ANTICHEAT.lookPenalty : 0);
+    this.gaze[seat] = tgt;
+  }
+
+  // ¿Viene cambiando de mirada a un ritmo humano? Como mucho ANTICHEAT.lookBurst.n cambios por ventana.
+  lookAllowed(seat) {
+    const { n, ms } = ANTICHEAT.lookBurst;
+    const now = Date.now();
+    const log = (this.lookLog[seat] || []).filter((t) => now - t < ms);
+    log.push(now);
+    this.lookLog[seat] = log;
+    return log.length <= n;
+  }
+
+  // Ventana de mensajes por conexión: true si este mensaje sobra.
+  flooding(ws) {
+    const { n, ms } = ANTICHEAT.msgBurst;
+    const now = Date.now();
+    let w = this.limits.get(ws);
+    if (!w || now - w.from >= ms) this.limits.set(ws, (w = { from: now, count: 0 }));
+    return ++w.count > n;
+  }
+
+  // Los que ven una seña: miran al que la hace desde hace al menos ANTICHEAT.senaDwell ms (sin dato: desde antes).
+  senaWatchers(seat) {
+    const now = Date.now();
+    return new Set(
+      Object.entries(this.gaze)
+        .filter(([s, t]) => t === seat && Number(s) !== seat && now - (this.gazeSince[s] ?? 0) >= ANTICHEAT.senaDwell)
+        .map(([s]) => Number(s))
+    );
+  }
+
+  // La seña solo les llega a los que en ese momento están mirando al que la hace (y venían mirando). Al resto no le
+  // llega nada: ni la seña ni que hubo una, así que un cliente modificado no tiene qué destapar.
   deliverSena(seat, sena) {
-    const watchers = new Set(Object.entries(this.gaze).filter(([s, t]) => t === seat && Number(s) !== seat).map(([s]) => Number(s)));
+    const watchers = this.senaWatchers(seat);
     // los bots la anotan para decidir: el compañero siempre está atento; un rival, solo si justo lo miraba
     const r = this.room;
     r.senaSeen ||= {};

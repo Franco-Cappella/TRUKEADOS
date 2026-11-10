@@ -88,7 +88,10 @@ export function initHistory(openMatch, back) {
 let viewer = null;
 let stage = null; // una sola escena 3D para todas las revisiones
 
-export async function showReplay(id) {
+// shared: id es la clave de un enlace compartido (/repeticion/CLAVE); at: el paso donde abrir (?j=N).
+export async function showReplay(id, { shared = false, at = 0 } = {}) {
+  const key = (shared ? 's:' : 'm:') + id;
+  if (viewer?.key === key) return; // ya está abierta (route() otra vez porque cambió la sesión)
   for (const s of ['#menu', '#game']) $(s).classList.add('hidden');
   $('#replay').classList.remove('hidden');
   $('#replay-log').innerHTML = '<li class="muted">Cargando la partida…</li>';
@@ -100,11 +103,13 @@ export async function showReplay(id) {
   viewer?.close();
   viewer = null;
   try {
-    const { match } = await api(ROUTES.api.match(id));
+    const { match } = await api(shared ? ROUTES.api.shared(id) : ROUTES.api.match(id));
     if (!stage) stage = new TableScene($('#replay-stage'));
     stage.resume();
     stage.resize();
     viewer = new Viewer(match, stage);
+    viewer.key = key;
+    if (at > 0) viewer.go(at);
   } catch (err) {
     $('#replay-log').innerHTML = `<li class="muted">${esc(err.message)}</li>`;
   }
@@ -159,7 +164,9 @@ class Viewer {
     this.plates = new Map();
     this.drawn = null;
     const mine = this.myTeam;
-    $('#replay-title').textContent = `${match.me.won ? 'Ganaste' : 'Perdiste'} ${match.score[mine]} a ${match.score[1 - mine]}`;
+    const by = match.shared?.by;
+    const result = by ? `${by} ${match.me.won ? 'ganó' : 'perdió'}` : match.me.won ? 'Ganaste' : 'Perdiste';
+    $('#replay-title').textContent = `${result} ${match.score[mine]} a ${match.score[1 - mine]}`;
     const opts = roomOptionsText(match.options || {});
     $('#replay-sub').textContent = [modeLabel(match.mode), `a ${match.target}`, match.rated ? 'por ELO' : '', opts, new Date(match.ended_at).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' })].filter(Boolean).join(' · ');
 

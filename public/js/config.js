@@ -45,6 +45,9 @@ export const ROUTES = {
   roomRe: /^\/sala\/(\d{4})/,
   match: (id) => `/partida/${id}`, // una partida del historial (solo la ven los que jugaron)
   matchRe: /^\/partida\/([0-9a-f-]{36})$/,
+  // una partida compartida (la ve cualquiera con el enlace, aun sin cuenta); ?j=N abre en ese paso de la revisión
+  shared: (id, at = 0) => `/repeticion/${id}${at > 0 ? `?j=${at}` : ''}`,
+  sharedRe: /^\/repeticion\/([A-Za-z0-9_-]{16,32})$/,
   home: '/',
   api: {
     rooms: '/api/rooms',
@@ -74,6 +77,8 @@ export const ROUTES = {
     buy: '/api/shop/buy',
     equip: '/api/shop/equip',
     match: (id) => `/api/matches/${id}`,
+    share: (id) => `/api/matches/${id}/share`,
+    shared: (id) => `/api/shared/${id}`,
   },
   card: (id) => `/cards/${id}.webp`,
   deckCard: (deck, id) => `/cards/${deck}/${id}.png`, // las barajas de la tienda
@@ -137,6 +142,15 @@ export const SENA_MS = 2200; // cuánto dura la cara de una seña
 // vista y se borra del todo a los `gone` (más allá, se le ve la cara de siempre). Así hay que girar para pescarla.
 export const SENA_GLANCE = { clear: 9, gone: 20 };
 export const SENA_BITE_MS = 700; // un mordisco de labio (la seña del tres se anima, no es una cara quieta)
+// Antitrampas (los aplica la sala; ver "Antitrampas" en AGENTS.md). Las señas viajan solo a los que miran al que la
+// hace; esto evita además que un cliente modificado "barra" la mesa cambiando de mirada a toda velocidad para pescarlas.
+export const ANTICHEAT = {
+  senaDwell: 350, // ms que tenés que venir mirando a alguien para ver su seña (un vistazo al pasar no alcanza)
+  lookBurst: { n: 8, ms: 3000 }, // cambios de mirada "normales" por ventana; pasarse cuesta lookPenalty
+  lookPenalty: 1500, // ms sin ver señas después de pasarse (la mirada igual se mueve: los demás la ven)
+  senaGap: 700, // ms mínimos entre dos señas del mismo jugador
+  msgBurst: { n: 120, ms: 5000 }, // mensajes por conexión por ventana; los que sobran se descartan
+};
 
 // ------------------------------------------------------------------ bots
 // Cómo piensan (ver bot.js y brain.js). Las trampas solo valen en mesas que las permiten.

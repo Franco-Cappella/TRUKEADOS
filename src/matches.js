@@ -112,6 +112,60 @@ export async function recentMatches(env, userId, n = 3) {
   return (await res.json()).map(recentRow);
 }
 
+// ------------------------------------------------------------------ compartir (tabla match_shares)
+
+const SHARE_RE = /^[A-Za-z0-9_-]{16,32}$/;
+// Sin ids de cuentas: el enlace lo puede abrir cualquiera.
+const anonSeats = (seats) => (seats || []).map(({ uid, ...s }) => s);
+const newShareId = () => {
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+/**
+ * El enlace para compartir una partida (lo pide uno que la jugó; se ve desde su lugar). Siempre el mismo por jugador
+ * y partida. Devuelve la clave, o null si no la jugó.
+ */
+export async function shareMatch(env, userId, id) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  const mine = await rest(env, `match_players?match_id=eq.${id}&user_id=eq.${userId}&select=seat`);
+  const me = mine.ok ? (await mine.json())[0] : null;
+  if (!me) return null;
+  const had = await rest(env, `match_shares?match_id=eq.${id}&user_id=eq.${userId}&select=id`);
+  if (!had.ok) throw new Error('No se pudo compartir la partida (¿falta la migración compartir_partidas?)');
+  const old = (await had.json())[0];
+  if (old) return old.id;
+  const share = newShareId();
+  const res = await rest(env, 'match_shares', {
+    method: 'POST',
+    headers: { prefer: 'return=minimal' },
+    body: JSON.stringify({ id: share, match_id: id, user_id: userId, seat: me.seat }),
+  });
+  if (res.ok) return share;
+  // dos pedidos a la vez: ganó el otro, se usa ese
+  const again = await rest(env, `match_shares?match_id=eq.${id}&user_id=eq.${userId}&select=id`);
+  const row = again.ok ? (await again.json())[0] : null;
+  if (row) return row.id;
+  throw new Error('No se pudo compartir la partida');
+}
+
+/** Una partida compartida, para cualquiera que tenga el enlace: sin ids de cuentas ni de la partida. */
+export async function getShared(env, share) {
+  if (!SHARE_RE.test(share || '')) return null;
+  const res = await rest(env, `match_shares?id=eq.${share}&select=seat,match:matches(mode,target,options,rated,winner_team,score,hands,seats,log,started_at,ended_at)`);
+  const row = res.ok ? (await res.json())[0] : null;
+  const m = row?.match;
+  if (!m) return null;
+  const c = forClient(m);
+  return {
+    ...c,
+    seats: anonSeats(c.seats),
+    log: { ...c.log, seats: anonSeats(c.log?.seats) },
+    me: { seat: row.seat, won: team(row.seat) === m.winner_team },
+    shared: { id: share, by: m.seats?.[row.seat]?.name || null },
+  };
+}
+
 /** Una partida con su registro, solo si el jugador estuvo sentado en ella. */
 export async function getMatch(env, userId, id) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;

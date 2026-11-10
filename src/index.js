@@ -6,7 +6,7 @@ import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
 import { newRoomCode, json } from './util.js';
 import { requireUser, createProfile, renameProfile } from './auth.js';
-import { listMatches, getMatch } from './matches.js';
+import { listMatches, getMatch, shareMatch, getShared } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
 import { areFriends, setAvatar, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
 import { recentMatches } from './matches.js';
@@ -244,6 +244,19 @@ async function handle(request, env) {
     if (auth.error) return auth.error;
     const match = await getMatch(env, auth.user.id, matchId[1]);
     return match ? json({ match }) : json({ error: 'No encontramos esa partida' }, 404);
+  }
+  // compartir: el que jugó pide el enlace; cualquiera (aun sin cuenta) lo abre y ve la repetición y el análisis
+  const shareReq = path.match(/^\/api\/matches\/([0-9a-f-]{36})\/share$/);
+  if (shareReq && method === 'POST') {
+    const auth = await requireUser(env, request);
+    if (auth.error) return auth.error;
+    const share = await shareMatch(env, auth.user.id, shareReq[1]);
+    return share ? json({ share }) : json({ error: 'Solo podés compartir partidas que jugaste' }, 404);
+  }
+  const shared = path.match(/^\/api\/shared\/([A-Za-z0-9_-]{16,32})$/);
+  if (shared && method === 'GET') {
+    const match = await getShared(env, shared[1]);
+    return match ? json({ match }) : json({ error: 'Ese enlace no existe o la partida se borró' }, 404);
   }
 
   // tienda: lo que tenés, comprar y ponerte algo
