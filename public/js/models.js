@@ -45,7 +45,7 @@ async function parse(buf) {
   map.colorSpace = THREE.SRGBColorSpace;
   map.needsUpdate = true;
   const ibm = acc(J.skins[0].inverseBindMatrices).data;
-  return { J, geo, map, ibm, face: J.extras?.face || null };
+  return { J, geo, map, ibm, face: J.extras?.face || null, alpha: !!J.extras?.alpha };
 }
 
 /** Promesa del molde de un personaje (se baja una sola vez). */
@@ -137,7 +137,8 @@ export class Rig {
     this.model = new THREE.Group();
     for (const i of J.scenes[0].nodes) this.model.add(objs[i]);
     const meshNode = J.nodes.findIndex((n) => n.mesh != null);
-    const material = new THREE.MeshLambertMaterial({ map: tpl.map, side: THREE.DoubleSide });
+    // los armados con tools/rig-rigid.mjs tienen partes transparentes (ojos, bigotes): se recortan
+    const material = new THREE.MeshLambertMaterial({ map: tpl.map, side: THREE.DoubleSide, alphaTest: tpl.alpha ? 0.5 : 0 });
     this.mesh = new THREE.SkinnedMesh(tpl.geo, material);
     this.mesh.castShadow = true;
     this.mesh.frustumCulled = false; // los huesos lo mueven: la esfera de la malla quieta no sirve
@@ -151,8 +152,12 @@ export class Rig {
     this.root = new THREE.Group();
     this.root.add(this.model);
     this.model.scale.setScalar(scale);
-    this.face = tpl.face ? new FaceLayer(this, tpl.face) : null;
+    // la cara: capas pegadas a la cara (Volcho, Olcho) o una carita encima (extras.face.emoji: el Gato Melón)
+    this.face = tpl.face?.emoji ? new EmojiFace(this, tpl.face.emoji) : tpl.face ? new FaceLayer(this, tpl.face) : null;
     this.reachT = 0;
+    // personajes con otro cuerpo (tools/rig-rigid.mjs): sentados más arriba y con las manos más adelante
+    this.lift = (tpl.J.extras?.seatLift || 0) * scale;
+    this.forward = (tpl.J.extras?.handsForward || 0) * scale;
   }
 
   /** Posición en el mundo de un hueso. */
@@ -179,7 +184,7 @@ export class Rig {
     hips.position.copy(this.hipsRest || (this.hipsRest = hips.position.clone()));
     this.root.updateMatrixWorld(true);
     const s = this.model.scale.x;
-    const want = this.local(0, seatY + 0.09, -0.06);
+    const want = this.local(0, seatY + 0.09 + this.lift, -0.06);
     const now = this.at('Hips');
     const delta = want.sub(now);
     // delta está en el mundo: se pasa al espacio del padre de la cadera
@@ -199,8 +204,8 @@ export class Rig {
     }
     // brazos
     const chestY = this.at('Spine2').y;
-    const L = left || this.local(0.06, Math.max(tableY + 0.12, chestY - 0.18), 0.32);
-    const R = right || this.local(-0.2, tableY + 0.03, 0.4);
+    const L = left || this.local(0.06, Math.max(tableY + 0.12, chestY - 0.18), 0.32 + this.forward);
+    const R = right || this.local(-0.2, tableY + 0.03, 0.4 + this.forward);
     twoBone(b.LeftArm, b.LeftForeArm, b.LeftHand, L, this.local(0.6, chestY - 0.6, -0.2));
     twoBone(b.RightArm, b.RightForeArm, b.RightHand, R, this.local(-0.6, chestY - 0.6, -0.2));
     // la mano izquierda abierta hacia la cara (sostiene las cartas); la derecha apoyada
@@ -518,3 +523,232 @@ class FaceLayer {
     }
   }
 }
+
+// ------------------------------------------------------------------ señas con carita (personajes sin cara dibujable)
+// Para los personajes que no tienen una cara donde dibujar párpados y bocas (el Gato Melón): la seña es una carita
+// redonda, tipo emoji, que aparece tapándole toda la cara mientras dura. Sin seña no se ve nada.
+const EMOJI_PX = 256;
+
+class EmojiFace {
+  constructor(rig, { p, r }) {
+    this.key = '';
+    const head = rig.b.Head;
+    const sk = rig.mesh.skeleton;
+    const toHead = sk.boneInverses[sk.bones.indexOf(head)].clone();
+    const headQ = new THREE.Quaternion();
+    toHead.decompose(new THREE.Vector3(), headQ, new THREE.Vector3());
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.canvas.height = EMOJI_PX;
+    this.ctx = this.canvas.getContext('2d');
+    this.tex = new THREE.CanvasTexture(this.canvas);
+    this.tex.colorSpace = THREE.SRGBColorSpace;
+    const size = r * 1.35;
+    this.mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, alphaTest: 0.05, depthWrite: false })
+    );
+    this.mesh.position.copy(new THREE.Vector3(p[0], p[1], p[2] + r * 0.12).applyMatrix4(toHead));
+    this.mesh.quaternion.copy(headQ);
+    this.mesh.renderOrder = 3;
+    this.mesh.visible = false;
+    head.add(this.mesh);
+  }
+
+  set(expr, talking = false, bite = 1) {
+    const key = `${expr}|${expr === 'bite' ? Math.round(bite * 6) : ''}`;
+    if (key === this.key) return;
+    this.key = key;
+    if (!EMOJI[expr]) {
+      this.mesh.visible = false; // sin seña (o hablando): el gato con su cara
+      return;
+    }
+    const c = this.ctx;
+    const s = EMOJI_PX;
+    c.clearRect(0, 0, s, s);
+    c.save();
+    c.translate(s / 2, s / 2);
+    c.scale(s / 200, s / 200); // se dibuja en un círculo de radio 92 centrado en (0, 0)
+    // la carita: amarilla, con borde y un brillo
+    const g = c.createRadialGradient(-28, -34, 10, 0, 0, 96);
+    g.addColorStop(0, '#fff3a6');
+    g.addColorStop(0.55, '#ffd23f');
+    g.addColorStop(1, '#f2a516');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(0, 0, 92, 0, Math.PI * 2);
+    c.fill();
+    c.lineWidth = 6;
+    c.strokeStyle = '#7a4a10';
+    c.stroke();
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    c.strokeStyle = INK;
+    c.fillStyle = INK;
+    EMOJI[expr](c, bite);
+    c.restore();
+    this.tex.needsUpdate = true;
+    this.mesh.visible = true;
+  }
+
+  dispose() {
+    this.mesh.geometry.dispose();
+    this.mesh.material.dispose();
+    this.tex.dispose();
+  }
+}
+
+const INK = '#3b2208';
+// Piezas de las caritas (x a la derecha de la imagen = la izquierda del personaje).
+const dot = (c, x, y, r = 11) => {
+  c.fillStyle = INK;
+  c.beginPath();
+  c.ellipse(x, y, r * 0.85, r * 1.15, 0, 0, Math.PI * 2);
+  c.fill();
+};
+// up > 0: panza para arriba; up < 0: para abajo
+const arc = (c, x, y, w, up, lw = 7) => {
+  c.strokeStyle = INK;
+  c.lineWidth = lw;
+  c.beginPath();
+  c.moveTo(x - w, y);
+  c.quadraticCurveTo(x, y - up, x + w, y);
+  c.stroke();
+};
+const line = (c, x0, y0, x1, y1, lw = 7) => {
+  c.strokeStyle = INK;
+  c.lineWidth = lw;
+  c.beginPath();
+  c.moveTo(x0, y0);
+  c.lineTo(x1, y1);
+  c.stroke();
+};
+const curve = (c, pts, lw = 7) => {
+  c.strokeStyle = INK;
+  c.lineWidth = lw;
+  c.beginPath();
+  c.moveTo(pts[0], pts[1]);
+  c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]);
+  c.stroke();
+};
+const EMOJI = {
+  // cejas bien arriba, ojos grandes
+  brows: (c) => {
+    arc(c, -34, -54, 20, 16);
+    arc(c, 34, -54, 20, 16);
+    dot(c, -34, -16, 13);
+    dot(c, 34, -16, 13);
+    arc(c, 0, 40, 22, -10);
+  },
+  // un ojo cerrado (el izquierdo del personaje, a la derecha de la imagen) y sonrisa de costado
+  wink: (c) => {
+    dot(c, -34, -18, 12);
+    arc(c, 34, -14, 18, 14);
+    curve(c, [-34, 30, 4, 62, 40, 24]);
+  },
+  // boca torcida a la derecha del personaje (la izquierda de la imagen)
+  mouthRight: (c) => {
+    dot(c, -32, -18);
+    dot(c, 32, -18);
+    curve(c, [12, 42, -24, 46, -50, 24]);
+  },
+  mouthLeft: (c) => {
+    dot(c, -32, -18);
+    dot(c, 32, -18);
+    curve(c, [-12, 42, 24, 46, 50, 24]);
+  },
+  // se muerde el labio: los dientes de arriba sobre el labio de abajo (se anima con bite)
+  bite: (c, bite = 1) => {
+    arc(c, -34, -20, 16, 10);
+    arc(c, 34, -20, 16, 10);
+    const y = 34 + (1 - bite) * 6;
+    c.fillStyle = '#c0392b';
+    c.beginPath();
+    c.ellipse(0, y + 12, 34, 13, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.strokeStyle = INK;
+    c.lineWidth = 4;
+    c.beginPath();
+    c.rect(-22, y - 8, 44, 14 + bite * 4);
+    c.fill();
+    c.stroke();
+    line(c, 0, y - 8, 0, y + 6 + bite * 4, 3);
+  },
+  // trompita y un corazón
+  kiss: (c) => {
+    arc(c, -34, -16, 16, 10);
+    arc(c, 34, -16, 16, 10);
+    c.strokeStyle = INK;
+    c.lineWidth = 7;
+    c.beginPath();
+    c.moveTo(-4, 22);
+    c.quadraticCurveTo(18, 30, -2, 38);
+    c.quadraticCurveTo(18, 46, -4, 54);
+    c.stroke();
+    c.fillStyle = 'rgba(255, 90, 90, 0.5)';
+    for (const x of [-54, 54]) {
+      c.beginPath();
+      c.ellipse(x, 20, 16, 10, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = '#ff3b6b';
+    c.beginPath();
+    c.moveTo(62, 46);
+    c.bezierCurveTo(62, 36, 46, 34, 46, 46);
+    c.bezierCurveTo(46, 56, 62, 62, 62, 68);
+    c.bezierCurveTo(62, 62, 78, 56, 78, 46);
+    c.bezierCurveTo(78, 34, 62, 36, 62, 46);
+    c.fill();
+  },
+  // boca bien abierta
+  open: (c) => {
+    dot(c, -34, -24, 14);
+    dot(c, 34, -24, 14);
+    c.fillStyle = '#5a1a0c';
+    c.beginPath();
+    c.ellipse(0, 38, 22, 28, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#e8566b';
+    c.beginPath();
+    c.ellipse(0, 54, 13, 8, 0, 0, Math.PI * 2);
+    c.fill();
+  },
+  // ojos cerrados, boca chata
+  eyesClosed: (c) => {
+    arc(c, -34, -14, 18, -10);
+    arc(c, 34, -14, 18, -10);
+    line(c, -18, 40, 18, 40);
+  },
+  // cachetes inflados
+  puff: (c) => {
+    c.fillStyle = 'rgba(255, 120, 80, 0.55)';
+    for (const x of [-48, 48]) {
+      c.beginPath();
+      c.arc(x, 24, 26, 0, Math.PI * 2);
+      c.fill();
+    }
+    dot(c, -32, -26, 10);
+    dot(c, 32, -26, 10);
+    c.fillStyle = INK;
+    c.beginPath();
+    c.arc(0, 36, 7, 0, Math.PI * 2);
+    c.fill();
+  },
+  // nariz fruncida: ojos apretados y arruguitas
+  nose: (c) => {
+    line(c, -48, -26, -22, -16);
+    line(c, -48, -6, -22, -16);
+    line(c, 48, -26, 22, -16);
+    line(c, 48, -6, 22, -16);
+    for (const x of [-12, 0, 12]) line(c, x - 4, 4, x + 4, 12, 4);
+    arc(c, 0, 44, 20, 8);
+  },
+  // boca para abajo y cejas tristes
+  frown: (c) => {
+    line(c, -48, -42, -20, -34, 6);
+    line(c, 48, -42, 20, -34, 6);
+    dot(c, -32, -14);
+    dot(c, 32, -14);
+    arc(c, 0, 50, 26, 18);
+  },
+};

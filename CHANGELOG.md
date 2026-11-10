@@ -1,5 +1,13 @@
 # Cambios
 
+## 1.21.0 — Gato Melón
+- **Personaje nuevo: Gato Melón** (2500 monedas), el modelo de Kasugay en Sketchfab (licencia Sketchfab Standard, con
+  el crédito en la tienda, en Créditos y en Licencias). Venía en piezas sueltas y sin esqueleto: ahora tiene huesos,
+  los brazos y las patas se doblan, se sienta a la mesa, agarra y tira las cartas como los demás.
+- **Sus señas son una carita**: un emoji redondo que le tapa la cara mientras dura la seña (cejas, beso, boca abierta,
+  cachetes inflados...).
+- Los jugadores automáticos también pueden aparecer con él.
+
 ## 1.20.1 — pósters de los personajes
 - La foto de Volcho y Olcho en la tienda (y en la Taquilla) ahora es un póster armado con el modelo 3D: fondo de
   color con rayos, el nombre gigante atrás, el personaje con la mano en la cintura y saludando.

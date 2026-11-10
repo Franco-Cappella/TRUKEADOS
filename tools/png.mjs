@@ -81,24 +81,24 @@ function chunk(kind, data) {
 }
 
 /** RGBA (width×height) -> PNG RGB (el alfa se descarta). Filtro "Paeth" en todas las filas. */
-export function encodePngRgb({ width, height, data }) {
-  const stride = width * 3;
+/** PNG RGB (o RGBA con alpha = true) desde { width, height, data RGBA }. */
+export function encodePngRgb({ width, height, data }, alpha = false) {
+  const bpp = alpha ? 4 : 3;
+  const stride = width * bpp;
   const raw = Buffer.alloc((stride + 1) * height);
   const prev = new Uint8Array(stride);
   const cur = new Uint8Array(stride);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const o = (y * width + x) * 4;
-      cur[x * 3] = data[o];
-      cur[x * 3 + 1] = data[o + 1];
-      cur[x * 3 + 2] = data[o + 2];
+      for (let k = 0; k < bpp; k++) cur[x * bpp + k] = data[o + k];
     }
     const row = y * (stride + 1);
     raw[row] = 4;
     for (let i = 0; i < stride; i++) {
-      const a = i >= 3 ? cur[i - 3] : 0;
+      const a = i >= bpp ? cur[i - bpp] : 0;
       const b = prev[i];
-      const c = i >= 3 ? prev[i - 3] : 0;
+      const c = i >= bpp ? prev[i - bpp] : 0;
       const pa = Math.abs(b - c);
       const pb = Math.abs(a - c);
       const pc = Math.abs(a + b - 2 * c);
@@ -111,7 +111,7 @@ export function encodePngRgb({ width, height, data }) {
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
-  ihdr[9] = 2;
+  ihdr[9] = alpha ? 6 : 2;
   return Buffer.concat([SIG, chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 

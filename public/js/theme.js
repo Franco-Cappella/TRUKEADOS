@@ -112,6 +112,8 @@ export const COSMETIC_LOOK = {
   // personajes 3D (public/models, armados con tools/build-skin.mjs). scale: tamaño en la mesa
   // poster: los colores de su foto en la tienda (poster.js): fondo, luces de contorno y el nombre de atrás
   volcho: { model: { url: '/models/volcho.glb', scale: 1.04 }, thumb: '/models/volcho.webp', poster: { bg: ['#ff4fa3', '#8a1f9e', '#1c0629'], rim: ['#ff9ad6', '#5fdcff'], ink: '#ffe14d' } },
+  // el Gato Melón (tools/rig-rigid.mjs): las señas son una carita encima de la cara
+  'gato-melon': { model: { url: '/models/gato-melon.glb', scale: 0.62 }, poster: { bg: ['#6fd8ff', '#2b5fe0', '#0a1340'], rim: ['#fff07a', '#ff5ad1'], ink: '#ffe14d' } },
   olcho: { model: { url: '/models/olcho.glb', scale: 1.1 }, thumb: '/models/olcho.webp', poster: { bg: ['#ffb02e', '#e0480f', '#2b0a3d'], rim: ['#ffd86e', '#b67dff'], ink: '#7dffa8' } },
   'remera-celeste': { shirt: 'tee', cloth: '#7b9cb5' },
   'chomba-verde': { shirt: 'polo', cloth: '#35594a' },

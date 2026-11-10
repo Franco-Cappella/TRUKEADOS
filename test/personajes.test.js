@@ -59,3 +59,27 @@ test('personajes: los modelos están preparados (GLB liviano con esqueleto y la 
     assert.ok(fs.existsSync(new URL(`../public/models/${id}.webp`, import.meta.url)), 'falta la foto para la tienda');
   }
 });
+
+test('personajes: el Gato Melón (armado de piezas sueltas) tiene esqueleto, pesos y la carita de las señas', () => {
+  const buf = fs.readFileSync(new URL('../public/models/gato-melon.glb', import.meta.url));
+  assert.equal(buf.toString('latin1', 0, 4), 'glTF');
+  assert.ok(buf.length < 2e6, 'gato-melon.glb pesa demasiado');
+  const J = JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+  assert.equal(J.skins.length, 1);
+  assert.equal(J.meshes.length, 1, 'una sola malla');
+  assert.equal(J.images.length, 1, 'una sola textura');
+  const names = new Set(J.nodes.map((n) => n.name));
+  for (const b of ['Hips', 'Spine', 'Spine2', 'Neck', 'Head', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg']) {
+    assert.ok(names.has(`mixamorig:${b}`), `falta el hueso ${b}`);
+  }
+  const left = J.nodes.find((n) => n.name === 'mixamorig:LeftArm');
+  assert.ok(left.translation[0] > 0, 'el brazo izquierdo del personaje va en +x');
+  const f = J.extras.face.emoji;
+  assert.ok(f && f.r > 0 && f.p.length === 3, 'la carita de las señas tiene lugar y tamaño');
+  assert.ok(J.extras.alpha, 'tiene partes transparentes');
+  // los créditos de la licencia (Sketchfab Standard: hay que nombrar al autor)
+  const item = COSMETICS.find((c) => c.id === 'gato-melon');
+  assert.equal(item.name, 'Gato Melón');
+  assert.match(item.credit.url, /sketchfab\.com/);
+  assert.match(fs.readFileSync(new URL('../public/legal/licencias.html', import.meta.url), 'utf8'), /Kasugay/);
+});

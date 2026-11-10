@@ -22,7 +22,7 @@
   <button id="look">1 me mira</button>
   <select id="amb"><option>bar</option><option>cafe</option><option>parrilla</option><option>parque</option><option>quincho</option><option>club</option><option>campo</option></select>
   <select id="mode"><option>1v1</option><option selected>2v2</option><option>3v3</option></select>
-  <select id="me"><option value="">yo: dibujado</option><option value="volcho" selected>yo: volcho</option><option value="olcho">yo: olcho</option></select>
+  <select id="me"><option value="">yo: dibujado</option><option value="volcho" selected>yo: volcho</option><option value="olcho">yo: olcho</option><option value="gato-melon">yo: gato melón</option></select>
 </div>
 <script type="module">
 import { TableScene } from '/js/scene.js';
@@ -36,7 +36,7 @@ function seats() {
   const mine = $('me').value;
   return Array.from({ length: n }, (_, i) => ({
     name: ['Theo', 'Volcho', 'Olcho', 'Tito', 'Coca', 'Beto'][i],
-    cos: i === 0 ? (mine ? { personaje: mine } : {}) : i === 1 ? { personaje: 'volcho' } : i === 2 ? { personaje: 'olcho' } : {},
+    cos: i === 0 ? (mine ? { personaje: mine } : {}) : i === 1 ? { personaje: 'volcho' } : i === 2 ? { personaje: 'olcho' } : i === 3 ? { personaje: 'gato-melon' } : {},
   }));
 }
 function setup() {

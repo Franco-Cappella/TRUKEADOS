@@ -29,14 +29,16 @@ async function make(id, name) {
   out.width = POSTER_W;
   out.height = POSTER_H;
   const ctx = out.getContext('2d');
-  background(ctx, pal, name);
-  ctx.drawImage(render(tpl, pal), 0, 0, POSTER_W, POSTER_H);
+  const shot = render(tpl, pal);
+  background(ctx, pal, name, shot.tall);
+  ctx.drawImage(shot.canvas, 0, 0, POSTER_W, POSTER_H);
   foreground(ctx, pal);
   return out;
 }
 
 // Fondo: degradé, rayos que salen de atrás del personaje y el nombre enorme, contorneado.
-function background(ctx, pal, name) {
+// tall: personaje alto (el nombre va atrás, al medio); si no (una bola), el nombre va a la izquierda, a la vista
+function background(ctx, pal, name, tall = true) {
   const W = POSTER_W;
   const H = POSTER_H;
   const cx = W * 0.56;
@@ -77,26 +79,30 @@ function background(ctx, pal, name) {
   }
   ctx.restore();
   // el nombre, gigante y en diagonal, atrás del personaje
-  const text = String(name).toUpperCase();
+  // con dos palabras ("Gato Melón"), una en cada renglón; con una, la misma dos veces
+  const words = String(name).toUpperCase().split(/\s+/);
+  const ghost = words[0];
+  const outline = words.length > 1 ? words.slice(1).join(' ') : words[0];
   ctx.save();
-  ctx.translate(W * 0.5, H * 0.5);
+  ctx.translate(tall ? W * 0.5 : W * 0.05, H * 0.5);
   ctx.rotate(-0.08);
-  ctx.textAlign = 'center';
+  ctx.textAlign = tall ? 'center' : 'left';
   ctx.textBaseline = 'middle';
   let size = 300;
   ctx.font = `800 ${size}px "Hanken Grotesk", system-ui, sans-serif`;
-  const w = ctx.measureText(text).width;
-  if (w > W * 0.92) {
-    size = Math.floor((size * W * 0.92) / w);
+  const w = Math.max(ctx.measureText(ghost).width, ctx.measureText(outline).width);
+  const room = tall ? W * 0.92 : W * 0.4;
+  if (w > room) {
+    size = Math.floor((size * room) / w);
     ctx.font = `800 ${size}px "Hanken Grotesk", system-ui, sans-serif`;
   }
   ctx.globalAlpha = 0.16;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, 0, -size * 0.42);
+  ctx.fillText(ghost, 0, -size * 0.42);
   ctx.globalAlpha = 0.9;
   ctx.lineWidth = 5;
   ctx.strokeStyle = pal.ink;
-  ctx.strokeText(text, 0, size * 0.5);
+  ctx.strokeText(outline, 0, size * 0.5);
   ctx.restore();
 }
 
@@ -158,15 +164,21 @@ function render(tpl, pal) {
   // encuadre: de las rodillas para arriba, el personaje a la derecha del medio
   rig.root.updateMatrixWorld(true);
   const head = rig.at('Head');
-  const top = head.y + 0.62; // con la mano de arriba
-  const bottom = head.y * 0.36;
+  // lo que ocupa posado; si es de cuerpo raro (más ancho que alto, como el Gato Melón) va entero
+  rig.mesh.computeBoundingBox();
+  const box = rig.mesh.boundingBox.clone().applyMatrix4(rig.mesh.matrixWorld);
+  const size = box.getSize(new THREE.Vector3());
+  const tall = size.y > size.x * 1.6;
+  const top = tall ? head.y + 0.62 : box.max.y + size.y * 0.12; // con la mano de arriba
+  const bottom = tall ? head.y * 0.36 : box.min.y - size.y * 0.06;
   const camera = new THREE.PerspectiveCamera(26, POSTER_W / POSTER_H, 0.1, 50);
   const halfH = Math.tan(THREE.MathUtils.degToRad(13));
   const span = (top - bottom) / 2;
   const d = span / halfH;
   const midY = (top + bottom) / 2;
-  camera.position.set(-0.42, midY - 0.2, d);
-  camera.lookAt(-0.42, midY, 0);
+  const camX = tall ? -0.42 : (box.min.x + box.max.x) / 2 - span * 0.62;
+  camera.position.set(camX, midY - (tall ? 0.2 : span * 0.15), d);
+  camera.lookAt(camX, midY, 0);
   renderer.render(scene, camera);
   const snap = document.createElement('canvas');
   snap.width = POSTER_W;
@@ -175,5 +187,5 @@ function render(tpl, pal) {
   rig.dispose();
   renderer.dispose();
   renderer.forceContextLoss();
-  return snap;
+  return { canvas: snap, tall };
 }

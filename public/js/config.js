@@ -304,6 +304,7 @@ export const COSMETIC_SLOTS = [
 export const COSMETICS = [
   { id: 'volcho', slot: 'personaje', name: 'Volcho', price: 2500 },
   { id: 'olcho', slot: 'personaje', name: 'Olcho', price: 2500 },
+  { id: 'gato-melon', slot: 'personaje', name: 'Gato Melón', price: 2500, credit: { text: 'Evil Foid Melon Cat de Kasugay (Sketchfab, licencia Sketchfab Standard)', url: 'https://sketchfab.com/3d-models/evil-foid-melon-cat-4a8be1db15504079bba21e0062395f2c' } },
   { id: 'remera-celeste', slot: 'ropa', name: 'Remera celeste', price: 40 },
   { id: 'chomba-verde', slot: 'ropa', name: 'Chomba verde', price: 60 },
   { id: 'pulover-bordo', slot: 'ropa', name: 'Pulóver bordó', price: 60 },

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { AMBIENTES, pickAmbiente } from '../public/js/config.js';
+import { AMBIENTES, pickAmbiente, cosmeticById } from '../public/js/config.js';
 import { recentRow } from '../src/matches.js';
 import { fakeRecent } from '../src/matchmaking.js';
 import { makeRoom } from './helpers/room-harness.mjs';
@@ -98,7 +98,7 @@ test('jugadores falsos: ELO de cada modo y, unos pocos, personaje 3D', async () 
     assert.equal(s.avatar, undefined, 'sin foto: la predeterminada');
     if (s.cos.personaje) {
       with3d++;
-      assert.ok(['volcho', 'olcho'].includes(s.cos.personaje));
+      assert.equal(cosmeticById(s.cos.personaje)?.slot, 'personaje'); // cualquiera de la tienda (Volcho, Olcho, el Gato Melón)
     }
   }
   assert.ok(with3d > 5 && with3d < 70, `con personaje 3D: ${with3d} de 400`);
