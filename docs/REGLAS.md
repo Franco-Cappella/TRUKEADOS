@@ -63,16 +63,17 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
   1. la carta **tapada** (boca abajo; solo se puede desde segunda);
   2. la carta tirada **fuera de turno** (solo en equipos: en 1 vs 1 hay que esperar al rival): es tu jugada de esa ronda (cuando te toca, se te saltea). No se puede
      con un canto sin contestar ni si ya jugaste en la ronda;
-  3. la carta **de arriba de dos encimadas**, salvo que la de abajo haya matado (ver abajo).
+  3. la carta **de arriba de dos encimadas**, salvo que hayas matado vos con la de abajo (ver abajo).
 
 ### Trampa: dos cartas encimadas
 1. Tirás dos cartas juntas en tu turno (en primera o segunda). La **de abajo** es tu jugada de esta ronda y
    los rivales no la ven hasta el final de la mano.
 2. La **de arriba** ya está en la mesa y no se puede levantar ([R] glosario: "una vez jugada no se puede
    retirar"): es tu jugada de la **ronda siguiente**. Cuando te toca, se juega sola.
-   - Si **tu equipo ganó la ronda** (mataste con la de abajo, o mató tu compañero), la de arriba **vale
-     normal**. Ej.: sos el último en primera, matás con la de abajo y ya dejás la de segunda arriba.
-   - Si no, **se quema** (vale un 4): perdiste la ronda o fue parda, aunque seas mano.
+   - Si **mataste vos con la de abajo**, la de arriba **vale normal**: la ronda siguiente la empezás vos, así que cae
+     en tu turno. Ej.: sos el último en primera, matás con la de abajo y ya dejás la de segunda arriba.
+   - Si no, **se quema** (vale un 4): perdiste la ronda, fue parda o **mató tu compañero** (la siguiente la empieza él:
+     la de arriba cayó fuera de tu turno), aunque seas mano.
 3. Mientras dura la ronda en que la tiraste **parece una carta normal para todos, también para vos** (para que la trampa sirva) y queda
    casi alineada con la de abajo. **Al terminar esa ronda se ve quemada** (si se quemó), así en la siguiente
    los rivales se dan cuenta. Los eventos de la encimada (`double`, y la jugada automática `auto` con `burned`) se filtran igual en `viewFor`: los rivales no los reciben, y a quien la tiró le avisa "se jugó sola tu carta de arriba".

@@ -497,10 +497,18 @@ export class RoomClient {
           const nth = ['primera', 'segunda', 'tercera'][e.round];
           const next = ['primera', 'segunda', 'tercera'][e.round + 1];
           const U = (c) => esc(cardName(c));
-          const msg = e.result === team(me)
-            ? `${e.seat === me ? 'Mataste' : 'Ganaron'} ${nth} (jugaste el ${U(mine.c)} de abajo). El ${U(over.c)} de arriba juega solo en ${next} y vale.`
-            : `En ${nth} jugaste el ${U(mine.c)} (el de abajo)${e.result === 'parda' ? ' e hiciste parda' : ''}. El ${U(over.c)} de arriba juega solo en ${next} y se quema (vale un 4).`;
-          this.toast(msg, e.seat === me ? 'good' : '', 5500);
+          // lo decide el motor (vale solo si mataste vos con la de abajo); acá se cuenta lo que quedó en la mesa
+          const killed = e.seat === me && e.result === team(me);
+          const ended = g.h.r === e.round || g.h.phase !== 'play'; // la mano terminó en esta ronda: no hay "siguiente"
+          const what = killed
+            ? `Mataste ${nth} con el ${U(mine.c)} de abajo.`
+            : `En ${nth} jugaste el ${U(mine.c)} (el de abajo)${e.result === 'parda' ? ' e hiciste parda' : e.result === team(me) ? ' y mató tu compañero' : ''}.`;
+          const top = ended
+            ? `La mano terminó acá: el ${U(over.c)} de arriba no llegó a jugarse.`
+            : killed
+              ? `El ${U(over.c)} de arriba es tu carta de ${next}: vale normal (empezás vos).`
+              : `El ${U(over.c)} de arriba juega solo en ${next} y se quema (vale un 4): no la empezás vos.`;
+          this.toast(`${what} ${top}`, killed ? 'good' : '', 5500);
           break;
         }
         if (!g.trampas) {
@@ -597,7 +605,7 @@ export class RoomClient {
       if (!g?.actions.throwOut) return this.toast('Todavía no es tu turno', '', 1200);
       this.selected = this.selected === id ? null : id;
     } else if (this.choosingTop) {
-      // tiro doble: la primera elegida va abajo (juega), la segunda arriba (queda quemada)
+      // tiro doble: la primera elegida va abajo (juega), la segunda arriba (vale si mata la de abajo; si no, se quema)
       const bottom = this.choosingTop;
       this.choosingTop = null;
       this.selected = null;
@@ -859,7 +867,7 @@ export class RoomClient {
     let hint = '';
     if (this.choosingTop) {
       t = 'Dos encimadas';
-      hint = 'Elegí la de arriba: tu carta de la ronda siguiente. Si la de abajo mata vale normal; si no, se quema.';
+      hint = 'Elegí la de arriba: tu carta de la ronda siguiente. Si matás vos con la de abajo, vale normal; si no, se quema.';
     } else if (g.actions.flor.includes('flor')) hint = `Tenés flor (${g.h.myFlor}): es obligatorio cantarla antes de tirar.`;
     else if (mine && w.kind === 'play') hint = 'Tocá una carta para elegirla y tocala de nuevo para tirarla. Arrastrala para ordenar.';
     else if (!mine && this.selected && g.actions.throwOut) hint = 'No es tu turno: si la tirás ahora, se quema y vale como un 4.';
@@ -1044,7 +1052,7 @@ export class RoomClient {
 
   renderDenuncias(a) {
     const tm = $('#trampa-menu');
-    tm.innerHTML = '<div class="tip">Si un rival tiró <b>dos cartas encimadas</b> (la de arriba queda quemada), pedile que la levante: todos ven la de abajo. No suma ni resta puntos.</div>';
+    tm.innerHTML = '<div class="tip">Si un rival tiró <b>dos cartas encimadas</b> (la de arriba se quema si no mató con la de abajo), pedile que la levante: todos ven la de abajo. No suma ni resta puntos.</div>';
     if (!a.denunciar.length) tm.innerHTML += '<div class="tip">Ahora no se puede pedir.</div>';
     for (const s of a.denunciar) {
       const b = document.createElement('button');

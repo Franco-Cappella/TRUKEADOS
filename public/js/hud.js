@@ -86,8 +86,8 @@ export function helpHtml() {
       <li>Envido 2 · Real envido 3 · Falta envido: lo que le falta al que va ganando. No querido: 1, o lo que se había querido antes.</li>
       <li>Los puntos se anotan al terminar la mano. El que gana el envido tiene que <b>mostrar las cartas</b>: si no las muestra y le reclaman, o si cantó un número falso, pierde los puntos del envido (el truco no cambia).</li>
       <li>En equipo, irse al mazo es por todo el equipo: termina la mano. En primera sin envido cantado, el rival suma 1 de envido + lo del truco.</li>
-      <li><b>Cartas quemadas</b>: valen como un 4 en la ronda en que cuentan (el envido no cambia). Se quema la carta tapada, la que tirás <b>fuera de turno</b> (es tu jugada de esa ronda: cuando te toca, se te saltea) y la de arriba de dos encimadas si la de abajo no mató.</li>
-      <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente. Si tu equipo gana esa ronda (mata la de abajo o tu compañero), la de arriba vale normal; si la perdés o es parda, se quema. Mientras dura la ronda parece una carta normal; al terminar, si se quemó, se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
+      <li><b>Cartas quemadas</b>: valen como un 4 en la ronda en que cuentan (el envido no cambia). Se quema la carta tapada, la que tirás <b>fuera de turno</b> (es tu jugada de esa ronda: cuando te toca, se te saltea) y la de arriba de dos encimadas si no mataste vos con la de abajo.</li>
+      <li><b>Dos encimadas</b> (trampa): la de abajo juega ahora y nadie la ve; la de arriba es tu carta de la ronda siguiente. Si matás vos con la de abajo (la ronda siguiente la empezás vos), la de arriba vale normal; si mata tu compañero, la perdés o es parda, se quema: cae fuera de tu turno. Mientras dura la ronda parece una carta normal; al terminar, si se quemó, se ve quemada y cualquier rival te puede pedir que muestres las dos (no hay puntos de por medio).</li>
     </ul>
     <div class="help-ok"><button class="btn primary" data-close>Entendido</button></div>
   </div>`;

@@ -807,13 +807,14 @@ function resolveRound(g) {
   R.winnerSeat = teams.size === 1 ? tops[0].seat : null;
   event(g, { type: 'round', round: h.r, result: R.result, seat: R.winnerSeat });
 
-  // la de arriba de dos encimadas vale si el equipo del que la tiró GANÓ esta ronda (mató él con la de abajo o su
-  // compañero). Si perdió o si fue parda, se quema. Se marca al cerrar la
-  // ronda, también si la mano termina acá: así queda bien al cerrar la mano.
+  // la de arriba de dos encimadas vale solo si el que las tiró MATÓ con la de abajo (ganó la ronda él: la ronda
+  // siguiente la empieza él, así que la de arriba cae en su turno). Si mató el compañero, si perdió o si fue parda, se
+  // quema (la siguiente no la empieza él: la de arriba quedó tirada fuera de turno). Se marca al cerrar la ronda,
+  // también si la mano termina acá: así queda bien al cerrar la mano.
   h.table.forEach((list, s) => {
     if (!h.pre[s]) return;
     const top = list.find((p) => p.over && p.c === h.pre[s]);
-    if (top) top.burned = R.result !== team(s);
+    if (top) top.burned = !(R.result === team(s) && tops.some((p) => p.seat === s));
   });
   const winner = handWinner(h.rounds, team(h.mano));
   if (winner !== null) return endHand(g, winner, h.truco.level, 'cartas');

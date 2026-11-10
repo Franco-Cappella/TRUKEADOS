@@ -105,7 +105,7 @@ test('mostrá lo que tenías: terminada la mano, se dan vuelta las cartas que no
   assert.equal(g.ev.at(-1).type, 'lucir');
 });
 
-test('encimadas: si la ronda la gana tu compañero, la de arriba no se quema', () => {
+test('encimadas: si la ronda la gana tu compañero, la de arriba se quema (la siguiente no la empezás vos)', () => {
   // 2v2, reparte el 3: el 0 es mano. El 0 tira dos encimadas (abajo un 4), el 2 (compañero) mata con el ancho.
   const g = newGame({ mode: '2v2', dealer: 3 });
   g.h.cards = [['4E', '5C', '6B'], ['3E', '6O', '7C'], ['1E', '4O', '5B'], ['3O', '4C', '5E']];
@@ -115,7 +115,24 @@ test('encimadas: si la ronda la gana tu compañero, la de arriba no se quema', (
   ok(act(g, 2, { t: 'play', card: '1E' }));
   ok(act(g, 3, { t: 'play', card: '3O' }));
   assert.equal(g.h.rounds[0].result, 0);
-  assert.equal(g.h.table[0].find((p) => p.over).burned, false);
+  assert.equal(g.h.rounds[1].starter, 2, 'la segunda la empieza el compañero');
+  assert.equal(g.h.table[0].find((p) => p.over).burned, true);
+});
+
+test('encimadas: si matás vos con la de abajo, la de arriba vale (en 2v2 también)', () => {
+  // 2v2, reparte el 3: el 0 es mano y tira dos encimadas con el ancho abajo: mata él, empieza él la segunda
+  const g = newGame({ mode: '2v2', dealer: 3 });
+  g.h.cards = [['1E', '5C', '6B'], ['3E', '6O', '7C'], ['4E', '4O', '5B'], ['3O', '4C', '5E']];
+  g.h.inHand = g.h.cards.map((c) => c.slice());
+  ok(act(g, 0, { t: 'play2', bottom: '1E', top: '5C' }));
+  ok(act(g, 1, { t: 'play', card: '3E' }));
+  ok(act(g, 2, { t: 'play', card: '4E' }));
+  ok(act(g, 3, { t: 'play', card: '3O' }));
+  assert.equal(g.h.rounds[0].winnerSeat, 0);
+  const top = g.h.table[0].find((p) => p.over);
+  assert.equal(top.burned, false);
+  // empieza el 0 la segunda: la de arriba ya se jugó sola, sin quemarse
+  assert.deepEqual(g.h.rounds[1].plays[0], { seat: 0, c: '5C' });
 });
 
 test('encimadas: si la ronda la pierde tu equipo, la de arriba se quema', () => {

@@ -363,6 +363,7 @@ const FOLD_GAP = 90;
 // dónde quedan tus cartas en la mesa (fracción del radio desde el centro) y la mano en pantalla
 const MY_TABLE_START = 0.42;
 const MY_TABLE_SIDE = -0.12; // y corridas a la izquierda (la mano está abajo al centro)
+const SHOWN_GAP = 1.08; // las cartas que mostrás: en fila, separadas por esto (en anchos de carta)
 const HAND_X = 0.05;
 
 export class TableScene {
@@ -1583,7 +1584,21 @@ export class TableScene {
     let radial = start;
     let side = 0;
     let rot = a;
+    // las que mostrás (los tantos o "mostrá lo que tenías") van en fila, una al lado de la otra, para que se lean
+    // todas; arrancan después de las que ya tiraste
+    const shown = list.filter((p) => p.shown);
+    const playedN = list.length - shown.length;
+    const gap = CARD_W * TABLE_CARD_SCALE * SHOWN_GAP;
+    const rowRadial = start - step * Math.max(0, playedN - 1) - (playedN ? CARD_H * TABLE_CARD_SCALE * 1.05 : 0);
+    let k = 0;
     list.forEach((p, idx) => {
+      if (p.shown) {
+        const off = (k++ - (shown.length - 1) / 2) * gap;
+        const pos = d.clone().multiplyScalar(rowRadial).addScaledVector(tangent, off + (mine ? MY_TABLE_SIDE : 0));
+        pos.y = TABLE_Y + 0.002 + idx * 0.0018;
+        out.push({ pos, rot: a });
+        return;
+      }
       if (idx > 0) {
         if (p.over && !this.spectator && seat === this.me) {
           // tus dos encimadas, en tu pantalla: la de arriba corrida para que veas que abajo hay otra
