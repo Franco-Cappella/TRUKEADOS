@@ -1,5 +1,11 @@
 # Cambios
 
+## 1.20.1 — pósters de los personajes
+- La foto de Volcho y Olcho en la tienda (y en la Taquilla) ahora es un póster armado con el modelo 3D: fondo de
+  color con rayos, el nombre gigante atrás, el personaje con la mano en la cintura, saludando y guiñando el ojo.
+- Buscando rivales: "+ Invitar a un amigo" está en el cartel del compañero que falta; con el lugar guardado aparece una
+  barra abajo (ya no tapa a los rivales). En la tienda dice "Equipar".
+
 ## 1.20.0 — rendirse en equipo y tienda nueva
 - **Rendirse en equipo es un pedido**: en 2 vs 2 tienen que estar de acuerdo los dos y en 3 vs 3, dos de los tres.
   Al compañero le aparece "X quiere rendirse" con "Rendirnos" / "Seguir jugando" y una cuenta de 25 segundos; si no

@@ -6,6 +6,7 @@ import { lookFor, dressed, drawCharacter, W as CW, H as CH } from './characters.
 import { $, esc, api, savedName } from './dom.js';
 import { currentMe } from './auth.js';
 import { LockerStage } from './locker.js';
+import { poster } from './poster.js';
 
 let state = { owned: [], coins: 0, equipped: {} };
 let stage = null; // la tarima de la Taquilla (se arma la primera vez que se abre)
@@ -178,7 +179,18 @@ function drawThumb(canvas, src) {
 
 function preview(canvas, item) {
   if (item.slot === 'baraja') return drawDeck(canvas, item.id);
-  if (item.slot === 'personaje') return drawThumb(canvas, COSMETIC_LOOK[item.id]?.thumb);
+  // personaje 3D: su póster (armado con el modelo), recortado alrededor del personaje; si falla, la foto de siempre
+  if (item.slot === 'personaje') {
+    return poster(item.id, item.name).then((src) => {
+      if (!src) return drawThumb(canvas, COSMETIC_LOOK[item.id]?.thumb);
+      const ctx = canvas.getContext('2d');
+      const k = Math.max(canvas.width / src.width, canvas.height / src.height);
+      const w = src.width * k;
+      const h = src.height * k;
+      const x = Math.min(0, Math.max(canvas.width - w, canvas.width / 2 - w * 0.66)); // el personaje está a la derecha
+      ctx.drawImage(src, x, (canvas.height - h) / 2, w, h);
+    });
+  }
   const L = COSMETIC_LOOK[item.id];
   if (CHARACTER_SLOTS.includes(item.slot)) drawBust(canvas, dressed(baseLook(), { ...state.equipped, [item.slot]: item.id }));
   else if (item.slot === 'pano') drawFelt(canvas, L.felt);
@@ -299,7 +311,7 @@ function priceTag(it) {
 function card(it, big = false) {
   const r = rarity(it);
   const tall = TALL_SLOTS.includes(it.slot);
-  const [w, h] = big ? [360, 300] : tall ? [160, 176] : [176, 132];
+  const [w, h] = big ? [640, 400] : tall ? [160, 176] : [176, 132];
   return `<button type="button" class="sh-card ${r[0]} ${big ? 'big' : ''} ${state.owned.includes(it.id) ? 'owned' : ''}" data-open="${esc(it.id)}">
     <canvas width="${w}" height="${h}" data-preview="${esc(it.id)}"></canvas>
     <span class="sh-meta"><small>${esc(r[1])} · ${esc(slotLabel(it.slot))}</small><b>${esc(it.name)}</b>${priceTag(it)}</span>

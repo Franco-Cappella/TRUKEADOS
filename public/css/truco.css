@@ -1318,7 +1318,7 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .sh-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; text-align: left; background: var(--surface); border: 1px solid var(--line); color: var(--text); font: inherit; cursor: pointer; overflow: hidden; transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.14s; }
 .sh-card:hover, .sh-card:focus-visible { transform: translateY(-3px); border-color: var(--text); }
 .sh-card canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; background: #0d0d0d; }
-.sh-card.big canvas { aspect-ratio: 16 / 10; object-fit: cover; object-position: 50% 20%; }
+.sh-card.big canvas { aspect-ratio: 16 / 10; object-fit: cover; }
 .sh-meta { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 10px; }
 .sh-meta small { font-size: 9px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
 .sh-meta b { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

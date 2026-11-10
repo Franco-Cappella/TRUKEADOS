@@ -237,6 +237,32 @@ export class Rig {
     this.model.updateMatrixWorld(true);
   }
 
+  /** Pose de póster (la foto de la tienda): una mano en la cintura, la otra arriba saludando, la cabeza ladeada. */
+  hero() {
+    for (const [b, q] of this.rest) b.quaternion.copy(q);
+    const b = this.b;
+    this.hipsRest ||= b.Hips.position.clone();
+    b.Hips.position.copy(this.hipsRest);
+    b.Head.scale.setScalar(1);
+    this.root.updateMatrixWorld(true);
+    const hipY = this.root.worldToLocal(this.at('Hips')).y;
+    const chestY = this.root.worldToLocal(this.at('Spine2')).y;
+    const headY = this.root.worldToLocal(this.at('Head')).y;
+    const fwd = new THREE.Vector3(0, 0, 1).transformDirection(this.root.matrixWorld);
+    // un poco de cadera y de pecho para el costado: menos duro
+    rotateWorld(b.Spine, fwd, 0.05);
+    this.root.updateMatrixWorld(true);
+    // derecha: el puño en la cintura, el codo afuera
+    twoBone(b.RightArm, b.RightForeArm, b.RightHand, this.local(-0.17, hipY + 0.07, 0.05), this.local(-0.7, chestY - 0.15, -0.1));
+    // izquierda: arriba, saludando
+    twoBone(b.LeftArm, b.LeftForeArm, b.LeftHand, this.local(0.34, headY + 0.2, 0.14), this.local(0.8, chestY - 0.1, -0.1));
+    this.curl('Right', 0.9);
+    this.curl('Left', 0.05);
+    rotateWorld(b.Head, fwd, -0.12);
+    rotateWorld(b.Head, UP, 0.2);
+    this.model.updateMatrixWorld(true);
+  }
+
   // Dobla un poco los dedos (0 = estirados).
   curl(side, k) {
     for (const f of ['Index', 'Middle', 'Ring', 'Pinky']) {

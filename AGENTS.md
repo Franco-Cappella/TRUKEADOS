@@ -51,6 +51,7 @@ public/js/                CLIENTE (los marcados con * también los usa el servid
   scene.js                escena Three.js: bar, mesa, mazo, cartas, cámara, manos
   characters.js           personajes 2D dibujados en canvas (caras y señas)
   models.js               personajes 3D de la tienda (GLB con esqueleto): lector propio, pose sentada y señas en la cara
+  poster.js               el póster de cada personaje 3D en la tienda (se arma con el modelo; colores en COSMETIC_LOOK.poster)
   gif.js                  achicar GIF de perfil en el navegador (codificador GIF propio)
   hands.js                tus manos en primera persona
   main.js                 arranque (sesión), rutas (/ y /sala/CÓDIGO) y eventos fijos de la UI
