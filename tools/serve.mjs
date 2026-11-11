@@ -22,8 +22,8 @@ http.createServer((req, res) => {
     const icon = url.match(/^\/img\/((?:icon-\d+|og))\.png$/);
     // (y las imágenes de la vitrina de la landing, que no van al juego: PUT /tools/landing/<nombre>.webp)
     const land = url.match(/^\/tools\/landing\/([a-z0-9-]+)\.webp$/);
-    if (!m && !shot && !mapa && !icon && !land) return void res.writeHead(400).end('no');
-    const dest = land ? path.join(ROOT, 'tools', 'landing', `${land[1]}.webp`) : m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : mapa ? path.join(ROOT, 'public', 'img', 'mapas', `${mapa[1]}.webp`) : icon ? path.join(ROOT, 'public', 'img', `${icon[1]}.png`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
+    if (!m && !shot && !mapa && !icon) return void res.writeHead(400).end('no');
+    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : mapa ? path.join(ROOT, 'public', 'img', 'mapas', `${mapa[1]}.webp`) : icon ? path.join(ROOT, 'public', 'img', `${icon[1]}.png`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
     const parts = [];
     req.on('data', (d) => parts.push(d));
     req.on('end', () => {
