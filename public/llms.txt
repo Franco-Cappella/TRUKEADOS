@@ -2,7 +2,7 @@
 
 > Trukeados es un juego de truco argentino online, gratis y en 3D, que se juega en el navegador (computadora y celular) sin descargar nada. Sitio: https://game.trukeados.com
 
-Trukeados es el truco argentino de siempre (con baraja española de 40 cartas) para jugar online contra personas o contra bots. Te sentás en una mesa en 3D, en lugares argentinos (bar notable, café porteño, parrilla, quincho, club de barrio, Bosques de Palermo, estancia y Barrio Chino), y les hacés las señas a tu compañero con la cara de tu personaje.
+Trukeados es el truco argentino de siempre (con baraja española de 40 cartas) para jugar online contra personas o contra bots. Te sentás en una mesa en 3D, en lugares argentinos (bar notable, café porteño, parrilla, quincho, club de barrio, Bosques de Palermo, estancia, Barrio Chino y una Noche estrellada pintada como el cuadro de Van Gogh), y les hacés las señas a tu compañero con la cara de tu personaje.
 
 ## Qué tiene
 
@@ -16,6 +16,8 @@ Trukeados es el truco argentino de siempre (con baraja española de 40 cartas) p
 - Cuenta gratis con Google o con mail. Español rioplatense.
 
 ## Páginas
+
+- [Trukeados](https://trukeados.com/): la presentación del juego.
 
 - [Jugar al truco online](https://game.trukeados.com/): el juego.
 - [Cómo jugar al truco argentino](https://game.trukeados.com/como-jugar/): reglas, valor de las cartas, envido, truco, flor y señas.
