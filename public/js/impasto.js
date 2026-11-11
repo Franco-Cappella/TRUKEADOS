@@ -6,9 +6,17 @@
 import * as THREE from 'three';
 import { getAniso } from './draw3d.js';
 
+// Azar con semilla (mulberry32): con enteros de 32 bits de verdad. El de draw3d.js multiplica números que no entran
+// en un double y se repite enseguida: para decenas de miles de pinceladas las amontonaba en los mismos lugares.
 export function seeded(seed) {
-  let s = seed;
-  return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 const canvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
@@ -68,38 +76,31 @@ export function strokes(S, { n, angle, paint, len = 30, width = 6, where = null,
         ctx.beginPath();
         pts.forEach(([px, py], k) => (k ? ctx.lineTo(px + dx + ox, py + oy) : ctx.moveTo(px + dx + ox, py + oy)));
       };
-      // la sombra de un lado, el cuerpo, y el brillo del lado de la luz (pintura en relieve)
-      c.globalAlpha = alpha * 0.55;
-      c.strokeStyle = shade(col, -0.32);
+      // la pincelada como en un óleo: apenas la sombra del lado contrario a la luz, el cuerpo, un brillo fino y
+      // continuo del lado de la luz (la pintura levanta un lomo) y las marcas de los pelos del pincel a lo largo
+      c.globalAlpha = alpha * 0.48;
+      c.strokeStyle = shade(col, -0.42);
       c.lineWidth = W;
-      path(c, -lx * W * 0.22, -ly * W * 0.22);
+      path(c, -lx * W * 0.12, -ly * W * 0.12);
       c.stroke();
       c.globalAlpha = alpha;
       c.strokeStyle = col;
-      c.lineWidth = W * 0.92;
+      c.lineWidth = W * 0.9;
       path(c);
       c.stroke();
-      // el brillo, cortado como un pincel seco (no un tubo liso)
-      c.globalAlpha = alpha * 0.75;
-      c.strokeStyle = shade(col, 0.3);
-      c.lineWidth = W * 0.2;
-      c.setLineDash([L * (0.15 + r() * 0.3), L * (0.05 + r() * 0.15)]);
-      path(c, lx * W * 0.22, ly * W * 0.22);
+      c.globalAlpha = alpha * 0.55;
+      c.strokeStyle = shade(col, 0.36);
+      c.lineWidth = W * 0.22;
+      path(c, lx * W * 0.2, ly * W * 0.2);
       c.stroke();
-      c.setLineDash([]);
-      // estrías del pincel (los pelos dejan surcos a lo largo)
-      c.globalAlpha = alpha * 0.25;
-      c.lineWidth = Math.max(0.6, W * 0.08);
-      for (let b = 0; b < 3; b++) {
-        c.strokeStyle = shade(col, b % 2 ? 0.2 : -0.24);
-        c.setLineDash([L * (0.2 + r() * 0.4), L * 0.08]);
-        path(c, (r() - 0.5) * W * 0.7, (r() - 0.5) * W * 0.7);
-        c.stroke();
-      }
-      c.setLineDash([]);
+      c.globalAlpha = alpha * 0.2;
+      c.lineWidth = Math.max(0.5, W * 0.08);
+      c.strokeStyle = shade(col, -0.3);
+      path(c, (r() - 0.5) * W * 0.6, (r() - 0.5) * W * 0.6);
+      c.stroke();
       c.globalAlpha = 1;
       // la altura: el lomo de la pincelada (ancho y bajo, angosto y alto)
-      for (const [wk, v] of [[1, 90 + load * 50], [0.6, 120 + load * 80], [0.25, 150 + load * 105]]) {
+      for (const [wk, v] of [[1, 95 + load * 60], [0.4, 140 + load * 100]]) {
         hc.strokeStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
         hc.lineWidth = W * wk;
         path(hc);
@@ -142,7 +143,46 @@ export function swirlDot(S, cx, cy, R, colors, { rings = 5, seed = 3, width = 5,
   }
 }
 
+/**
+ * Halo de anillos como en el cuadro: bandas concéntricas de toques cortos tangentes al círculo. bands: [{ r0, r1,
+ * colors }] (radios en px, de adentro hacia afuera); dab: el ancho de cada toque.
+ */
+export function halo(S, cx, cy, bands, { dab = 5, seed = 5, load = 0.9, wrap = false } = {}) {
+  const r = seeded(seed);
+  for (const band of bands) {
+    const rings = Math.max(1, Math.round((band.r1 - band.r0) / (dab * 0.9)));
+    for (let k = 0; k < rings; k++) {
+      const rr = band.r0 + ((k + 0.5) / rings) * (band.r1 - band.r0);
+      const n = Math.max(6, Math.round((Math.PI * 2 * rr) / (dab * 2.2)));
+      const off = r() * Math.PI * 2;
+      let i = 0;
+      strokes(S, {
+        n,
+        seed: seed + k * 17 + Math.round(rr),
+        where: () => {
+          const ang = off + (i++ / n) * Math.PI * 2 + (r() - 0.5) * 0.12;
+          return [cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr];
+        },
+        angle: (x, y) => Math.atan2(y - cy, x - cx) + Math.PI / 2,
+        paint: (x, y, q) => band.colors[Math.floor(q() * band.colors.length)],
+        len: dab * 2.4,
+        width: dab,
+        load,
+        wrap,
+      });
+    }
+  }
+}
+
+// (con memoria: se llama varias veces por pincelada y los colores son pocos)
+const shadeMemo = new Map();
 const shade = (col, k) => {
+  const key = col + k;
+  let out = shadeMemo.get(key);
+  if (!out) shadeMemo.set(key, (out = shadeNow(col, k)));
+  return out;
+};
+const shadeNow = (col, k) => {
   const c = new THREE.Color(col);
   const hsl = {};
   c.getHSL(hsl);
@@ -157,16 +197,22 @@ export function normalMap(height, strength = 2.2) {
   const ctx = out.getContext('2d');
   const img = ctx.createImageData(w, h);
   const d = img.data;
-  const at = (x, y) => src[(((y + h) % h) * w + ((x + w) % w)) * 4] / 255;
+  // rápido: sin llamadas por píxel (los vecinos dan la vuelta en los bordes, para las texturas que se repiten)
+  const k = strength / 255;
   for (let y = 0; y < h; y++) {
+    const row = y * w;
+    const up = ((y + h - 1) % h) * w;
+    const down = ((y + 1) % h) * w;
     for (let x = 0; x < w; x++) {
-      const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
-      const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
-      const l = Math.hypot(dx, dy, 1);
-      const i = (y * w + x) * 4;
-      d[i] = (-dx / l) * 127.5 + 127.5;
-      d[i + 1] = (dy / l) * 127.5 + 127.5;
-      d[i + 2] = (1 / l) * 127.5 + 127.5;
+      const left = x ? x - 1 : w - 1;
+      const right = x === w - 1 ? 0 : x + 1;
+      const dx = (src[(row + right) << 2] - src[(row + left) << 2]) * k;
+      const dy = (src[(down + x) << 2] - src[(up + x) << 2]) * k;
+      const il = 127.5 / Math.sqrt(dx * dx + dy * dy + 1);
+      const i = (row + x) << 2;
+      d[i] = 127.5 - dx * il;
+      d[i + 1] = 127.5 + dy * il;
+      d[i + 2] = 127.5 + il;
       d[i + 3] = 255;
     }
   }
@@ -189,7 +235,7 @@ const tex = (c, { srgb = true, repeat = null } = {}) => {
  * Material de pintura con relieve: el color, las normales del relieve y apenas brillo (acrílico). emissive: cuánto
  * brilla sola (el cielo de noche no necesita luz para verse). basic: sin luces (para lo muy lejano).
  */
-export function paintMaterial(S, { strength = 2.2, emissive = 0, roughness = 0.62, repeat = null, side = THREE.FrontSide, transparent = false, alphaTest = 0, fog = true } = {}) {
+export function paintMaterial(S, { strength = 2.2, emissive = 0, roughness = 0.62, repeat = null, side = THREE.FrontSide, transparent = false, alphaTest = 0, fog = true, glow = null, glowIntensity = 1 } = {}) {
   const map = tex(S.color, { repeat });
   const normal = tex(normalMap(S.height, strength), { srgb: false, repeat });
   const m = new THREE.MeshStandardMaterial({ map, normalMap: normal, roughness, metalness: 0, side, transparent, alphaTest, fog });
@@ -197,6 +243,12 @@ export function paintMaterial(S, { strength = 2.2, emissive = 0, roughness = 0.6
     m.emissive = new THREE.Color('#ffffff');
     m.emissiveMap = map;
     m.emissiveIntensity = emissive;
+  }
+  // glow: un canvas con solo lo que brilla solo (las ventanas prendidas), negro el resto
+  if (glow) {
+    m.emissive = new THREE.Color('#ffffff');
+    m.emissiveMap = tex(glow, { repeat });
+    m.emissiveIntensity = glowIntensity;
   }
   return m;
 }

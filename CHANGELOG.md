@@ -1,5 +1,17 @@
 # Cambios
 
+## 1.27.1 — la noche estrellada, como el cuadro; mesas en juego; buscadores
+- **Noche estrellada rehecha** sobre la composición y la técnica del cuadro de Van Gogh (1889): estás en una loma
+  mirando el valle, con el ciprés enorme a la izquierda, el pueblo con la iglesia de campanario fino y las ventanas
+  prendidas, los cerros azules en olas, y el cielo entero en pinceladas cortas que siguen el viento: el gran remolino
+  del medio (que gira despacio), las estrellas con halos de anillos que titilan y la luna arriba a la derecha en su halo
+  naranja. Se arregló el azar de impasto.js (amontonaba las pinceladas: quedaba fondo liso) y se hizo cuatro veces más
+  rápido de armar. El paño y el dorso de la noche estrellada también quedaron mejor.
+- **Mesas en juego**: de 12 a 18 (antes 7 a 10), con un plantel más grande, y nadie juega en dos mesas a la vez.
+- **Buscadores e IAs**: título y descripción nuevos, tarjeta para compartir (imagen 1200 × 630), datos estructurados
+  (juego, sitio y preguntas frecuentes), robots.txt, sitemap.xml, llms.txt, manifiesto e íconos para instalarlo; abajo
+  de la entrada, qué es el juego y las preguntas frecuentes, y una página nueva: /como-jugar/ con las reglas del truco.
+
 ## 1.27.0 — noche estrellada
 - **Noche estrellada** (tienda, la obra maestra): un mapa pintado en acrílico con relieve (`impasto.js`: cada pincelada
   con su lomo, su sombra y su brillo, y un mapa de normales para que la luz de la luna y de los faroles marque el

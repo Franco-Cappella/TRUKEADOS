@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { newBrain, train, BRAIN_VERSION } from '../public/js/brain.js';
 import { MATCH, PRESENCE, MAX_CHAT_TEXT, MODES } from '../public/js/config.js';
-import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from './show-tables.js';
+import { newShowTable, scoreAt, isOver, wantedTables, showSummary, uniquePlayers } from './show-tables.js';
 import { rng } from './util.js';
 
 const MIN = 60_000;
@@ -64,12 +64,15 @@ export class Lobby extends DurableObject {
   // Mesas en juego: saca las que terminaron y completa las que falten.
   async showTables(now = Date.now()) {
     const saved = (await this.ctx.storage.get('show')) || [];
-    const tables = saved.filter((t) => !isOver(t, now));
+    // nadie juega en dos mesas a la vez
+    const tables = uniquePlayers(saved.filter((t) => !isOver(t, now)));
     const want = wantedTables(now);
     const taken = new Set(tables.map((t) => t.code));
+    const busy = new Set(tables.flatMap((t) => t.seats.map((s) => s.name)));
     while (tables.length < want) {
-      const t = newShowTable(rng, now, taken);
+      const t = newShowTable(rng, now, taken, busy);
       taken.add(t.code);
+      t.seats.forEach((s) => busy.add(s.name));
       tables.push(t);
     }
     if (tables.length !== saved.length || tables.some((t, i) => t !== saved[i])) await this.ctx.storage.put('show', tables);

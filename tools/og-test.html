@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Íconos e imagen para compartir</title>
+<!-- Arma public/img/icon-180.png, icon-192.png, icon-512.png (del favicon) y og.png (1200×630: una mesa en 3D con la marca).
+     node tools/serve.mjs, abrir /tools/og-test.html y tocar "Guardar" (o llamar a save()). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+<style>body { background: #222; color: #eee; font-family: system-ui; } canvas { max-width: 100%; display: block; margin: 10px 0; }</style>
+</head>
+<body>
+<button onclick="save()">Guardar</button>
+<canvas id="og" width="1200" height="630"></canvas>
+<script>
+const put = (name, canvas) => new Promise((ok) => canvas.toBlob((b) => fetch(`/img/${name}.png`, { method: 'PUT', body: b }).then(ok), 'image/png'));
+const load = (src) => new Promise((ok, fail) => Object.assign(new Image(), { onload() { ok(this); }, onerror: fail, src }));
+
+async function icons() {
+  const svg = await load('/favicon.svg');
+  const out = [];
+  for (const s of [180, 192, 512]) {
+    const c = Object.assign(document.createElement('canvas'), { width: s, height: s });
+    c.getContext('2d').drawImage(svg, 0, 0, s, s);
+    out.push([`icon-${s}`, c]);
+  }
+  return out;
+}
+
+async function og() {
+  await document.fonts.load('800 120px "Hanken Grotesk"');
+  const c = document.getElementById('og');
+  const ctx = c.getContext('2d');
+  const w = c.width;
+  const h = c.height;
+  const img = await load('/img/mapas/chinatown.webp');
+  const k = Math.max(w / img.width, h / img.height);
+  ctx.drawImage(img, (w - img.width * k) / 2, (h - img.height * k) / 2, img.width * k, img.height * k);
+  // oscuro a la izquierda, donde va el texto
+  const g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, 'rgba(8,8,8,0.92)');
+  g.addColorStop(0.55, 'rgba(8,8,8,0.6)');
+  g.addColorStop(1, 'rgba(8,8,8,0.05)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  const icon = await load('/favicon.svg');
+  ctx.drawImage(icon, 64, 64, 96, 96);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '800 132px "Hanken Grotesk"';
+  ctx.textBaseline = 'alphabetic';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '-5px';
+  ctx.fillText('TRUKEADOS', 58, 330);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.font = '700 46px "Hanken Grotesk"';
+  ctx.fillText('Truco argentino online en 3D', 64, 410);
+  ctx.fillStyle = '#c8c8c8';
+  ctx.font = '500 32px "Hanken Grotesk"';
+  ctx.fillText('1 vs 1 · 2 vs 2 · 3 vs 3 · señas de verdad · gratis', 64, 470);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(64, 520, 380, 66);
+  ctx.fillStyle = '#0a0a0a';
+  ctx.font = '800 28px "Hanken Grotesk"';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '3px';
+  ctx.fillText('JUGAR GRATIS', 112, 564);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.fillStyle = '#c8c8c8';
+  ctx.font = '600 26px "Hanken Grotesk"';
+  ctx.fillText('game.trukeados.com', 470, 564);
+  return ['og', c];
+}
+
+window.save = async () => {
+  const all = [...(await icons()), await og()];
+  for (const [n, c] of all) await put(n, c);
+  return all.map(([n]) => n);
+};
+og();
+</script>
+</body>
+</html>

@@ -221,6 +221,13 @@ normales (la luz marca el relieve). La usan el mapa `amb-noche.js` y el paño y 
 (`estrellada` y `paintBack` en panos.js). Las texturas son grandes: el mapa tarda unos segundos en armarse (se arma de
 antemano con `prepareAmbientes`).
 
+## Buscadores e IAs
+`public/index.html` tiene el título, la descripción, la tarjeta para compartir (`/img/og.png`, sale de
+`tools/og-test.html` con los íconos) y los datos estructurados (VideoGame, WebSite y FAQPage: las preguntas están
+también a la vista abajo de la entrada, `.a-about`). Además `public/robots.txt`, `sitemap.xml`, `llms.txt` (resumen
+para buscadores con IA), `manifest.webmanifest` y la página estática `public/como-jugar/` (reglas del truco). Si se
+agrega una página pública, sumarla al sitemap.
+
 ## Probar en la tienda
 La ficha de un mapa, un paño o un mazo tiene "Probar" (`openTry` en shop.js): una `TableScene` vacía a pantalla
 completa que gira despacio (`TRY_VIEW` en config.js). Al cerrar vuelve a la ficha.
@@ -334,7 +341,7 @@ Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y 
 Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voz libre de Piper, `davefx`; licencia en `public/voz/LICENCIAS.txt`). Por defecto los asientos pares usan esa voz y los impares la voz de mujer del dispositivo (`voiceFor`); cada jugador puede elegir hombre o mujer en Configuración. **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.
 
 ## Mesas en juego
-`Lobby.showTables` mantiene entre 7 y 10 mesas. Mientras nadie las mira no corren: `scoreAt` calcula el tanteador según el tiempo. Al entrar a mirar, `ensureShow` arma la sala (`showUp`) con ese tanteador y se juega de verdad. Sus códigos empiezan con 9 (`newRoomCode` nunca los usa).
+`Lobby.showTables` mantiene entre `SHOW_TABLES.min` y `max` mesas (12 a 18), sin que nadie juegue en dos a la vez (`busy`, `uniquePlayers`). Mientras nadie las mira no corren: `scoreAt` calcula el tanteador según el tiempo. Al entrar a mirar, `ensureShow` arma la sala (`showUp`) con ese tanteador y se juega de verdad. Sus códigos empiezan con 9 (`newRoomCode` nunca los usa).
 
 ## Partida rápida y ELO
 - `/api/quick` manda a una mesa abierta de ELO parecido (`Lobby.findOpen`) o crea una con `room.quick`. Esa mesa arranca sola al llenarse. Si no aparece gente, `quickTick` sienta rivales automáticos: el primero a los 6-22 s, los demás más seguido (`MATCH` en config.js).

@@ -9,15 +9,18 @@ function pickMode(rng) {
   return r < SHOW_TABLES.share1v1 ? '1v1' : r < SHOW_TABLES.share1v1 + SHOW_TABLES.share2v2 ? '2v2' : '3v3';
 }
 
-/** Una mesa nueva, con un código que no esté en `taken` (los códigos que empiezan con 9 son solo de estas mesas). */
-export function newShowTable(rng, now, taken = new Set()) {
+/**
+ * Una mesa nueva, con un código que no esté en `taken` (los códigos que empiezan con 9 son solo de estas mesas) y
+ * jugadores que no estén en otra mesa (`busy`: los nombres que ya están jugando).
+ */
+export function newShowTable(rng, now, taken = new Set(), busy = new Set()) {
   let code;
   do code = SHOW_TABLES.codePrefix + String(Math.floor(rng() * 1000)).padStart(3, '0');
   while (taken.has(code));
   const mode = pickMode(rng);
   const target = rng() < 0.7 ? 30 : 15;
   const elo = 600 + Math.floor(rng() * 1300);
-  const used = new Set();
+  const used = new Set(busy);
   const seats = Array.from({ length: MODES[mode] }, () => {
     const s = rivalSeat(elo, rng, used, mode);
     used.add(s.name);
@@ -42,6 +45,17 @@ export function scoreAt(t, now) {
 }
 
 export const isOver = (t, now) => Math.max(...scoreAt(t, now)) >= t.target;
+
+/** Las mesas sin jugadores repetidos: si una tiene a alguien que ya juega en otra anterior, se saca (se arma otra). */
+export function uniquePlayers(tables) {
+  const seen = new Set();
+  return tables.filter((t) => {
+    const names = t.seats.map((s) => s.name);
+    if (names.some((n) => seen.has(n))) return false;
+    names.forEach((n) => seen.add(n));
+    return true;
+  });
+}
 
 // Cuántas mesas tiene que haber ahora: cambia cada tanto entre el mínimo y el máximo.
 export function wantedTables(now) {

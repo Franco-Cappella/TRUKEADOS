@@ -18,8 +18,10 @@ http.createServer((req, res) => {
     const m = url.match(/^\/models\/([a-z0-9-]+)\.webp$/);
     const shot = url.match(/^\/tools\/shots\/([a-z0-9-]+)\.png$/);
     const mapa = url.match(/^\/img\/mapas\/([a-z0-9-]+)\.webp$/);
-    if (!m && !shot && !mapa) return void res.writeHead(400).end('no');
-    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : mapa ? path.join(ROOT, 'public', 'img', 'mapas', `${mapa[1]}.webp`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
+    // (y los íconos y la imagen para compartir: PUT /img/<nombre>.png, desde tools/og-test.html)
+    const icon = url.match(/^\/img\/((?:icon-\d+|og))\.png$/);
+    if (!m && !shot && !mapa && !icon) return void res.writeHead(400).end('no');
+    const dest = m ? path.join(ROOT, 'public', 'models', `${m[1]}.webp`) : mapa ? path.join(ROOT, 'public', 'img', 'mapas', `${mapa[1]}.webp`) : icon ? path.join(ROOT, 'public', 'img', `${icon[1]}.png`) : path.join(ROOT, 'tools', 'shots', `${shot[1]}.png`);
     const parts = [];
     req.on('data', (d) => parts.push(d));
     req.on('end', () => {

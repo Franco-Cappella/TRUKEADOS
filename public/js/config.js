@@ -389,8 +389,8 @@ export const MATCH = {
 };
 // Mesas en juego del lobby: partidas entre usuarios automáticos que cualquiera puede mirar (ver src/show-tables.js).
 export const SHOW_TABLES = {
-  min: 7,
-  max: 10,
+  min: 12,
+  max: 18,
   refreshMs: 8 * 60_000, // cada cuánto puede cambiar cuántas mesas hay
   paceMin: 22_000, // cada cuánto se anotan puntos en una mesa que nadie mira
   paceRand: 26_000,

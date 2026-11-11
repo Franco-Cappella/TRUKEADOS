@@ -3,7 +3,7 @@
 import { MODES } from '../public/js/config.js';
 import { rivalName } from './matchmaking.js';
 
-const SIZE = 90;
+const SIZE = 240; // alcanza para todas las mesas en juego sin repetir a nadie (y para el ranking)
 const EPOCH = Date.UTC(2026, 10, 1);
 const DAY = 86_400_000;
 const modes = Object.keys(MODES);

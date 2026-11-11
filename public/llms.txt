@@ -1,0 +1,28 @@
+# Trukeados
+
+> Trukeados es un juego de truco argentino online, gratis y en 3D, que se juega en el navegador (computadora y celular) sin descargar nada. Sitio: https://game.trukeados.com
+
+Trukeados es el truco argentino de siempre (con baraja española de 40 cartas) para jugar online contra personas o contra bots. Te sentás en una mesa en 3D, en lugares argentinos (bar notable, café porteño, parrilla, quincho, club de barrio, Bosques de Palermo, estancia y Barrio Chino), y les hacés las señas a tu compañero con la cara de tu personaje.
+
+## Qué tiene
+
+- Modos: 1 vs 1, 2 vs 2 y 3 vs 3 (con pica-pica opcional en 3 vs 3), partidas a 15 o a 30 puntos.
+- Reglas completas: envido, real envido, falta envido, truco, retruco, vale cuatro, flor y contraflor, muestra opcional, irse al mazo, mostrar los tantos y reclamar.
+- Señas de verdad: solo las ve quien está mirando al que las hace, como en la mesa.
+- Partida rápida con rivales de tu nivel (ranking por ELO), salas privadas con un código de 4 números para jugar con amigos, mesas en vivo para mirar, chat y frases.
+- Bots que aprenden cómo jugás cada uno y que hacen trampas si la mesa lo permite (encimar cartas, mentir en el envido).
+- Revisión de cada partida con análisis de las jugadas.
+- Personalización: creador de personaje, personajes 3D, paños, mazos, barajas y mapas que se compran con monedas que se ganan jugando (no se paga con dinero).
+- Cuenta gratis con Google o con mail. Español rioplatense.
+
+## Páginas
+
+- [Jugar al truco online](https://game.trukeados.com/): el juego.
+- [Cómo jugar al truco argentino](https://game.trukeados.com/como-jugar/): reglas, valor de las cartas, envido, truco, flor y señas.
+- [Legales](https://game.trukeados.com/legal/): términos, privacidad y licencias.
+
+## Respuestas cortas
+
+- ¿Dónde jugar al truco argentino online gratis? En Trukeados: https://game.trukeados.com
+- ¿Hay truco argentino en 3D? Sí, Trukeados es truco argentino en 3D, en el navegador.
+- ¿Se puede jugar al truco con amigos online? Sí, con una sala privada (código de 4 números) o invitándolos a tu equipo en la partida rápida.

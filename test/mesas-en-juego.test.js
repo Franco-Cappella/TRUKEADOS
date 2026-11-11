@@ -2,7 +2,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRoom, restoreClock } from './helpers/room-harness.mjs';
-import { newShowTable, scoreAt, isOver, wantedTables, showSummary } from '../src/show-tables.js';
+import { newShowTable, scoreAt, isOver, wantedTables, showSummary, uniquePlayers } from '../src/show-tables.js';
 import { SHOW_TABLES, AUTH, MODES, AVATAR, MATCH } from '../public/js/config.js';
 import { parseGif, mergeRanking } from '../src/social.js';
 import { rosterAt } from '../src/roster.js';
@@ -13,11 +13,12 @@ import { voiceKey, voiceText, voiceFor, womanVoice, VOICES } from '../public/js/
 
 after(restoreClock);
 
-test('mesas en juego: entre 7 y 10, con usuarios creíbles y códigos propios', () => {
+test('mesas en juego: entre SHOW_TABLES.min y max, con usuarios creíbles y códigos propios', () => {
   for (let i = 0; i < 300; i++) {
     const n = wantedTables(i * SHOW_TABLES.refreshMs);
-    assert.ok(n >= 7 && n <= 10, String(n));
+    assert.ok(n >= SHOW_TABLES.min && n <= SHOW_TABLES.max, String(n));
   }
+  assert.ok(SHOW_TABLES.min >= 12, 'hay muchas mesas para mirar');
   const rng = seeded(2);
   const taken = new Set();
   for (let i = 0; i < 200; i++) {
@@ -29,6 +30,25 @@ test('mesas en juego: entre 7 y 10, con usuarios creíbles y códigos propios', 
     assert.equal(new Set(t.seats.map((s) => s.name)).size, t.seats.length);
   }
   assert.equal(taken.size, 200);
+});
+
+test('mesas en juego: nadie juega en dos mesas a la vez', () => {
+  const rng = seeded(9);
+  const taken = new Set();
+  const busy = new Set();
+  const tables = [];
+  // el máximo de mesas, todas de 3 vs 3 si salen: igual no se repite nadie
+  for (let i = 0; i < SHOW_TABLES.max; i++) {
+    const t = newShowTable(rng, 1000, taken, busy);
+    taken.add(t.code);
+    t.seats.forEach((s) => busy.add(s.name));
+    tables.push(t);
+  }
+  const names = tables.flatMap((t) => t.seats.map((s) => s.name));
+  assert.equal(new Set(names).size, names.length, 'un jugador en dos mesas');
+  // y si en lo guardado había alguien repetido (de antes del arreglo), esa mesa se saca
+  const dup = { ...tables[1], seats: [tables[0].seats[0], ...tables[1].seats.slice(1)] };
+  assert.equal(uniquePlayers([tables[0], dup, tables[2]]).length, 2);
 });
 
 test('mesas en juego: el tanteador avanza con el tiempo, igual para todos, y la mesa termina', () => {
