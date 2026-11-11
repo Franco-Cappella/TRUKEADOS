@@ -204,8 +204,10 @@
             <header class="lk-head">
               <h3>Taquilla</h3>
               <span class="lk-coins"><b id="lk-coins">0</b> monedas</span>
-              <button type="button" class="btn small" id="lk-creator">Tu personaje</button>
-              <button type="button" class="btn small" id="lk-shop">Ir a la tienda</button>
+              <div class="lk-btns">
+                <button type="button" class="btn small" id="lk-creator">Tu personaje</button>
+                <button type="button" class="btn small" id="lk-shop">Ir a la tienda</button>
+              </div>
             </header>
             <div id="cu-slots" class="lk-slots"></div>
             <p class="a-msg" id="cu-msg" role="status"></p>
@@ -356,6 +358,15 @@
   <dialog id="user-dialog" class="dl ud" aria-label="Perfil del jugador"><div id="ud-body"></div></dialog>
 
   <!-- la ficha de una cosa de la tienda: vista grande (el personaje 3D gira), rareza, precio y comprar -->
+
+  <!-- probar un mapa, un paño o un mazo antes de comprarlo (shop.js: openTry) -->
+  <div id="shop-try" class="sh-try hidden" role="dialog" aria-label="Probando">
+    <div id="try-stage" class="sh-try-stage"></div>
+    <div class="sh-try-bar">
+      <div><small id="try-where"></small><b id="try-name"></b></div>
+      <button type="button" class="btn primary" id="try-close">Listo</button>
+    </div>
+  </div>
   <dialog id="shop-detail" class="dl sd" aria-label="Detalle"><div class="sd-in">
     <div class="sd-view"><div class="lk-view" id="sd-stage"></div><canvas id="sd-canvas" width="480" height="360"></canvas></div>
     <div class="sd-info" id="sd-info"></div>

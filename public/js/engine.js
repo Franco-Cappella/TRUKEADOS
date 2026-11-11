@@ -862,6 +862,16 @@ function endHand(g, winnerTeam, pts, reason) {
     event(g, { type: 'show', seat: e.winnerSeat, value: real.value, said: e.saidValue, cards: real.cards, ok, auto: true });
     return finishHand(g, ok ? null : 'mal-cantado');
   }
+  // se fue al mazo con "me voy y muestro" y era el que tenía que mostrar los tantos: ya los mostró (no se le pide
+  // que toque "Mostrar" otra vez)
+  if (e.needsShow && !e.shown && (h.lucirAfter || []).includes(e.winnerSeat)) {
+    const real = myTanto(g, e.winnerSeat);
+    const ok = real.value === e.saidValue;
+    e.shown = true;
+    revealTanto(g, e.winnerSeat, real.cards);
+    event(g, { type: 'show', seat: e.winnerSeat, value: real.value, said: e.saidValue, cards: real.cards, ok });
+    return finishHand(g, ok ? null : 'mal-cantado');
+  }
   if (e.needsShow && !e.shown) {
     h.phase = 'show';
     h.show = { seat: e.winnerSeat, value: e.saidValue };

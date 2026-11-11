@@ -1,5 +1,22 @@
 # Cambios
 
+## 1.27.0 — noche estrellada
+- **Noche estrellada** (tienda, la obra maestra): un mapa pintado en acrílico con relieve (`impasto.js`: cada pincelada
+  con su lomo, su sombra y su brillo, y un mapa de normales para que la luz de la luna y de los faroles marque el
+  relieve). Estás en un muelle a la orilla del mar: el cielo en remolinos con estrellas en anillos que titilan y la
+  luna naranja, el mar con olas que se mueven y los reflejos dorados del pueblo y de la luna, el pueblo con el
+  campanario y los cerros en capas, un ciprés enorme que se mece con la brisa, botes que se balancean, faroles de gas,
+  la terraza del café atrás, pasto y flores que se mueven, pinceladas de viento que pasan y luciérnagas.
+  También el **paño** y el **dorso** de la noche estrellada, pintados igual.
+- **Probar antes de comprar**: los mapas, los paños y los mazos tienen el botón "Probar" en la ficha: la mesa vacía
+  girando despacio con eso puesto.
+- **Taquilla**: sin scrolls propios (el escenario queda fijo y la columna crece), los casilleros en 3 × 3, los botones
+  alineados y todo del mismo tamaño.
+- **Silenciar a alguien**: botón en su cartel ("Silenciar sus frases y mensajes") y al lado de su nombre en el chat.
+  Sus cantos y tantos se siguen viendo y oyendo.
+- **Envido y "me voy y muestro"**: si ganaste el envido y te vas al mazo mostrando, los tantos quedan mostrados (ya no
+  te pide tocar "Mostrar" otra vez).
+
 ## 1.26.1 — la mesa de los bots
 - **Bots y rivales automáticos con su mesa**: todos traen paño, dorso del mazo y mapa (y muchos, algo delante y su
   baraja), siempre lo mismo para el mismo nombre. En su turno la mesa entera se vuelve la suya, como la de cualquiera,

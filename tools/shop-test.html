@@ -21,6 +21,15 @@
   <nav class="sh-dots" id="shop-dots" aria-label="Secciones de la tienda"></nav>
   <p class="a-msg" id="shop-msg" role="status"></p>
 </div>
+
+  <!-- probar un mapa, un paño o un mazo antes de comprarlo (shop.js: openTry) -->
+  <div id="shop-try" class="sh-try hidden" role="dialog" aria-label="Probando">
+    <div id="try-stage" class="sh-try-stage"></div>
+    <div class="sh-try-bar">
+      <div><small id="try-where"></small><b id="try-name"></b></div>
+      <button type="button" class="btn primary" id="try-close">Listo</button>
+    </div>
+  </div>
 <dialog id="shop-detail" class="dl sd" aria-label="Detalle"><div class="sd-in">
   <div class="sd-view"><div class="lk-view" id="sd-stage"></div><canvas id="sd-canvas" width="480" height="360"></canvas></div>
   <div class="sd-info" id="sd-info"></div>

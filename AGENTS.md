@@ -214,6 +214,17 @@ la sala (`pickAmbiente`, `r.ambiente`, va en `publicRoom`).
 - Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en `tools/shots/`; con `mapShots()`, las
   fotos de la tienda en `public/img/mapas/<id>.webp`).
 
+## Noche estrellada (pintura con relieve)
+`public/js/impasto.js`: pinceladas que siguen un campo de direcciones (`strokes`), soles de anillos (`swirlDot`) y
+siluetas (`clipTo`); además del color pinta la altura de la pintura y `paintMaterial` arma un material con el mapa de
+normales (la luz marca el relieve). La usan el mapa `amb-noche.js` y el paño y el dorso de la noche estrellada
+(`estrellada` y `paintBack` en panos.js). Las texturas son grandes: el mapa tarda unos segundos en armarse (se arma de
+antemano con `prepareAmbientes`).
+
+## Probar en la tienda
+La ficha de un mapa, un paño o un mazo tiene "Probar" (`openTry` en shop.js): una `TableScene` vacía a pantalla
+completa que gira despacio (`TRY_VIEW` en config.js). Al cerrar vuelve a la ficha.
+
 ## La mesa de cada turno
 El paño y el dorso del mazo son **los del que tiene el turno** (`tableOwner`, `tableLook` en config.js; lo aplica
 room-client.js en cada `state`): cuando te toca, todos ven tu paño y tu mazo, también los que miran. El **mapa** (el

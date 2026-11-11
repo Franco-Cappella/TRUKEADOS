@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de la taquilla</title>
+<!-- La Taquilla sola, como en el menú, con /api/shop de mentira (node tools/serve.mjs y abrir /tools/taquilla-test.html). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="/css/truco.css">
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div class="ap">
+  <aside class="ap-side"></aside>
+  <main class="ap-main">
+    <div class="ap-panel h-panel lk" data-panel="taquilla">
+      <section class="lk-stage" aria-label="Tu personaje">
+        <div class="lk-bigname" id="lk-bigname" aria-hidden="true"></div>
+        <div class="lk-view" id="lk-view"></div>
+        <div class="lk-tag"><small>Así te ven en la mesa</small><b id="lk-char"></b><span class="rar" id="lk-rar"></span></div>
+        <p class="lk-hint">Arrastralo para girarlo</p>
+      </section>
+      <section class="lk-side">
+        <header class="lk-head">
+          <h3>Taquilla</h3>
+          <span class="lk-coins"><b id="lk-coins">0</b> monedas</span>
+          <div class="lk-btns">
+            <button type="button" class="btn small" id="lk-creator">Tu personaje</button>
+            <button type="button" class="btn small" id="lk-shop">Ir a la tienda</button>
+          </div>
+        </header>
+        <div id="cu-slots" class="lk-slots"></div>
+        <p class="a-msg" id="cu-msg" role="status"></p>
+      </section>
+    </div>
+  </main>
+</div>
+<div hidden><div id="shop-list"></div><div id="shop-dots"></div><div id="shop-cats"></div><b id="shop-coins"></b><p id="shop-msg"></p><button id="credits-open"></button><dialog id="credits-dialog"></dialog><dl id="credits-list"></dl>
+<dialog id="shop-detail"><div class="sd-view"><div id="sd-stage"></div><canvas id="sd-canvas"></canvas></div><div id="sd-info"></div></dialog></div>
+<script type="module">
+  const state = { owned: ['volcho', 'mapa-chinatown', 'pano-almendro', 'pano-alfombra', 'dorso-negro', 'baraja-pixel', 'boina', 'mate'], coins: 95945, equipped: { personaje: 'volcho', mapa: 'mapa-chinatown', pano: 'pano-almendro', dorso: 'dorso-negro', baraja: 'baraja-pixel' } };
+  const json = (d) => new Response(JSON.stringify(d), { headers: { 'content-type': 'application/json' } });
+  const real = fetch;
+  window.fetch = async (url, opt = {}) => {
+    const body = opt.body ? JSON.parse(opt.body) : null;
+    if (url === '/api/shop') return json(state);
+    if (url === '/api/shop/equip') { state.equipped[body.slot] = body.item; return json({ equipped: state.equipped }); }
+    return real(url, opt);
+  };
+  localStorage.setItem('truco-name', 'trosman');
+  const { initShop, loadShop } = await import('/js/shop.js');
+  initShop(() => {});
+  loadShop('taquilla');
+</script>
+</body>
+</html>

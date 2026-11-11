@@ -5,7 +5,7 @@ import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 import { loadModel, Rig } from './models.js';
 import { canvasTex, noise, seeded, toon, setAniso } from './draw3d.js';
 import { buildAmbiente, disposeAmbiente, AMBIENTE_IDS } from './ambientes.js';
-import { drawPano } from './panos.js';
+import { drawPano, paintBack } from './panos.js';
 
 const PANO_PX = 2048; // lado de la textura de los paños pintados
 import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES, AMBIENTE_CACHE, AMBIENTE_FADE_MS } from './config.js';
@@ -985,7 +985,8 @@ export class TableScene {
         this.feltMesh.material.needsUpdate = true;
       }
     }
-    const back = COSMETIC_LOOK[dorso]?.back || null;
+    const backLook = COSMETIC_LOOK[dorso] || null;
+    const back = backLook?.back || null;
     if (this.backKey === (dorso || null)) return;
     const t = cardTex('back');
     // el dorso de siempre es una imagen que puede no haber llegado todavía: se espera
@@ -994,7 +995,7 @@ export class TableScene {
       t.userData.orig = t.image;
     }
     this.backKey = dorso || null;
-    t.image = back ? backCanvas(back) : t.userData.orig;
+    t.image = backLook?.backDraw ? paintBack(backLook.backDraw) : back ? backCanvas(back) : t.userData.orig;
     t.needsUpdate = true;
   }
 

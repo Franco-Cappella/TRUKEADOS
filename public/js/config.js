@@ -34,10 +34,14 @@ export const AMBIENTES = [
   { id: 'club', name: 'Club de barrio' },
   { id: 'campo', name: 'Estancia' },
   { id: 'chinatown', name: 'Barrio Chino', shop: true },
+  { id: 'noche', name: 'Noche estrellada', shop: true },
 ];
 // Los mapas que quedan armados en la escena (el de cada turno) y cuánto dura el fundido al cambiar de uno a otro.
 export const AMBIENTE_CACHE = 3; // el de la sala, el tuyo y el anterior (la revancha cambia de lugar)
 export const AMBIENTE_FADE_MS = 560;
+// Probar un mapa, un paño o un mazo en la tienda: la mesa vacía girando despacio (spin: radianes por cuadro) y hacia
+// dónde mira la cámara (pitch: con el mapa, más arriba, hacia el lugar).
+export const TRY_VIEW = { spin: 0.0035, mapPitch: 0.9, tablePitch: 0 };
 /** Otro ambiente al azar (distinto del anterior, prev). Los de la tienda no salen. */
 export function pickAmbiente(rng = Math.random, prev = null) {
   const pool = AMBIENTES.filter((a) => a.id !== prev && !a.shop);
@@ -504,11 +508,14 @@ export const COSMETICS = [
   { id: 'pano-calcareo', slot: 'pano', name: 'Paño baldosa calcárea', price: 400 },
   { id: 'pano-noche', slot: 'pano', name: 'Paño noche de campo', price: 450 },
   { id: 'pano-madera', slot: 'pano', name: 'Mesa de bodegón', price: 300 },
+  { id: 'pano-estrellada', slot: 'pano', name: 'Paño noche estrellada', price: 490 },
   { id: 'dorso-azul', slot: 'dorso', name: 'Dorso azul', price: 100 },
   { id: 'dorso-verde', slot: 'dorso', name: 'Dorso verde', price: 100 },
   { id: 'dorso-negro', slot: 'dorso', name: 'Dorso negro', price: 130 },
+  { id: 'dorso-estrellada', slot: 'dorso', name: 'Dorso noche estrellada', price: 380 },
   { id: 'baraja-pixel', slot: 'baraja', name: 'Baraja pixel art', price: 300, credit: { text: 'Spanish Deck - Pixel Art by jcanabal', url: 'https://jcanabal.itch.io/spanish-deck-pixel-art' } },
   // mapas (ambiente: el id de AMBIENTES). El Barrio Chino es solo de la tienda; los demás también salen en el sorteo.
+  { id: 'mapa-noche', slot: 'mapa', name: 'Noche estrellada', price: 495, ambiente: 'noche' },
   { id: 'mapa-chinatown', slot: 'mapa', name: 'Barrio Chino', price: 480, ambiente: 'chinatown' },
   { id: 'mapa-bar', slot: 'mapa', name: 'Bar notable', price: 250, ambiente: 'bar' },
   { id: 'mapa-cafe', slot: 'mapa', name: 'Café porteño', price: 250, ambiente: 'cafe' },

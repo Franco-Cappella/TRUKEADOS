@@ -3,6 +3,7 @@
 //   amb-interiores.js  bar notable, café porteño, parrilla de barrio, club de barrio
 //   amb-afuera.js      Bosques de Palermo, quincho, estancia
 //   barrio-chino.js    Barrio Chino (el de la tienda)
+//   amb-noche.js       Noche estrellada (el de la tienda): pintado con relieve (impasto.js)
 // Las piezas que comparten (luces con halo, fuego, humo, ventanas a la calle, agua, pasto) están en amb-kit.js y los
 // muebles y texturas en amb-piezas.js; el cielo, las capas de distancia y lo que vuela, en paisaje.js.
 // Cada ambiente arma su grupo alrededor de la mesa, que está en el centro (radio < 1.3 m), y devuelve
@@ -14,8 +15,9 @@ import { resetLeaves } from './amb-piezas.js';
 import { bar, cafe, parrilla, club } from './amb-interiores.js';
 import { parque, quincho, campo } from './amb-afuera.js';
 import { chinatown } from './barrio-chino.js';
+import { noche } from './amb-noche.js';
 
-const BUILD = { bar, cafe, parrilla, parque, quincho, club, campo, chinatown };
+const BUILD = { bar, cafe, parrilla, parque, quincho, club, campo, chinatown, noche };
 
 /** Ids de los ambientes (el orden no importa: el servidor elige uno al azar). */
 export const AMBIENTE_IDS = Object.keys(BUILD);

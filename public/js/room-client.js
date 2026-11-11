@@ -23,9 +23,14 @@ function loadMuted() {
 }
 
 // Lo que se despliega del cartel: las últimas 3 partidas (ganó o perdió, modo, tanteador, ELO y cuándo).
-function recentHtml(p, mode) {
-  if (p.recent == null) return '<p class="np-none">Bot de la mesa</p>';
-  const more = `<button type="button" class="np-more" data-user="${esc(p.name)}">Ver perfil y agregar de amigo</button>`;
+// Botón para silenciar (o volver a escuchar) a alguien: sus mensajes y sus frases (de la ruleta o del chat) dejan de
+// verse y oírse; sus cantos y tantos, no (son del juego).
+const muteBtn = (name, on) => `<button type="button" class="np-mute ${on ? 'on' : ''}" data-mute="${esc(name)}" aria-pressed="${on}">${on ? 'Volver a escucharlo' : 'Silenciar sus frases y mensajes'}</button>`;
+
+function recentHtml(p, mode, muted = null) {
+  const mute = muted ? muteBtn(p.name, muted.on) : '';
+  if (p.recent == null) return `<p class="np-none">Bot de la mesa</p>${mute}`;
+  const more = `<button type="button" class="np-more" data-user="${esc(p.name)}">Ver perfil y agregar de amigo</button>${mute}`;
   // el ELO de cada modo, con el de esta mesa resaltado
   const elos = p.elos ? `<div class="np-elos">${Object.keys(MODES).map((m) => `<span class="${m === mode ? 'on' : ''}"><small>${esc(modeLabel(m))}</small><b>${esc(p.elos[m] ?? '–')}</b></span>`).join('')}</div>` : '';
   if (!p.recent.length) return `${elos}<p class="np-none">Todavía no terminó ninguna partida</p>${more}`;
@@ -80,6 +85,13 @@ export class RoomClient {
     $('#chat-log').onclick = (e) => {
       const b = e.target.closest('[data-mute]');
       if (b) this.toggleMute(b.dataset.mute);
+    };
+    // y desde el cartel de cada jugador (el botón "Silenciar")
+    $('#labels').onclick = (e) => {
+      const b = e.target.closest('[data-mute]');
+      if (!b) return;
+      e.stopPropagation();
+      this.toggleMute(b.dataset.mute);
     };
     $('#chat-muted').onclick = (e) => {
       const b = e.target.closest('[data-unmute]');
@@ -737,6 +749,7 @@ export class RoomClient {
     store.set(KEYS.muted, JSON.stringify([...this.muted]));
     for (const el of $('#chat-log').querySelectorAll('[data-from]')) el.classList.toggle('hidden', this.isMuted(el.dataset.from));
     this.renderMuted();
+    if (this.st) this.render(); // el botón del cartel cambia a "Volver a escucharlo"
     this.toast(on ? `Silenciaste a <b>${esc(name)}</b>: no vas a ver sus mensajes ni sus frases. Sus cantos y tantos, sí.` : `Volviste a escuchar a <b>${esc(name)}</b>`, '', 3500);
   }
 
@@ -763,7 +776,7 @@ export class RoomClient {
       const self = String(msg.name).toLowerCase() === savedName().toLowerCase();
       div.innerHTML = self
         ? `<b class="${t}">${esc(msg.name)}:</b> ${esc(msg.text)}`
-        : `<b class="${t} mute-name" data-mute="${esc(msg.name)}" title="Tocá para silenciarlo">${esc(msg.name)}:</b> ${esc(msg.text)}`;
+        : `<button type="button" class="chat-mute" data-mute="${esc(msg.name)}" title="Silenciar a ${esc(msg.name)}" aria-label="Silenciar a ${esc(msg.name)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg></button><b class="${t} mute-name" data-mute="${esc(msg.name)}" title="Tocá para silenciarlo">${esc(msg.name)}:</b> ${esc(msg.text)}`;
       // lo que escribe cada uno (bots incluidos) sale en un globo y se lee en voz alta, como si lo dijera.
       // Si la frase de un bot ya dice su canto (msg.call), reemplaza a la voz del canto (el globo del canto sale igual).
       if (live && msg.seat != null && !mutedNow) {
@@ -1118,10 +1131,12 @@ export class RoomClient {
       if (l.name.textContent !== p.name) l.name.textContent = p.name;
       const sub = [p.elo ? `<span class="np-elo">${esc(p.elo)}</span>` : '', ...chips.map((c) => `<span class="chip">${c}</span>`), looking, p.online && !p.away ? '' : `<span class="off">${this.offText(seat)}</span>`].filter(Boolean).join('');
       if (l.sub.innerHTML !== sub) l.sub.innerHTML = sub;
-      const dropKey = JSON.stringify([p.recent ?? null, p.elos ?? null, st.room.cfg.mode]);
+      // a vos mismo no te podés silenciar
+      const muted = seat !== this.you ? { on: this.isMuted(p.name) } : null;
+      const dropKey = JSON.stringify([p.recent ?? null, p.elos ?? null, st.room.cfg.mode, muted]);
       if (l.drop.dataset.key !== dropKey) {
         l.drop.dataset.key = dropKey;
-        l.drop.innerHTML = recentHtml(p, st.room.cfg.mode);
+        l.drop.innerHTML = recentHtml(p, st.room.cfg.mode, muted);
       }
     });
   }

@@ -240,3 +240,26 @@ test('irse al mazo mostrando: se da vuelta lo que no tiraste y no cambia el tant
   assert.deepEqual(seen, ['1E', '3C', '7E']);
   assert.ok(g.ev.some((e) => e.type === 'lucir' && e.seat === 0));
 });
+
+test('ganaste el envido y te vas al mazo mostrando: los tantos quedan mostrados (no hay que tocar "Mostrar")', () => {
+  // 1v1, reparte el 1: el 0 es mano. El 0 tiene 33 (7 y 6 de espada) y le ganan los tantos al 1
+  const g = newGame({ mode: '1v1', dealer: 1, trampas: true });
+  g.h.cards = [['7E', '6E', '4C'], ['4B', '5C', '6O']];
+  g.h.inHand = g.h.cards.map((c) => c.slice());
+  ok(act(g, 0, { t: 'envido', kind: 'envido' }));
+  ok(act(g, 1, { t: 'quiero' }));
+  // cantan los tantos (si hace falta) hasta que se cierra el envido
+  for (let i = 0; i < 4 && g.h.envido.state !== 'done'; i++) {
+    const w = waitingFor(g);
+    const s = w.seats[0];
+    ok(act(g, s, s === 0 ? { t: 'cantar' } : { t: 'buenas' }));
+  }
+  assert.equal(g.h.envido.winnerSeat, 0);
+  const before = g.score.slice();
+  ok(act(g, 0, { t: 'mazo', show: true }));
+  assert.equal(g.h.phase, 'ended', 'no queda esperando que muestre');
+  assert.ok(g.ev.some((e) => e.type === 'show' && e.seat === 0 && e.ok));
+  assert.deepEqual(g.score.map((v, i) => v - before[i]), [2, 1], 'el envido para el 0, el mazo para el 1');
+  const seen = viewFor(g, 1).h.table[0].map((p) => p.c).sort();
+  assert.deepEqual(seen, ['4C', '6E', '7E']);
+});

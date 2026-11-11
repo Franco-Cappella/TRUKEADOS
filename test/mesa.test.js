@@ -12,7 +12,7 @@ test('ambientes: hay varios, todos dibujados, y se elige otro distinto del anter
   // cada uno está en el registro de ambientes.js y dibujado (export function id(g)) en alguno de los amb-*.js
   const read = (f) => fs.readFileSync(new URL(`../public/js/${f}`, import.meta.url), 'utf8');
   const build = read('ambientes.js').match(/const BUILD = \{([^}]*)\}/)?.[1] || '';
-  const drawn = ['amb-interiores.js', 'amb-afuera.js', 'barrio-chino.js'].map(read).join('\n');
+  const drawn = ['amb-interiores.js', 'amb-afuera.js', 'barrio-chino.js', 'amb-noche.js'].map(read).join('\n');
   for (const a of AMBIENTES) {
     assert.match(build, new RegExp(`\\b${a.id}\\b`), `falta registrar ${a.id}`);
     assert.match(drawn, new RegExp(`export function ${a.id}\\(g\\) \\{`), `falta dibujar ${a.id}`);

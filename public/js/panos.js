@@ -3,6 +3,7 @@
 // Cada uno es un pintor paint(ctx, w, h, sides) que llena el cuadrado entero (la mesa lo recorta en su forma); el
 // centro queda más tranquilo para que las cartas se lean. Después drawnFelt le pone la trama de la tela, la sombra de
 // los bordes y la costura. COSMETIC_LOOK[id].draw (theme.js) dice qué pintor usa cada paño.
+import { surface, strokes, swirlDot } from './impasto.js';
 
 // Azar con semilla: el paño sale igual en todas las máquinas.
 function seeded(seed) {
@@ -936,7 +937,7 @@ function madera(ctx, w, h) {
   ctx.fillText('BODEGÓN', cx, cy + w * 0.1);
 }
 
-export const PANOS = { alfombra, almendro, fileteado, poncho, casino, calcareo, noche, madera };
+export const PANOS = { alfombra, almendro, fileteado, poncho, casino, calcareo, noche, madera, estrellada };
 
 /**
  * Qué parte de la textura se ve en la mesa (en partes del lado): el rectángulo del polígono de `sides` lados metido en
@@ -999,4 +1000,116 @@ export function drawPano(canvas, look, sides = 4, { seam = true } = {}) {
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.globalAlpha = 1;
+}
+
+// ------------------------------------------------------------------ noche estrellada (pintada con relieve)
+
+// El cielo de la noche estrellada en el paño: remolinos de pinceladas azules y turquesa, estrellas como soles de
+// anillos y la luna naranja; en el medio, más oscuro y tranquilo (ahí van las cartas). Lo pinta impasto.js: cada
+// pincelada con su sombra y su brillo, como acrílico cargado.
+const NOCHE = {
+  deep: ['#0b1a4a', '#10245e', '#132c6e'],
+  cobalt: ['#1d3f8f', '#244c9c', '#2b5aa8', '#1f4a95'],
+  turq: ['#3f7fb0', '#4f93b8', '#5aa3bf', '#6fb3c4'],
+  pale: ['#8fc0cf', '#a9d1d6', '#c6e0d8'],
+  gold: ['#f6d54a', '#f9e27a', '#f2c230', '#e8b42a'],
+  orange: ['#f3a43a', '#f7b84f', '#e88a2a'],
+  cream: ['#fdf6d8', '#fff9e6'],
+};
+const pk = (a, r) => a[Math.floor(r() * a.length)];
+
+function nocheSurface(w, h, { swirls, stars, moon, calm = 0.24, seed = 7, scale = 1 }) {
+  const S = surface(w, h, '#0e2058');
+  const near = (x, y) => Math.min(...swirls.map((s) => Math.hypot(x - s.x * w, y - s.y * h) / (s.r * w)));
+  const field = (x, y) => {
+    let ax = Math.cos(Math.sin(x / (w * 0.12) + y / (h * 0.3)) * 0.5);
+    let ay = Math.sin(Math.sin(x / (w * 0.12) + y / (h * 0.3)) * 0.5);
+    for (const s of swirls) {
+      const dx = x - s.x * w;
+      const dy = y - s.y * h;
+      const wgt = Math.exp(-((Math.hypot(dx, dy) / (s.r * w * 1.5)) ** 2)) * 4;
+      const t = Math.atan2(dy, dx) + (s.k * Math.PI) / 2;
+      ax += Math.cos(t) * wgt;
+      ay += Math.sin(t) * wgt;
+    }
+    return Math.atan2(ay, ax);
+  };
+  const color = (x, y, r) => {
+    const d = Math.hypot(x / w - 0.5, y / h - 0.5);
+    const sw = near(x, y);
+    if (d < calm) return pk(r() < 0.75 ? NOCHE.deep : NOCHE.cobalt, r); // el centro, tranquilo
+    if (sw < 0.4 && r() < 0.6) return pk(NOCHE.cream, r);
+    if (sw < 0.9) return pk(r() < 0.5 ? NOCHE.pale : NOCHE.turq, r);
+    return pk(r() < 0.55 ? NOCHE.cobalt : r() < 0.6 ? NOCHE.turq : NOCHE.deep, r);
+  };
+  strokes(S, { n: Math.round(2600 * scale), angle: field, paint: color, len: 44 * Math.sqrt(scale), width: 13 * Math.sqrt(scale), seed, load: 0.55 });
+  strokes(S, { n: Math.round(4200 * scale), angle: field, paint: color, len: 30 * Math.sqrt(scale), width: 7 * Math.sqrt(scale), seed: seed + 1, load: 0.8 });
+  strokes(S, { n: Math.round(3600 * scale), angle: field, paint: color, len: 20 * Math.sqrt(scale), width: 3.5 * Math.sqrt(scale), seed: seed + 2, load: 1 });
+  for (const st of stars) swirlDot(S, st.x * w, st.y * h, st.r * w, [...NOCHE.pale, ...NOCHE.turq, ...NOCHE.gold, ...NOCHE.gold, ...NOCHE.cream], { rings: 5, seed: Math.round(st.x * 997), width: 4 * Math.sqrt(scale) });
+  if (moon) {
+    swirlDot(S, moon.x * w, moon.y * h, moon.r * w * 1.8, [...NOCHE.turq, ...NOCHE.pale, ...NOCHE.gold, ...NOCHE.orange, ...NOCHE.cream], { rings: 6, seed: 41, width: 5 * Math.sqrt(scale) });
+    swirlDot(S, moon.x * w, moon.y * h, moon.r * w, [...NOCHE.orange, ...NOCHE.gold, ...NOCHE.orange], { rings: 4, seed: 43, width: 6 * Math.sqrt(scale) });
+    swirlDot(S, moon.x * w + moon.r * w * 0.45, moon.y * h - moon.r * w * 0.2, moon.r * w * 0.7, [...NOCHE.cobalt, ...NOCHE.turq], { rings: 3, seed: 45, width: 6 * Math.sqrt(scale) });
+  }
+  return S;
+}
+
+// El paño: remolinos alrededor, estrellas y la luna en una esquina, el centro tranquilo, y abajo el pueblo dormido
+// con sus ventanitas y el ciprés subiendo por el costado.
+function estrellada(ctx, w, h) {
+  const S = nocheSurface(w, h, {
+    swirls: [{ x: 0.22, y: 0.24, r: 0.12, k: 1 }, { x: 0.78, y: 0.3, r: 0.1, k: -1 }, { x: 0.3, y: 0.78, r: 0.09, k: -1 }, { x: 0.76, y: 0.74, r: 0.11, k: 1 }],
+    stars: [{ x: 0.12, y: 0.12, r: 0.022 }, { x: 0.42, y: 0.1, r: 0.018 }, { x: 0.62, y: 0.14, r: 0.02 }, { x: 0.9, y: 0.12, r: 0.016 }, { x: 0.1, y: 0.5, r: 0.018 }, { x: 0.9, y: 0.55, r: 0.02 }, { x: 0.55, y: 0.9, r: 0.017 }, { x: 0.12, y: 0.9, r: 0.016 }, { x: 0.4, y: 0.32, r: 0.012 }],
+    moon: { x: 0.86, y: 0.86, r: 0.045 },
+    scale: (w * h) / (1024 * 1024),
+  });
+  ctx.drawImage(S.color, 0, 0);
+  // la luz del relieve (sin luz de verdad en la mesa, se marca un poco más el lomo de las pinceladas)
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = 0.18;
+  ctx.drawImage(S.height, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+/** El dorso de la noche estrellada: un remolino grande al medio con la luna, estrellas, y el marco de pinceladas. */
+const backCache = new Map(); // se pinta una vez: en la partida cambia con cada turno
+export function paintBack(id, w = 256, h = 394) {
+  if (id !== 'estrellada') return null;
+  const key = `${id}|${w}|${h}`;
+  if (backCache.has(key)) return backCache.get(key);
+  const out = paintBackNow(w, h);
+  backCache.set(key, out);
+  return out;
+}
+
+function paintBackNow(w, h) {
+  const S = nocheSurface(w, h, {
+    swirls: [{ x: 0.5, y: 0.45, r: 0.3, k: 1 }, { x: 0.25, y: 0.82, r: 0.16, k: -1 }],
+    stars: [{ x: 0.2, y: 0.14, r: 0.07 }, { x: 0.78, y: 0.2, r: 0.06 }, { x: 0.8, y: 0.78, r: 0.06 }, { x: 0.18, y: 0.6, r: 0.05 }],
+    moon: { x: 0.5, y: 0.45, r: 0.11 },
+    calm: 0,
+    seed: 23,
+    scale: 0.22,
+  });
+  const c = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fbfaf6';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, w, h, 16);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(12, 12, w - 24, h - 24, 10);
+  ctx.clip();
+  ctx.drawImage(S.color, 0, 0);
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = 0.2;
+  ctx.drawImage(S.height, 0, 0);
+  ctx.restore();
+  // marco dorado de pintura
+  ctx.strokeStyle = '#e8b42a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(22, 22, w - 44, h - 44);
+  return c;
 }

@@ -673,8 +673,8 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .cu-slot h4 small { font-weight: 400; color: var(--text-dim); font-size: 13px; margin-left: 6px; }
 /* ---------- taquilla: la tarima y los casilleros ---------- */
 /* entra entera en la pantalla: la tarima ocupa el alto y la columna de la derecha se desliza si hace falta */
-.lk { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr); gap: 0; height: calc(100dvh - 110px); min-height: 460px; max-height: 820px; background: var(--bg); border: 1px solid var(--line); }
-.lk-stage { position: relative; overflow: hidden; container-type: inline-size; background: radial-gradient(ellipse 70% 55% at 50% 70%, #2a2a2a 0%, #101010 60%, #050505 100%); border-right: 1px solid var(--line); min-height: 0; }
+.lk { display: grid; grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr); align-items: start; gap: 0; width: min(1080px, 100%); background: var(--bg); border: 1px solid var(--line); }
+.lk-stage { position: sticky; top: 0; height: clamp(440px, calc(100dvh - 140px), 720px); overflow: hidden; container-type: inline-size; background: radial-gradient(ellipse 70% 55% at 50% 70%, #2a2a2a 0%, #101010 60%, #050505 100%); border-right: 1px solid var(--line); }
 .lk-bigname { position: absolute; inset: 5% 0 auto; text-align: center; font-weight: 800; font-size: clamp(48px, 21cqi, 150px); line-height: 0.85; letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.16); word-break: break-word; padding: 0 12px; pointer-events: none; user-select: none; }
 .lk-view { position: absolute; inset: 0; }
 .lk-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -693,17 +693,19 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .rar.leg { background: var(--text); color: var(--bg); border-color: var(--text); }
 .rar.epi { color: var(--text); border-color: var(--text); background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0 4px, transparent 4px 8px); }
 .rar.raro { color: var(--text); border-color: var(--text); }
-.lk-side { display: flex; flex-direction: column; gap: 14px; padding: clamp(14px, 2vw, 24px); min-width: 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
-.lk-head { display: flex; align-items: center; gap: 12px; }
-.lk-head h3 { margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 800; letter-spacing: -0.04em; text-transform: uppercase; flex: 1; }
+.lk-side { display: flex; flex-direction: column; gap: 18px; padding: clamp(16px, 2vw, 26px); min-width: 0; }
+.lk-head { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'title coins' 'btns btns'; align-items: baseline; gap: 10px 12px; }
+.lk-head h3 { grid-area: title; margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; text-transform: uppercase; }
+.lk-coins { grid-area: coins; }
+.lk-btns { grid-area: btns; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lk-btns .btn { width: 100%; }
 .lk-coins { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
 .lk-coins b { color: var(--text); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .lk-slots { display: flex; flex-direction: column; gap: 18px; }
-.lk-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .lk-tile, .lk-item { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 8px 8px 9px; text-align: left; background: var(--surface); border: 1px solid var(--line); color: var(--text); cursor: pointer; transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.12s, background 0.12s; min-width: 0; }
 .lk-tile:hover, .lk-item:hover { transform: translateY(-2px); border-color: var(--text-dim); }
-.lk-tile canvas, .lk-item canvas { width: 100%; height: clamp(52px, 9vh, 92px); background: #0d0d0d; display: block; margin-bottom: 4px; object-fit: contain; }
-.lk-item canvas { height: clamp(64px, 12vh, 112px); }
+.lk-tile canvas, .lk-item canvas { width: 100%; height: auto; aspect-ratio: 4 / 3; background: #0d0d0d; display: block; margin-bottom: 4px; object-fit: cover; }
 .lk-tile small, .lk-item small { font-size: 9px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--muted); }
 .lk-tile b, .lk-item b { font-size: 13px; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-tile.open { border-color: var(--text); box-shadow: inset 0 -3px 0 var(--text); }
@@ -720,17 +722,16 @@ kbd { font-family: var(--font); font-stretch: var(--narrow); font-size: 11px; fo
 .lk-tile.raro, .lk-item.raro { border-color: var(--line-2); }
 .lk-pick h4 { margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; }
 .lk-pick h4 small { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-dim); margin-left: 6px; font-size: 13px; }
-.lk-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.lk-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
 .lk-item.on { outline: 2px solid var(--text); outline-offset: 2px; }
 .lk-item.on::after { content: 'Puesto'; position: absolute; top: 12px; left: 12px; padding: 2px 6px; font-size: 9px; font-weight: 800; letter-spacing: var(--track); text-transform: uppercase; background: var(--text); color: var(--bg); }
 .lk-item.leg.on::after { background: var(--bg); color: var(--text); }
-.lk-item.more { justify-content: center; align-items: center; text-align: center; border-style: dashed; background: none; min-height: 110px; }
+.lk-item.more { justify-content: center; align-items: center; text-align: center; border-style: dashed; background: none; min-height: 100%; }
 .lk-item.more span { font-size: 36px; font-weight: 300; line-height: 1; }
 @media (max-width: 900px) {
-  .lk { grid-template-columns: 1fr; height: auto; max-height: none; }
-  .lk-stage { height: min(60vh, 440px); border-right: 0; border-bottom: 1px solid var(--line); }
-  .lk-side { overflow: visible; }
-  .lk-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .lk { grid-template-columns: minmax(0, 1fr); }
+  .lk-stage { position: relative; height: min(60vh, 440px); border-right: 0; border-bottom: 1px solid var(--line); }
+  .lk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) { .lk-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
@@ -1455,3 +1456,24 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
   .cr-panel .a-msg { margin: 0 16px; }
   .cr-hint { bottom: 8px; }
 }
+
+/* silenciar a alguien: en su cartel y al lado de su nombre en el chat */
+.np-mute { display: block; width: 100%; margin-top: 6px; background: none; border: 1px solid var(--line-2); border-radius: var(--radius); color: var(--text-dim); font: 600 12px var(--font); padding: 7px 8px; cursor: pointer; }
+.np-mute:hover { color: var(--text); border-color: var(--text-dim); }
+.np-mute.on { color: var(--bad-ink); border-color: var(--bad-line); }
+.chat-mute { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; padding: 0; background: none; border: 0; border-radius: var(--radius); color: var(--muted); cursor: pointer; opacity: 0.55; }
+.chat-mute:hover { opacity: 1; color: var(--text); background: var(--hover-tint); }
+.chat-mute svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* la taquilla, un poco más ancha que los demás paneles: el escenario y los casilleros entran sin scroll */
+.ap-panel.lk { width: min(1080px, 100%); }
+.lk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lk-tile canvas, .lk-item canvas { aspect-ratio: 16 / 9; }
+
+/* probar un mapa, un paño o un mazo en la tienda: la mesa a pantalla completa */
+.sh-try { position: fixed; inset: 0; z-index: 80; background: #000; }
+.sh-try-stage { position: absolute; inset: 0; }
+.sh-try-stage canvas { display: block; width: 100%; height: 100%; }
+.sh-try-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px clamp(16px, 4vw, 40px); background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)); }
+.sh-try-bar small { display: block; font-size: 11px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; color: var(--text-dim); }
+.sh-try-bar b { font-size: clamp(22px, 3vw, 34px); font-weight: 800; letter-spacing: -0.03em; text-transform: uppercase; }

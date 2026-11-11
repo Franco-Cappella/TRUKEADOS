@@ -182,7 +182,10 @@ export const COSMETIC_LOOK = {
   'pano-calcareo': { felt: ['#ece2cc', '#9a3b2c', '#4a6478'], draw: 'calcareo', thread: '#2a2a2e' },
   'pano-noche': { felt: ['#1d2d5a', '#0f1a3a', '#070b1d'], draw: 'noche', thread: '#f6efd6' },
   'pano-madera': { felt: ['#7a5233', '#5e3d25', '#3a2416'], draw: 'madera', thread: '#e8c58a' },
+  'pano-estrellada': { felt: ['#2b5aa8', '#132c6e', '#0b1a4a'], draw: 'estrellada', thread: '#f6d54a' },
   'dorso-azul': { back: ['#2f6fd6', '#f5f5f5'] },
+  // dorso pintado (panos.js: paintBack): back es el color de la vista chica
+  'dorso-estrellada': { back: ['#132c6e', '#f6d54a'], backDraw: 'estrellada' },
   'dorso-verde': { back: ['#2e7344', '#f5f5f5'] },
   'dorso-negro': { back: ['#1c1c1c', '#f2c12e'] },
 };
