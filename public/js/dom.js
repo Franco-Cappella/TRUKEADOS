@@ -32,6 +32,7 @@ export const KEYS = {
   name: 'truco-name', // el nombre del perfil (lo pone auth.js al iniciar sesión)
   voice: 'truco-voice',
   teamInvite: 'truco-team-invite', // sessionStorage: la mesa a la que te invitaron a su equipo
+  teamInviteFrom: 'truco-team-invite-from', // sessionStorage: quién te invitó (para saber cuál es su equipo)
   activeRoom: 'truco-active-room', // la partida en la que estás sentado (para el cartel de reconectar)
   voiceVol: 'truco-voice-volume',
   cardLabels: 'truco-card-labels', // 0: sin cartelito al tirar una carta
@@ -72,6 +73,13 @@ export function takeSession(key, value) {
   const hit = sessionStorage.getItem(key) === value;
   sessionStorage.removeItem(key);
   return hit;
+}
+
+// Lo mismo, pero devuelve el valor guardado (o null).
+export function takeValue(key) {
+  const v = sessionStorage.getItem(key);
+  sessionStorage.removeItem(key);
+  return v;
 }
 
 // Token de la sesión para los pedidos (lo configura auth.js; así dom.js no depende de Supabase).

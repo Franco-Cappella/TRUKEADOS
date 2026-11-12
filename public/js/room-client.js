@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES, tableOwner, tableLook } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
-import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, avatarHtml, DEFAULT_AVATAR } from './dom.js';
+import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, takeValue, avatarHtml, DEFAULT_AVATAR } from './dom.js';
 import { audio, flick, ding, say, hush, myVoice, setSeatVoices } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 import { PartyStage } from './party.js';
@@ -69,6 +69,7 @@ export class RoomClient {
     this.retry = 0;
     this.spectate = takeSession(KEYS.spectate, code);
     this.teamInvited = takeSession(KEYS.teamInvite, code);
+    this.teamInvitedBy = takeValue(KEYS.teamInviteFrom) || null; // quién te invitó: de ahí sale cuál es su equipo
     this.chatView = 'spec';
     this.invitedFriends = new Set();
     $('#chat-spec-log').innerHTML = '';
@@ -1214,10 +1215,12 @@ export class RoomClient {
 
     const summary = [modeLabel(cfg.mode), `a ${cfg.target}`, cfg.rated !== false ? 'por ELO' : 'sin puntuar', cfg.isPublic ? 'pública' : 'privada', roomOptionsText(cfg)].filter(Boolean).join(' · ');
     const startLabel = free ? `Empezar con ${free} bot${free > 1 ? 's' : ''}` : 'Empezar';
+    // invitado a una mesa normal (un amigo te invitó): no te sentamos solo, elegís si vas con él o con el otro equipo
+    const choice = !host && !seated && !r.quick && this.teamInvited ? this.inviteChoiceHtml() : '';
     const footer = host
       ? `<button type="button" class="btn big w-rules ${this.showRules ? 'on' : ''}" data-rules="1" aria-expanded="${!!this.showRules}">${this.showRules ? 'Listo' : 'Reglas'}</button>
          <button class="btn primary big pl-start" data-start="${free ? 1 : 0}">${startLabel}</button>`
-      : `<p class="pl-note">${seated ? `Esperando que ${esc(hostName || 'el anfitrión')} empiece…` : 'Estás mirando. Tocá un lugar libre para sumarte.'}</p>`;
+      : choice ? '' : `<p class="pl-note">${seated ? `Esperando que ${esc(hostName || 'el anfitrión')} empiece…` : 'Estás mirando. Tocá un lugar libre para sumarte.'}</p>`;
 
     $('#pl-ui').innerHTML = `
       <header class="pl-top">
@@ -1231,7 +1234,8 @@ export class RoomClient {
       <div class="pl-vs" data-vs="1">VS</div>
       ${r.seats.map(plate).join('')}
       ${settings}
-      <footer class="pl-bottom">${footer}</footer>`;
+      <footer class="pl-bottom">${footer}</footer>
+      ${choice ? `<footer class="pl-team">${choice}</footer>` : ''}`;
     this.placePlates(this.platePos);
   }
 
@@ -1317,6 +1321,27 @@ export class RoomClient {
       <div class="qs-head"><h3>Tu equipo</h3><p>Te guardamos ${r.quick.holding === 1 ? 'el lugar' : `${r.quick.holding} lugares`} un minuto y medio.</p></div>
       ${friends ? `<ul class="qs-friends">${friends}</ul>` : ''}
       <div class="qs-actions"><button type="button" class="btn small primary" data-copy="${esc(link)}">Copiar enlace</button><button type="button" class="btn small ghost" data-teamcancel="1">Seguir sin invitar</button></div>
+    </section>`;
+  }
+
+  // Invitado a una mesa normal: no lo sentamos solo. Elige si se sienta con el que lo invitó (su equipo) o con el otro
+  // equipo. Cada botón manda `sit` al primer lugar libre de ese equipo (el servidor valida).
+  inviteChoiceHtml() {
+    const seats = this.st.room.seats;
+    const by = this.teamInvitedBy;
+    // el equipo del que invitó (si ya no está en la mesa, el del anfitrión)
+    let inviter = by ? seats.findIndex((p) => p && !p.bot && p.name === by) : -1;
+    if (inviter < 0) inviter = Math.max(0, seats.findIndex((p) => p?.host));
+    const mine = team(inviter);
+    const option = (t, label, full) => {
+      const seat = seats.findIndex((p, i) => !p && team(i) === t);
+      return seat >= 0
+        ? `<button type="button" class="btn small primary" data-sit="${seat}">${label}</button>`
+        : `<button type="button" class="btn small ghost" disabled>${full}</button>`;
+    };
+    return `<section class="qs-invite">
+      <div class="qs-head"><h3>${by ? `${esc(by)} te invita a su equipo` : 'Te invitaron a su equipo'}</h3><p>¿Con quién te sentás?</p></div>
+      <div class="qs-actions qs-choice">${option(mine, 'Sumarme a su equipo', 'Su equipo está completo')}${option(1 - mine, 'Sumarme al otro equipo', 'El otro equipo está completo')}</div>
     </section>`;
   }
 

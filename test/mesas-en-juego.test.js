@@ -230,6 +230,45 @@ test('invitar a tu equipo: un desconocido no entra a los lugares guardados', asy
   assert.equal(r.seats.filter((s) => s && !s.bot).length, 3);
 });
 
+test('invitado a una mesa normal: no lo sientan solo; elige si va con el que lo invitó o con el otro equipo', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  await h.join('u0'); // el anfitrión se sienta en el lugar 0 (equipo 0)
+  const r = h.room.room;
+  const ws = await h.join('amigo', { invited: true });
+  assert.equal(r.seats.filter(Boolean).length, 1, 'lo sentaron solo (y cayó en el equipo rival)');
+  assert.equal(h.state(ws).you, null);
+  await h.send(ws, { t: 'sit', seat: 3 }); // el otro equipo (lugares impares)
+  assert.equal(r.seats[3]?.pid, 'amigo');
+  const ws2 = await h.join('otro', { invited: true });
+  await h.send(ws2, { t: 'sit', seat: 2 }); // el equipo del que invitó (lugares pares)
+  assert.equal(r.seats[2]?.pid, 'otro');
+});
+
+test('invitado a una mesa normal: si el equipo del que invitó está lleno, solo le queda el otro', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  await h.join('u0');
+  const compa = await h.join('u1');
+  await h.send(compa, { t: 'sit', seat: 2 }); // compañero del anfitrión (equipo 0)
+  const ws = await h.join('amigo', { invited: true });
+  assert.equal(h.room.room.seats[1], null, 'no lo sentaron solo');
+  await h.send(ws, { t: 'sit', seat: 2 }); // ocupado: no se mueve
+  assert.equal(h.room.room.seats[2]?.pid, 'u1');
+  await h.send(ws, { t: 'sit', seat: 1 });
+  assert.equal(h.room.room.seats[1]?.pid, 'amigo');
+});
+
+test('quien mira y se sienta después tiene foto, ELO y últimas partidas, como si hubiera entrado sentado', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  await h.join('u0');
+  const ws = await h.join('miron', { spectate: true }); // mira, no se sienta al entrar
+  await h.send(ws, { t: 'sit', seat: 1 });
+  const seat = h.room.room.seats[1];
+  assert.equal(seat?.pid, 'miron');
+  assert.deepEqual(Object.keys(seat.elos), Object.keys(MODES));
+  assert.equal(typeof seat.elo, 'number');
+  assert.ok(Array.isArray(seat.recent));
+});
+
 test('las consultas al compañero van en singular', () => {
   for (const list of [ASK_TALK.tantos.ask, ASK_TALK.truco.ask, ASK_TALK.truco.askRe, ASK_TALK.truco.askCuatro]) {
     assert.ok(list.every((t) => !/tienen|compañeros|andan/i.test(t)), list.join());

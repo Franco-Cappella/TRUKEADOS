@@ -1308,6 +1308,8 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
   .pl-team .qs-invite { flex-direction: column; align-items: stretch; }
   .pl-team .qs-head { max-width: none; }
   .pl-team .qs-actions { margin-left: 0; }
+  .pl-team .qs-actions.qs-choice { flex-wrap: wrap; }
+  .pl-team .qs-actions.qs-choice .btn { flex: 1 1 100%; }
 }
 .pl-clock { position: absolute; left: 50%; top: clamp(70px, 12vh, 120px); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .pl-clock b { font-size: clamp(44px, 6vw, 72px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }

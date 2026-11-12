@@ -338,6 +338,7 @@ Si alguien se desconecta o toca la X, corre `TIMING.afk` (40 s). Si no vuelve y 
 - `src/roster.js`: los usuarios automáticos (siempre los mismos). Juegan las mesas del lobby y la partida rápida, y salen en el ranking.
 - Los que miran tienen su chat (`spec-chat`): a los jugadores no les llega.
 - Partida rápida en equipo: `invite-team` guarda los lugares del equipo de quien busca (`heldSeats`). Entran con `invited` (enlace `?equipo=1` o invitación de un amigo por `/api/invites`).
+- Invitación a una mesa normal (un amigo te invita desde la sala): el invitado no se sienta solo. `openSeat` lo deja mirando y `inviteChoiceHtml` (room-client.js) le ofrece sumarse a su equipo o al otro, con `sit`. Quién lo invitó queda en `KEYS.teamInviteFrom` (sessionStorage) para saber cuál es su equipo.
 
 ## Voces
 Los audios de `public/voz` se generan con `tools/generate-voices.mjs` (voz libre de Piper, `davefx`; licencia en `public/voz/LICENCIAS.txt`). Por defecto los asientos pares usan esa voz y los impares la voz de mujer del dispositivo (`voiceFor`); cada jugador puede elegir hombre o mujer en Configuración. **Una frase nueva en `talk.js` necesita volver a correrlo**, o sale con la voz del dispositivo; solo genera lo que falta.

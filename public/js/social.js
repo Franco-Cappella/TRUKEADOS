@@ -178,7 +178,7 @@ export async function loadInvites() {
   try {
     const { invites } = await api(ROUTES.api.invites);
     box.innerHTML = invites.map((i) => `<div class="rj"><p class="rj-text"><b>${esc(i.from)} te invita a su equipo</b><span>${esc(modeLabel(i.mode))}</span></p>
-      <div class="rj-actions"><button class="btn ghost" type="button" data-skip="${esc(i.code)}">Ahora no</button><button class="btn primary" type="button" data-join="${esc(i.code)}">Unirme</button></div></div>`).join('');
+      <div class="rj-actions"><button class="btn ghost" type="button" data-skip="${esc(i.code)}">Ahora no</button><button class="btn primary" type="button" data-join="${esc(i.code)}" data-from="${esc(i.from)}">Unirme</button></div></div>`).join('');
   } catch {
     box.innerHTML = '';
   }
@@ -195,6 +195,7 @@ export function initSocial(repaint, go) {
     await api(ROUTES.api.invitesDone, { code }).catch(() => {});
     if (b.dataset.join) {
       sessionStorage.setItem(KEYS.teamInvite, code);
+      sessionStorage.setItem(KEYS.teamInviteFrom, b.dataset.from || '');
       enterRoom(code);
     }
   });

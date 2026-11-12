@@ -167,13 +167,7 @@ export class TrucoRoom extends DurableObject {
       // sin caché: lo que tiene puesto de la tienda puede haber cambiado recién
       const profile = user && (await getProfile(this.env, user.id, { fresh: true }).catch(() => null));
       if (!profile) return this.send(ws, { t: 'auth' });
-      // cos.look: tu personaje dibujado (el creador de personaje); viaja junto con lo que tenés puesto de la tienda
-      const look = cleanLook(profile.look);
-      account = { pid: user.id, name: profile.username, cos: { ...cleanEquipped(profile.equipped), ...(look ? { look } : {}) }, elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
-      // el ELO de cada modo (para el desplegable del cartel)
-      account.elos = Object.fromEntries(Object.keys(MODES).map((m) => [m, profile[`elo_${m}`] ?? ELO_START]));
-      // las últimas 3 partidas, para el cartel de la mesa (si la base no contesta, sin historial)
-      account.recent = await recentMatches(this.env, user.id).catch(() => []);
+      account = await this.accountOf(profile, user.id);
     }
 
     const r = this.room;
@@ -224,11 +218,17 @@ export class TrucoRoom extends DurableObject {
 
       case 'sit': {
         if (r.status !== 'lobby' || !pid) return;
+        // quien mira se sienta con lo mismo que al entrar (foto, ELO, últimas partidas): se lee antes de tocar los lugares
+        const profile = seat == null ? await getProfile(this.env, pid, { fresh: true }).catch(() => null) : null;
+        const acc = profile ? await this.accountOf(profile, pid) : {};
+        // desde acá no hay más esperas: mientras se leía la base pudo cambiar la mesa
+        if (r.status !== 'lobby') return;
         const to = msg.seat;
         if (!Number.isInteger(to) || to < 0 || to >= r.seats.length || r.seats[to]) return;
+        const cur = this.seatOf(pid);
         const att = ws.deserializeAttachment() || {};
-        const me = seat != null ? r.seats[seat] : { pid, name: att.name || 'Invitado', cos: att.cos || {}, voice: att.voice || null };
-        if (seat != null) r.seats[seat] = null;
+        const me = cur != null ? r.seats[cur] : { pid, name: att.name || 'Invitado', cos: att.cos || {}, voice: att.voice || null, elo: acc.elo, elos: acc.elos, avatar: acc.avatar, recent: acc.recent };
+        if (cur != null) r.seats[cur] = null;
         r.seats[to] = me;
         return this.commit();
       }
@@ -1448,6 +1448,19 @@ export class TrucoRoom extends DurableObject {
     }
   }
 
+  // Lo que el cartel de la mesa muestra de cada jugador (personaje, ELO de cada modo, foto y últimas partidas).
+  // Se arma al entrar y también al sentarse después de mirar: así el lugar no queda sin foto ni ELO.
+  async accountOf(profile, pid) {
+    // cos.look: tu personaje dibujado (el creador de personaje); viaja junto con lo que tenés puesto de la tienda
+    const look = cleanLook(profile.look);
+    const account = { pid, name: profile.username, cos: { ...cleanEquipped(profile.equipped), ...(look ? { look } : {}) }, elo: profile[`elo_${this.room.cfg.mode}`] ?? ELO_START, avatar: profile.avatar || null };
+    // el ELO de cada modo (para el desplegable del cartel)
+    account.elos = Object.fromEntries(Object.keys(MODES).map((m) => [m, profile[`elo_${m}`] ?? ELO_START]));
+    // las últimas 3 partidas, para el cartel de la mesa (si la base no contesta, sin historial)
+    account.recent = await recentMatches(this.env, pid).catch(() => []);
+    return account;
+  }
+
   seatOf(pid) {
     const i = this.room.seats.findIndex((s) => s && !s.bot && s.pid === pid);
     return i < 0 ? null : i;
@@ -1461,9 +1474,11 @@ export class TrucoRoom extends DurableObject {
     return r.seats.map((s, i) => (s || team(i) !== mine ? -1 : i)).filter((i) => i >= 0);
   }
 
-  // Dónde se sienta el que llega: el invitado, con el que invitó; los demás, fuera de los lugares guardados.
+  // Dónde se sienta el que llega. El invitado a una mesa normal no se sienta solo: elige su lugar (inviteChoiceHtml,
+  // room-client.js). En partida rápida, el invitado va con el que invitó; los demás, fuera de los lugares guardados.
   openSeat(invited) {
     const r = this.room;
+    if (invited && !r.quick) return null;
     const held = this.heldSeats();
     if (!r.quick || (!held.length && !invited)) return this.freeSeat();
     if (invited) {

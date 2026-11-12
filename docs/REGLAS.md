@@ -96,6 +96,7 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | La revancha arranca cuando la aceptan todos los de la mesa | `TrucoRoom.tryRematch` |
 | Los personajes no parpadean solos: los ojos cerrados son únicamente la seña "ciego" | `characters.js` |
 | En la charla de los bots, decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo: solo las frases de canto nombran el canto. Para hablar del tema dicen "el segundo" (truco) o "el primero", "los tantos" o "los puntos" (envido), y al no querer el envido no lo nombran | `talk.js` (`BOT_TALK`, `ASK_TALK`); test en `bots.test.js` |
+| Invitado por un amigo a una mesa normal: no se sienta solo. Elige si va con el que lo invitó (su equipo) o con el otro equipo; si el lugar de su equipo está ocupado, solo le queda el otro. En partida rápida no cambia | `openSeat` (truco-room.js), `inviteChoiceHtml` (room-client.js); test en `mesas-en-juego.test.js` |
 
 ## No implementadas (todavía)
 - Pedir flor al final de la mano (no hace falta: la flor es obligatoria y el juego la detecta sola). [R] §12.
