@@ -1,9 +1,7 @@
-# Landing de Trukeados — catálogo de secciones
+# Landing de Trukeados — ideas de secciones
 
-Todas las secciones que se podrían hacer, con qué skill del hub `design-studio` se arma cada una y qué
-activos del juego se reutilizan. No es la landing final: es el menú del que se elige.
-El plan de trabajo y las decisiones están en [PLAN.md](PLAN.md); lo que hace el juego, en
-[../JUEGO.md](../JUEGO.md).
+Catálogo de las ideas que se evaluaron para la landing. Las que ya se hicieron figuran como «Hecha» y su versión final
+está en el contrato de la landing (`docs/CONTRATO.md` en su repo, §3). Lo que hace el juego: `docs/JUEGO.md` en el repo del juego.
 
 **Leyenda**
 - **Prioridad**: 🟢 núcleo (sin esto no hay landing) · 🟡 recomendada · ⚪ extra.
@@ -55,12 +53,8 @@ Copy de ejemplo: **"Truco con señas de verdad."** / *"En 3D, online y gratis. S
 Sentate y jugá."*
 
 ## 2. "Te están mirando" — la mecánica de las señas 🟢 · L
-La sección estrella. Scroll con la vista fija (*sticky*) en tres actos:
-1. Vos mirás a tu compañero: te hace una seña (guiño → ancho de basto). La ves.
-2. La cámara gira al rival: él estaba mirando a tu compañero. **También la vio.**
-3. Texto: *"El servidor solo le manda tu seña a quien te está mirando. Si te cazan, te cazaron."*
-- Diagrama opcional de miradas (flechas entre asientos vistas desde arriba).
-- **Skills**: `web-inmersiva` → `imagegen-frontend-web` (referencia previa) → `impeccable`.
+
+Hecha: la mecánica de las señas y la mirada: CONTRATO §3 (`mirada`, `senas`).
 
 ## 3. Diccionario de señas (interactivo) 🟢 · M
 Grilla de las 11 señas. Cada tarjeta: la cara en reposo; al pasar el mouse o tocar, el personaje hace
@@ -71,10 +65,8 @@ el gesto y se da vuelta la carta que representa. En celular, deslizable.
 - **Skills**: `ui-ux-pro-max` (componente) → `emil-design-eng` (flip, timing) → `impeccable`.
 
 ## 4. La trampa: dos encimadas 🟡 · M
-Una carta cae sobre otra en el paño. La de arriba se oscurece y se le carbonizan los bordes (la textura
-real `burnTex`). Botón de peligro (borde `--red`) **"¡Mostrá las dos!"** → se levanta la quemada y aparece la de abajo.
-Copy: *"Acá se puede hacer trampa. Y te pueden cazar."*
-- Activos: `burnTex`, `CARD` de `theme.js`, cartas. **Skills**: `emil-design-eng` → `web-inmersiva`.
+
+Hecha: la trampa: CONTRATO §3 (`trampa`).
 
 ## 5. Mentir el envido — calculadora de tantos 🟡 · M
 Elegís 3 cartas de un mazo en pantalla → se calcula el tanto con el motor real (`tanto()` de
@@ -96,10 +88,8 @@ y un globo de canto (con la voz del juego si el sonido está activado).
 - Activos: `dealAnim`, `TIMING`, `say()`, `palitos()`. **Skills**: `web-inmersiva` → `emil-design-eng`.
 
 ## 8. Modos: 1 vs 1, 2 vs 2, 3 vs 3 🟢 · S
-Tres mesas vistas desde arriba (diagramas limpios, asientos alternados por equipo: blanco y gris), con el
-**pie** marcado en las de equipo y una línea por modo ("mano a mano", "con compañero", "pica… no, eso
-todavía no"). Toque el modo y queda elegido para el CTA.
-- **Skills**: `design-taste-frontend` → `ui-ux-pro-max`.
+
+Hecha: los modos: CONTRATO §3 (`mesas`).
 
 ## 9. Mesas en vivo 🟡 · M
 Datos reales de `GET /api/lobby`: *"Ahora: 3 mesas esperando gente y 5 jugándose."* Tarjetas con
@@ -109,11 +99,8 @@ Si no hay nadie: *"No hay mesas abiertas. Abrí la primera"* (nunca mostrar un c
 - **Skills**: `ui-ux-pro-max` → `impeccable` (estados vacíos y de error).
 
 ## 10. "Escribí tu nombre y mirá tu cara" 🟡 · S–M
-`lookFor(nombre, asiento)` genera siempre la misma cara para el mismo nombre. Un campo de texto → tu
-personaje aparece y te saluda (o hace una seña al azar). Botón "Así me ven en la mesa → Jugar". El nombre
-se guarda con la misma clave que usa el menú, así llegás al juego con el nombre puesto.
-Gancho viral barato: "mirá qué cara me tocó".
-- Activos: `characters.js`, `dom.js` (`store`, `KEYS`). **Skills**: `emil-design-eng` → `ui-ux-pro-max`.
+
+Hecha: el nombre y tu cara: CONTRATO §3 (`sentate`).
 
 ## 11. Los del barrio (bots) ⚪ · S
 Retratos de los bots (Tito, Coca, El Ruso, Chacho, Pocha, Beto, Nené, Cacho, Mirta, Pirulo, Tota, Rulo)
@@ -159,14 +146,12 @@ Tabla honesta: ✅ 3D, señas, trampa, voz, salas privadas, espectador, bots, fl
 - **Skills**: `ui-ux-pro-max` → `impeccable`.
 
 ## 19. CTA final 🟢 · S–M
-La mesa vista desde tu silla, vacía, la lámpara encendida. **"La mesa está servida."**
-Botones: **Partida rápida** (1v1 / 2v2 / 3v3) · **Crear sala** · **Practicar con bots**. Directo al
-juego, sin pasos intermedios.
-- **Skills**: `design-taste-frontend` → `emil-design-eng`.
+
+Hecha: el CTA final: CONTRATO §3 (`sentate`).
 
 ## 20. Pie y créditos 🟢 · S
-Créditos obligatorios: cartas "Naipes Libres" (Basquetteur, CC BY-SA 3.0, vectorizadas por gjenkins20),
-Three.js (MIT), Hanken Grotesk (Hanken Design Co., OFL). Link al repositorio si es público. Hecho en Argentina.
+
+Hecha: el pie y los créditos: CONTRATO §3 y el pie de la landing.
 
 ---
 
@@ -182,11 +167,3 @@ Three.js (MIT), Hanken Grotesk (Hanken Design Co., OFL). Link al repositorio si 
 | **Página de reglas completa** linda (hoy es un .md) | 🟡 | `ui-ux-pro-max` → `impeccable` |
 | **Novedades** a partir de `CHANGELOG.md` | ⚪ | `documentation-and-adrs` |
 
-## Ideas que necesitan tocar el juego ⚠️
-
-Quedan anotadas, no entran en la landing sin una decisión aparte.
-- **Contador de partidas jugadas** ("ya se jugaron 12.430 manos"): el servidor no lo cuenta hoy.
-- **Desafío diario** / ranking: no hay cuentas ni persistencia de jugadores.
-- **Entrar a la mesa desde la landing sin recargar** (que la escena del hero sea literalmente la sala):
-  posible porque es el mismo código, pero obliga a rehacer las rutas `/` y `/sala/CÓDIGO`.
-- **Personalizar tu personaje** (más allá de que salga del nombre).

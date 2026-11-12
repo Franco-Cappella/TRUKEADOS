@@ -4,7 +4,7 @@ Documentación funcional completa: qué ve, qué puede hacer y qué siente quien
 para la landing (ver [landing/](landing/)). Para el código, [AGENTS.md](../AGENTS.md); para el detalle
 de cada regla, [REGLAS.md](REGLAS.md).
 
-> Estado documentado: versión 1.5.3 (commit `4766ecf`).
+> Lo que hace el juego hoy. La historia de cambios está en [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
@@ -26,7 +26,7 @@ Esto es lo que tiene que contar la landing. Ordenado de más a menos diferencial
 | 3 | **Se puede hacer trampa** | "Dos encimadas": tirás una carta tapada con otra. La de abajo juega; la de arriba queda **quemada** (se ve carbonizada). Cualquier rival puede pedir "¡mostrá las dos!". La sala puede no permitir trampas. |
 | 4 | **Se puede mentir el envido** | Cantás el número que quieras. Si ganás tenés que mostrar; si no coincide o te reclaman, perdés los puntos (salvo en una sala sin trampas). |
 | 5 | **1 vs 1, 2 vs 2 y 3 vs 3** | Con "pie" de cada equipo, truco desde segunda en equipos, y las reglas del reglamento tradicional. La flor y la muestra son opciones de la sala. |
-| 6 | **Cero fricción** | Sin cuenta. Nombre y listo. Sala por código de 5 letras, link `/sala/CÓDIGO`, compartir por WhatsApp, partida rápida. |
+| 6 | **Cero fricción** | Sin cuenta. Nombre y listo. Sala por código de 4 números, link `/sala/CÓDIGO`, compartir por WhatsApp, partida rápida. |
 | 7 | **Nunca te quedás sin mesa** | Bots con nombres de barrio (Tito, Coca, El Ruso, Chacho, Pocha, Cacho, Mirta, Pirulo…) llenan lugares y juegan por quien se desconecta. |
 | 8 | **Suena a truco** | Voz que canta los cantos ("¡Truco!", "¡A ver esos tantos!", "A ver, mostrá las dos"), ruido de carta en el paño, frases rápidas de chat ("Las viejas", "Jugá, che", "Uy, se me cayó"). |
 | 9 | **Anotador de palitos** | Los puntos se anotan como en papel: cuatro palitos y el quinto cruzado. A 30, raya entre malas y buenas. |
@@ -38,7 +38,7 @@ Esto es lo que tiene que contar la landing. Ordenado de más a menos diferencial
 - **Tu nombre** ("¿Cómo te llaman en la mesa?"). Se recuerda en el navegador.
 - **Partida rápida**: botones 1 vs 1 / 2 vs 2 / 3 vs 3. Te sienta en una mesa pública que espera gente,
   o abre una nueva.
-- **Unirte con código** (5 letras/números) o con el link `/sala/CÓDIGO`.
+- **Unirte con código** (4 números) o con el link `/sala/CÓDIGO`.
 - **Crear sala**: modo, puntos (30 con malas y buenas, o 15), privada o pública, y las opciones de la sala
   (`ROOM_OPTIONS` en `config.js`): **con flor**, **con muestra** y **no permitir trampas** (sin dos encimadas
   ni mentir en el envido, y se ve quién ganó cada ronda). Por defecto: sin flor, sin muestra y con trampas.
@@ -86,62 +86,24 @@ Desde "Mesas públicas" → "Mirar". Se ve la mesa sin ver cartas ajenas.
 "Se cortó la conexión. Reconectando…". Si un humano no vuelve en 40 s, un bot juega por él hasta que
 vuelve. Si se va el anfitrión, pasa a otro humano.
 
-## 4. Reglas (resumen para humanos)
+## 4. Reglas
 
-Truco argentino, baraja española de 40. La **flor** y la **muestra** son opciones de la sala (apagadas
-por defecto), igual que **no permitir trampas**.
+Las reglas completas, con sus fuentes y lo que falta, están en [REGLAS.md](REGLAS.md). Lo que el copy necesita saber:
 
-- **Jerarquía**: ancho de espada > ancho de basto > 7 de espada > 7 de oro > 3 > 2 > anchos falsos >
-  12 > 11 > 10 > 7 falsos > 6 > 5 > 4.
-- **La mano** se gana con 2 de 3 rondas. Pardas: define la primera no parda; si todo es parda, gana la mano.
-- **Truco** 2 · **Retruco** 3 · **Vale cuatro** 4 (no querido: el nivel anterior; sin cantar: 1). Solo
-  sube quien tiene el quiero. Se canta en tu turno, antes de tirar; contestar es inmediato.
-- **Envido** 2 · **Real envido** 3 · **Falta envido** (lo que le falta al que va ganando). Solo en primera.
-  "El envido está primero". En equipos canta y contesta el **pie**.
-- **Tantos**: dos del mismo palo = 20 + valores (figuras 0). Se cantan desde la mano; "son buenas".
-  Se puede mentir; hay que mostrar; se puede reclamar. 15 s sin reclamo → valen.
-- **Al mazo**: en equipo se va todo el equipo; en primera sin envido cantado, el rival suma 1 extra.
-- **Tapada**: desde segunda, boca abajo, no gana la ronda.
-- **Dos encimadas** (trampa): la de abajo juega, la de arriba queda quemada; "mostrá las dos" la revela.
-- **Flor** (opción): tres del mismo palo, obligatoria y anula el envido; con flor quiero, me achico,
-  contraflor y contraflor al resto. No se puede mentir: la calcula el motor.
-- **Muestra** (opción): se da vuelta una carta; las piezas de ese palo (2, 4, 5, 11 y 10) pasan a ser las
-  más altas y cambian el envido.
-- **Pica-pica** (opción, 3 vs 3): una mano redonda y una mano a mano contra el de enfrente.
-- Partida a **15** o a **30** (malas y buenas).
-- Detalle y fuentes (reglamento de juegosdesalon.com): [REGLAS.md](REGLAS.md).
-
-**No tiene (todavía)**: partidas de 3 con gallo / de 8, chicos (mejor de dos).
-Importa para el copy: la flor, la muestra y las trampas dependen de la sala. Se puede decir "con flor o sin
-flor", nunca que se juega con flor siempre; y "se puede hacer trampa" vale porque es lo que viene por defecto.
+- Partida a **15** o a **30** (malas y buenas). Truco argentino, con baraja española de 40.
+- **Flor**, **muestra** y **no permitir trampas** son opciones de la sala, apagadas por defecto (las trampas, en cambio, vienen permitidas). Se puede decir "con flor o sin flor", nunca que se juega con flor siempre; y "se puede hacer trampa" vale porque es lo que viene por defecto.
+- **No tiene (todavía)**: partidas de 3 con gallo / de 8, chicos (mejor de dos).
 
 ## 5. Las 11 señas
 
-| Carta / dato | Cara |
-|---|---|
-| Ancho de espada | Levantar las cejas |
-| Ancho de basto | Guiñar un ojo |
-| Siete de espada | Torcer la boca a la derecha |
-| Siete de oro | Torcer la boca a la izquierda |
-| Un tres | Morderse el labio |
-| Un dos | Tirar un beso (trompita bien marcada) |
-| Ancho falso | Abrir la boca |
-| Nada (ciego) | Cerrar los ojos |
-| Tengo envido | Inflar los cachetes |
-| 30 o más de envido | Fruncir la nariz |
-| No tengo envido | Boca para abajo |
-
-De palabra (chat, lo escuchan todos): "las viejas" = 27, "las perdedoras" = 29.
-Los personajes **no parpadean solos**: ojos cerrados = siempre "ciego". Los bots también hacen señas a
-su compañero (miran primero al compañero y después ponen la cara).
+La tabla de señas (carta, cara y expresión) está en [RECURSOS.md](RECURSOS.md) §3. Los bots también hacen señas a su
+compañero: miran primero al compañero y después ponen la cara. Los personajes **no parpadean solos**: ojos cerrados
+siempre significan "ciego".
 
 ## 6. Personajes
 
-Dibujados en 2D sobre canvas (no son modelos 3D) y ubicados en la escena 3D como recortes.
-Cada uno se genera a partir del nombre + asiento, así que **el mismo nombre en el mismo lugar tiene
-siempre la misma cara**: 6 tonos de piel, 8 colores de pelo (canas en los mayores), peinados (incluido
-"pelado"), barba, barba de días, bigote, anteojos, forma de cara y mandíbula, ropa y pantalones.
-Giran la cabeza para mirar a otros, hablan cuando cantan y sostienen sus cartas.
+Dibujados en 2D sobre canvas, no son modelos 3D. Cómo se generan y qué hacen: [RECURSOS.md](RECURSOS.md) §2. Giran la
+cabeza para mirar a otros, hablan cuando cantan y sostienen sus cartas.
 
 ## 7. El bot
 
@@ -158,20 +120,12 @@ Corre en el servidor y decide **solo con lo que vería un jugador**. Juega razon
 
 ## 8. Sonido
 
-Todo sintetizado (sin archivos): golpe de carta en el paño, "ding" de "te toca", y voz del navegador
-en español (prefiere es-AR) para los cantos. Se apaga con "Voz: no".
+Todo sintetizado, sin archivos. Detalle en [RECURSOS.md](RECURSOS.md) §6. Se apaga con "Voz: no".
 
-## 9. Identidad visual (detalle completo en [../DESIGN.md](../DESIGN.md) y [../brand/](../brand/))
+## 9. Identidad visual
 
-- **Tipografía única**: Archivo (Omnibus-Type, estudio de Buenos Aires), variable en peso y ancho.
-  Angosta para rótulos. **Sin itálicas, sin serif.**
-- **Paleta**: grises neutros (`#121212` → `#f5f5f5`) + los **cuatro palos** de la baraja:
-  espada `#2f6fd6`, basto `#2e9e57`, oro `#f2c12e` (único acento), copa `#d93b30`.
-  Prohibido: marfil, latón, marrones en la interfaz.
-- **Escena** (solo 3D): bar en penumbra (paredes `#1b120d`, luz de lámpara `#ffdcaa`, paño `#27523e`).
-- **Cartas**: "Naipes Libres" de Basquetteur (CC BY-SA 3.0) en WebP, 40 + dorso.
-- **Logo**: dos naipes cruzados con el ancho de espada + TRUKEADOS en Archivo Expanded Black ([../brand/logo/](../brand/logo/)). El nombre del juego sale de `APP_NAME` (`config.js`); el `favicon.svg` todavía es el viejo (ver [../brand/ALINEACION.md](../brand/ALINEACION.md)).
-- **Voz del copy**: español rioplatense ("tirá", "cantá", "vos").
+Blanco y negro, en Hanken Grotesk; la mesa y los ambientes van a color. Todo está en [DESIGN.md](../DESIGN.md) y en
+[brand/](../brand/).
 
 ## 10. Técnica (lo justo para la landing)
 
@@ -184,15 +138,5 @@ en español (prefiere es-AR) para los cantos. Se apaga con "Voz: no".
 
 ## 11. Activos reutilizables para la landing
 
-| Activo | Dónde | Uso posible |
-|---|---|---|
-| 40 cartas + dorso WebP | `public/cards/` | Hero, jerarquía interactiva, abanicos, texturas 3D |
-| Escena del bar | `public/js/scene.js` (`TableScene`) | Hero en vivo, "tour" de la mesa |
-| Personajes y caras | `public/js/characters.js` (`drawCharacter`, `lookFor`) | Demo de señas, galería de personajes, "generá tu cara" |
-| Recorte de cara | `public/js/hud.js` (`drawFace`) | Tarjetas de seña |
-| Anotador de palitos | `public/js/hud.js` (`palitos`) | Contadores, sección de puntos |
-| Carta quemada | `scene.js` (`burnTex`) | Sección de la trampa |
-| Sonidos y voz | `public/js/audio.js` | Microinteracciones con sonido (opt-in) |
-| Motor de reglas | `public/js/engine.js` (`rank`, `tanto`) | Calculadora de envido, "¿quién gana?" |
-| Lobby en vivo | `GET /api/lobby` | "Mesas jugándose ahora" |
-| Tokens | `:root` de `truco.css`, `theme.js` | Paleta y tipografía de la landing |
+Qué se puede copiar y cómo: [RECURSOS.md](RECURSOS.md), sección «Cómo los toma una página derivada». Los tokens de
+marca están en [brand/tokens.css](../brand/tokens.css).

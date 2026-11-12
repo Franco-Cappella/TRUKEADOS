@@ -92,11 +92,7 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 5. Cada cambio de reglas lleva test en `test/` y una línea en `docs/REGLAS.md`. Una opción de sala nueva se
    agrega en `ROOM_OPTIONS` (config.js): el menú, la sala de espera y el servidor la toman de ahí.
 6. Textos de la interfaz en español rioplatense ("tirá", "cantá", "vos").
-7. Estilo: la interfaz (menú, paneles) es blanco y negro, grotesk: una sola tipografía (Hanken Grotesk, variable
-   `--font`) y la paleta de `:root` (negro, blanco y grises; el rojo solo para errores; esquinas rectas). La mesa y
-   los ambientes de la partida, en cambio, van a todo color (paño verde, `SATURATION` en ambientes.js).
-8. **Sistema de diseño y marca (Trukeados)**: [DESIGN.md](DESIGN.md) y [brand/](brand/). Todo color, tipografía, componente
-   o texto nuevo sigue esas reglas.
+7. Diseño: la interfaz es blanco y negro, en Hanken Grotesk, con esquinas rectas; la mesa y los ambientes van a todo color (paño verde, `SATURATION` en `ambientes.js`). Todo color, tipografía, componente o texto nuevo sigue [DESIGN.md](DESIGN.md) y [brand/](brand/).
 
 ## Flujo de una jugada
 1. Botón → `RoomClient.act(a)` manda `{t:'act', a}` y **bloquea los botones** hasta el próximo `state`
@@ -125,11 +121,8 @@ Acciones (`a.t`): `play {card, mode:'normal'|'down'}` (fuera de turno o tapada =
 `mostrar`, `nomostrar` (irse al mazo sin mostrar los tantos), `reclamar`, `lucir` (terminada la mano, dar vuelta las cartas que no tiró).
 
 ## Probar
-```bash
-npm install
-npm test          # motor + 60 partidas completas entre bots por modo
-npm run dev       # http://localhost:8787 (necesita .dev.vars con SUPABASE_SECRET_KEY, ver .dev.vars.example)
-```
+
+Los comandos están en el README ("Probarlo en tu PC"). Acá, lo que el README no dice: `npm test` corre el motor y 60 partidas completas entre bots por modo; `npm run dev` necesita `.dev.vars` con `SUPABASE_SECRET_KEY` (ver `.dev.vars.example`).
 - `npm run dev` usa `workerd`, que en Windows necesita el *Microsoft Visual C++ Redistributable*
   (si falla con "write EOF", es eso).
 - En el navegador: `window.__truco.room` y `window.__truco.scene` sirven para depurar desde la consola.

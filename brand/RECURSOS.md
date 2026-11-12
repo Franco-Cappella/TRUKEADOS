@@ -135,7 +135,7 @@ Materiales de sombreado por escalones (`toon()`) y colores exactos, sin mapeo de
   quincho y estancia (`amb-afuera.js`); Barrio Chino (`barrio-chino.js`) y Noche estrellada, pintada con relieve
   (`amb-noche.js`, `impasto.js`), que son de la tienda. Piezas compartidas en `amb-kit.js` y `amb-piezas.js`;
   cielo y fondo en `paisaje.js`. Imágenes de cada uno en `public/img/mapas/*.webp`.
-- Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en `tools/shots/`).
+- Para mirarlos en el navegador (`/tools/scene-test.html`, en el juego, con las capturas): ver el AGENTS.md del juego, sección Ambientes (mapas).
 
 Para usar la escena en una página: **capturas reales del juego** (ver abajo). Montar Three.js en una
 landing solo si la escena es lo principal de esa sección, y siempre cargándolo después del primer

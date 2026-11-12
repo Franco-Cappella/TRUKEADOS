@@ -1,13 +1,13 @@
 {
   "nota": "Estado común de la documentación de diseño tras la última sincronización. Lo escribe brand/tools/sync-diseno.mjs; no editar a mano.",
   "archivos": {
-    "DESIGN.md": "a4343299ef2b14097959d432aca2e911768eaffb615873c4ef2a2cb965ddfa1f",
-    "brand/ALINEACION.md": "9f576123b25f10bcf3b2ccecb314ae84882e7288e0bfa6f2ff5e2b30fb0f1c25",
-    "brand/BRAND.md": "de63933b450b5bc7ce83fc5489411c908a2dfdca849e867dfa45b5f17a2c554f",
-    "brand/COMPONENTES.md": "9270a853e9bec156c7f4e891fdeae992363726fb9ada40a33b840a93e5577af7",
-    "brand/PAGINAS.md": "0a09c942678a5f8eda323b7f86296eb4ac6be521a50606472c76a65048146232",
-    "brand/RECURSOS.md": "9a0cb8bd4e86c4265b2116a9cde496e6935ab1e3c4b6307625a3c9831d367ae0",
-    "brand/VOZ.md": "e24afaa76f0c1a0d425b1b732c4c25e7c46ccdf015e4530a8ba467d280857b30",
+    "DESIGN.md": "279fe3267128bd5e627d1367cbc4ea1dbc1c4baf6b40d2a93678bc7186cb7424",
+    "brand/ALINEACION.md": "21335309ec71ffe8743a12efb69832a5f451c30ebbed1f8e3e970ef4b4c3413d",
+    "brand/BRAND.md": "308f9243c6a8891d2416322cfddf4ae14a5a0444e7c13fa6f7fc0fcb9e444d98",
+    "brand/COMPONENTES.md": "9bcff923bfa1be97f39cf0c4512233cf53621e1f254e082fb2a47bca9a44fe19",
+    "brand/PAGINAS.md": "1ae723ad21f9f1939912b1cc11755f556e22835717b47915152f4e23e3037d97",
+    "brand/RECURSOS.md": "fd9b3e27ad440531f25fdc9c5c9e8c48b2cbec307c0b8252f1744c0be94f6cd1",
+    "brand/VOZ.md": "9c5584c97339f453c77b22ea3ed7d85d22baa8e3411941a07d3593b7e64f912c",
     "brand/lamina.html": "27e586e785a986603fc9baec62b76fdaac5ffed56025b34dc4bab67d4402aced",
     "brand/logo/icono-app.svg": "f60ee397b297bf0443ca12070b8efc8963bade007abfd2bfcfed29b163be8850",
     "brand/logo/logo-apilado-claro.svg": "18dadf7581a3132c423e74800684ab831d46078f2e193a91936e8a01b4e58753",
@@ -26,7 +26,6 @@
     "brand/tokens.css": "88d7ff55f162724f24e13d5d45ebd9750403f957d0d4377332db724f825dadf4",
     "brand/tools/build-logos.mjs": "9814f9bbeeeaf3607d5dfc4c995eceef5f05bd2a419295819b2ed163f9545e4d",
     "brand/tools/sync-diseno.mjs": "dfbbb0a6533ff7aa0fde8aadf2fed489fa9afff822219bc6cc0f7868845f766a",
-    "docs/landing/PLAN.md": "6f782eaf759a9f461ca3622fcc57ff5cefffc6ba43b2be92818e4e1ca2696376",
-    "docs/landing/SECCIONES.md": "c96810bff323e8ee89e182f1dd1e46940240e39d2372965a98f35e9081e29b7a"
+    "docs/landing/SECCIONES.md": "383f078da871814e64896da9cbf574aace20953b210ce9c6c89b0f787513ce8d"
   }
 }

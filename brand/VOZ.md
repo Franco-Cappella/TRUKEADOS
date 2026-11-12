@@ -85,4 +85,4 @@ En el estilo tipográfico Canto (ver [BRAND.md](BRAND.md) §4) pueden ir en may�
 únete, descubre, potencia, nivel siguiente, épico, gamer, "el mejor truco online", emojis.
 
 **Números**: solo los reales del juego: 40 cartas, 11 señas, 1 vs 1 / 2 vs 2 / 3 vs 3, a 15 o a 30,
-5 letras de código, 40 segundos antes de que un bot juegue por vos, 15 segundos para reclamar los tantos.
+4 números de código, 40 segundos antes de que un bot juegue por vos, 15 segundos para reclamar los tantos.
