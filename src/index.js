@@ -4,7 +4,7 @@
 // el del perfil. El navegador ya no elige ni su identificador ni su nombre.
 import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
-import { newRoomCode, json } from './util.js';
+import { newRoomCode, json, readBody, reply } from './util.js';
 import { requireUser as authUser, createProfile, renameProfile } from './auth.js';
 import { ipLimited, writeLimited, TOO_MANY } from './limits.js';
 import { listMatches, getMatch, shareMatch, getShared } from './matches.js';
@@ -44,7 +44,7 @@ async function requireUser(env, request, opts) {
 async function readPlayer(env, request) {
   const auth = await requireUser(env, request);
   if (auth.error) return auth;
-  const body = await request.json().catch(() => ({}));
+  const body = await readBody(request);
   return { body, pid: auth.user.id, name: auth.profile.username, profile: auth.profile };
 }
 
@@ -89,7 +89,7 @@ async function handle(request, env) {
     const auth = await requireUser(env, request, { allowNoProfile: true });
     if (auth.error) return auth.error;
     if (auth.profile) return json({ error: 'Ya tenés un perfil' }, 409);
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await createProfile(env, auth.user.id, body.username, body.level);
     return r.error ? json({ error: r.error }, 400) : json({ user: auth.user, profile: r.profile });
   }
@@ -97,9 +97,9 @@ async function handle(request, env) {
   if (path === '/api/me/username' && method === 'POST') {
     const auth = await requireUser(env, request, { fresh: true });
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await renameProfile(env, auth.user.id, auth.profile, body.username);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   // Ajustes: bajar tus datos y borrar la cuenta (con tu nombre de usuario escrito a mano)
@@ -111,26 +111,26 @@ async function handle(request, env) {
   if (path === '/api/me/delete' && method === 'POST') {
     const auth = await requireUser(env, request, { fresh: true });
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await deleteAccount(env, auth.user, auth.profile, body.confirm);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   if (path === '/api/me/avatar' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await setAvatar(env, auth.user.id, body.avatar ?? null);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   // tu personaje dibujado (el creador de personaje)
   if (path === '/api/me/look' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await setLook(env, auth.user.id, body.look);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   // amigos: por nombre de usuario; una solicitud que se acepta
@@ -155,7 +155,7 @@ async function handle(request, env) {
   if (path === '/api/presence' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     await lobbyStub(env).ping(auth.user.id, body);
     return json({ ok: true });
   }
@@ -165,7 +165,7 @@ async function handle(request, env) {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
     const url = new URL(request.url);
-    const body = method === 'POST' ? await request.json().catch(() => ({})) : {};
+    const body = method === 'POST' ? await readBody(request) : {};
     const other = method === 'POST' ? body.to : url.searchParams.get('with');
     if (!(await areFriends(env, auth.user.id, other))) return json({ error: 'Solo podés hablar con tus amigos' }, 403);
     const lobby = lobbyStub(env);
@@ -178,13 +178,13 @@ async function handle(request, env) {
   if (path.startsWith('/api/friends') && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const uid = auth.user.id;
     const r = path === '/api/friends' ? await requestFriend(env, uid, body.username, !!body.fromProfile)
       : path === '/api/friends/respond' ? await respondFriend(env, uid, body.id, !!body.accept)
       : path === '/api/friends/remove' ? await removeFriend(env, uid, body.id)
       : { error: 'No encontrado' };
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   // invitaciones a tu equipo: solo a amigos, las ve el otro en su menú
@@ -195,7 +195,7 @@ async function handle(request, env) {
   if (path === '/api/invites' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     if (!/^\d{4}$/.test(String(body.code)) || !(await areFriends(env, auth.user.id, body.friend))) return json({ error: 'Solo podés invitar a tus amigos' }, 400);
     const info = await roomStub(env, body.code).info();
     if (!info.exists) return json({ error: 'Esa mesa ya no existe' }, 400);
@@ -205,7 +205,7 @@ async function handle(request, env) {
   if (path === '/api/invites/done' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     await lobbyStub(env).inviteDone(auth.user.id, String(body.code));
     return json({ ok: true });
   }
@@ -286,16 +286,16 @@ async function handle(request, env) {
   if (path === '/api/shop/buy' && method === 'POST') {
     const auth = await requireUser(env, request);
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await buyItem(env, auth.user.id, body.item);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
   if (path === '/api/shop/equip' && method === 'POST') {
     const auth = await requireUser(env, request, { fresh: true });
     if (auth.error) return auth.error;
-    const body = await request.json().catch(() => ({}));
+    const body = await readBody(request);
     const r = await equipItem(env, auth.user.id, auth.profile, body.slot, body.item ?? null);
-    return r.error ? json({ error: r.error }, 400) : json(r);
+    return reply(r);
   }
 
   if (path === '/api/lobby' && method === 'GET') return json(await lobbyStub(env).list());

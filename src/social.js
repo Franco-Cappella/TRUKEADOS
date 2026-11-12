@@ -2,10 +2,10 @@
 // no se aplicó, leer devuelve vacío y escribir avisa, sin romper el resto del juego.
 import { AUTH, AVATAR, MODES, ELO_START, RANKING_SIZE, cleanLook } from '../public/js/config.js';
 import { rest, forgetProfile } from './auth.js';
+import { UUID_RE } from './util.js';
 import { rosterAt } from './roster.js';
 
 const NOT_READY = 'Esta función todavía se está activando. Probá de nuevo en un rato.';
-const UUID = /^[0-9a-f-]{36}$/;
 const isMissing = (res) => res.status === 404 || res.status === 400;
 
 /** Lo que cualquiera puede ver de un jugador. */
@@ -142,7 +142,7 @@ function accept(env, a, b) {
 
 /** Aceptar o rechazar una solicitud que te mandaron. */
 export async function respondFriend(env, uid, otherId, yes) {
-  if (!UUID.test(String(otherId))) return { error: 'Solicitud inválida' };
+  if (!UUID_RE.test(String(otherId))) return { error: 'Solicitud inválida' };
   const [a, b] = pair(uid, otherId);
   if (!yes) return removeFriend(env, uid, otherId);
   const res = await rest(env, `friendships?user_a=eq.${a}&user_b=eq.${b}&requested_by=eq.${otherId}&status=eq.pending`, {
@@ -156,7 +156,7 @@ export async function respondFriend(env, uid, otherId, yes) {
 
 /** Sacar a un amigo, cancelar o rechazar una solicitud. */
 export async function removeFriend(env, uid, otherId) {
-  if (!UUID.test(String(otherId))) return { error: 'Solicitud inválida' };
+  if (!UUID_RE.test(String(otherId))) return { error: 'Solicitud inválida' };
   const [a, b] = pair(uid, otherId);
   const res = await rest(env, `friendships?user_a=eq.${a}&user_b=eq.${b}`, { method: 'DELETE' });
   return res.ok ? { ok: true } : { error: NOT_READY };
@@ -214,7 +214,7 @@ export function mergeRanking(real, mode, now = Date.now()) {
 
 /** ¿Son amigos de verdad? (para que no se pueda invitar a cualquiera) */
 export async function areFriends(env, a, b) {
-  if (!UUID.test(String(b))) return false;
+  if (!UUID_RE.test(String(b))) return false;
   const [x, y] = pair(a, b);
   const res = await rest(env, `friendships?user_a=eq.${x}&user_b=eq.${y}&status=eq.accepted&select=user_a`);
   return res.ok && (await res.json()).length > 0;

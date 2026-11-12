@@ -10,7 +10,7 @@ import { drawPano, paintBack } from './panos.js';
 const PANO_PX = 2048; // lado de la textura de los paños pintados
 import { SENAS, SENA_MS, SENA_GLANCE, TIMING, ROUTES, AMBIENTE_CACHE, AMBIENTE_FADE_MS } from './config.js';
 import { newDeck, cardName } from './engine.js';
-import { SCENE, CARD, FONT, LIGHT, COSMETIC_LOOK } from './theme.js';
+import { SCENE, CARD, FONT, COSMETIC_LOOK } from './theme.js';
 import { store, KEYS } from './dom.js';
 
 const CARD_W = 0.1;

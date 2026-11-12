@@ -11,7 +11,7 @@ import {
   lightShaft, ceilingFan, label, plate,
 } from './amb-kit.js';
 import {
-  plankTex, checkerTex, brickTex, tileTex, bottleShelfTex, pictureTex, chair, sideTable, cup, glassware, pottedPlant,
+  checkerTex, brickTex, bottleShelfTex, pictureTex, chair, sideTable, cup, glassware, pottedPlant,
 } from './amb-piezas.js';
 import { dust } from './paisaje.js';
 

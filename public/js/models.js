@@ -115,8 +115,6 @@ function twoBone(a, b, end, target, pole) {
   aim(b, end, A.clone().addScaledVector(dir, d));
 }
 
-const ease = (t) => t * t * (3 - 2 * t);
-
 /**
  * Un personaje armado a partir del molde. `root` va en la escena: mira hacia +z (la mesa) y se para en el piso.
  * pose({ headYaw, headDown, cards, reach, reachTo, leftTo }) lo acomoda; face.set(expr, talking, bite) hace las señas.
