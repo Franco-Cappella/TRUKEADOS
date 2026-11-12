@@ -44,7 +44,7 @@ botón principal oro con reflejo de moneda, selección de texto oro y "te mira" 
 | `package.json` | `@fontsource-variable/archivo` → `@fontsource-variable/hanken-grotesk`. |
 | `src/styles/base.css` | `--font` a `'Hanken Grotesk Variable', 'Hanken Grotesk', …`; botón principal blanco con letra negra (hover `--accent-hover`); sacar el reflejo de moneda; selección de texto blanca con tinta negra. |
 | `src/styles/landing.css`, `estudios.css` | Sacar los `font-stretch` (no hacen nada con Hanken); títulos y rótulos en mayúsculas como en el juego; "te mira" en `--text`; el campo de paño, fuera. |
-| `src/styles/tokens.css` | Volver a sincronizar (`npm run sync`) para traer los tokens nuevos. Los alias heredados evitan que se rompa antes de cambiar el CSS. |
+| `src/styles/tokens.css` | Es una copia vieja (la trae `npm run sync`). La versión nueva está en `brand/tokens.css`, con el mismo contenido que la del juego; al migrar, `src/main.tsx` tiene que importar `../brand/tokens.css`. Los alias heredados evitan que se rompa antes de cambiar el CSS. |
 | `index.html` | Precargar Hanken Grotesk en lugar de Archivo; `theme-color` `#0a0a0a`. |
 | `src/ui/Footer.tsx`, `docs/CONTRATO.md`, `public/llms.txt` | Crédito de la tipografía: "Hanken Grotesk, de Hanken Design Co. (OFL)". |
 | `src/three/bar/palette.ts` | Revisar: la escena puede seguir a color, pero ningún color de ahí va a la interfaz. |

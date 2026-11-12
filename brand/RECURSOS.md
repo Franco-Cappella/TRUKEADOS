@@ -17,12 +17,14 @@ sola. Qué se copia:
 | `public/js/theme.js` | `src/game/theme.js` | Colores del canvas (lo usa `characters.js`) |
 | `public/js/config.js` | `src/game/config.js` | Nombre (`APP_NAME`), señas (`SENAS`), nombres de bots, tiempos, opciones de sala |
 | `public/js/engine.js` (si hace falta) | `src/game/engine.js` | `cardName`, `rank`, `tanto` |
-| `brand/tokens.css` | `src/styles/tokens.css` | Tokens (blanco y negro; sin el `@import` de la fuente) |
+| `brand/tokens.css` | `src/styles/tokens.css` | Tokens (blanco y negro) |
 | `brand/logo/*.svg` | `public/brand/` | Logos |
 
 Los archivos copiados **no se editan** en la página: si hay que cambiarlos, se cambia el juego y se
 vuelve a sincronizar. `characters.js`, `theme.js`, `config.js` y `engine.js` no usan el DOM al
 importarse, así que funcionan en cualquier bundler.
+
+La documentación de diseño (DESIGN.md, `brand/` y `docs/landing/`) no pasa por ese script: está en los dos repos y se sincroniza con `npm run diseno:sync` (ver DESIGN.md).
 
 ---
 

@@ -6,6 +6,9 @@
 <title>Trukeados · Marca</title>
 <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
 <style>
   /* Lámina de marca: documentación interna. Blanco y negro, Hanken Grotesk. Usa solo tokens.css.
      Para ver las caras de los personajes, servir la carpeta del repo por HTTP (npx serve .) y abrir /brand/lamina.html */
@@ -137,7 +140,7 @@
     <h2>Logo</h2>
     <div class="grid g3">
       <div class="tile dark span2"><div class="art"><span class="name">Truke<span>ados</span></span></div><small>El nombre · Hanken Grotesk 800 + 400 · como en el menú</small></div>
-      <div class="tile dark"><div class="art"><img src="../public/favicon.svg" alt="Favicon: dos naipes cruzados, uno blanco y uno calado" style="max-height:110px"></div><small>Favicon · la marca blanco y negro</small></div>
+      <div class="tile dark"><div class="art"><img src="../public/favicon.svg" alt="Favicon: dos naipes cruzados, uno blanco y uno calado" style="max-height:110px" onerror="this.onerror=null;this.src='logo/marca-mono-blanco.svg'"></div><small>Favicon · la marca blanco y negro</small></div>
       <div class="tile light span2"><div class="art"><span class="name">Truke<span>ados</span></span></div><small>Sobre fondo claro · negro</small></div>
       <div class="tile dark"><div class="art"><img src="logo/logo-horizontal-mono-blanco.svg" alt="Logo anterior en una tinta blanca"></div><small>SVG anterior, una tinta · mientras no haya logo nuevo</small></div>
     </div>
@@ -256,8 +259,10 @@
 <script type="module">
   // caras reales: characters.js y config.js del juego (requiere HTTP)
   try {
-    const { drawCharacter, lookFor, W, H } = await import('../public/js/characters.js');
-    const { SENAS, BOT_NAMES } = await import('../public/js/config.js');
+    // En el juego: public/js/. En la landing: src/game/ (copias del juego).
+    const pick = (a, b) => import(a).catch(() => import(b));
+    const { drawCharacter, lookFor, W, H } = await pick('../public/js/characters.js', '../src/game/characters.js');
+    const { SENAS, BOT_NAMES } = await pick('../public/js/config.js', '../src/game/config.js');
     const box = document.getElementById('faces');
     box.innerHTML = '';
     const CROP = { x: 106, y: 100, size: 300 };

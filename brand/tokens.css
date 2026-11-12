@@ -2,9 +2,8 @@
    Salen del juego: :root de public/css/truco.css y public/js/theme.js. Ver brand/BRAND.md.
    Las páginas derivadas (landing, reglas, prensa) importan este archivo tal cual.
    Los nombres del juego (--bg, --surface, --text, --accent…) se mantienen iguales.
-   La interfaz es negro, blanco y grises; el color lo ponen las cartas, los personajes y la mesa 3D. */
-
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap');
+   La interfaz es negro, blanco y grises; el color lo ponen las cartas, los personajes y la mesa 3D.
+   La fuente no se carga acá: cada página la trae (brand/BRAND.md §4). */
 
 :root {
   /* ---------------------------------------------------------------- neutros */

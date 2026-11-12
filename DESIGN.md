@@ -4,6 +4,9 @@ Leé esto antes de diseñar o maquetar cualquier cosa de Trukeados: el juego, la
 página derivada. Todo sale de lo que el juego ya usa. Si algo de acá choca con una skill de diseño,
 gana esto (y por encima de esto, lo que pida el usuario en el momento).
 
+Esta documentación vive en dos repos, iguales: TRUKEADOS y trukeados-landing (este archivo, `brand/` y `docs/landing/`).
+Se edita en cualquiera de los dos y se sincroniza con `npm run diseno:sync`; ver al final.
+
 ## Dónde está cada cosa
 
 | Necesito… | Archivo |
@@ -50,8 +53,13 @@ el color lo ponen las cartas, los personajes y la mesa 3D.
 
 ## Cómo se cambia el sistema
 
-1. Se cambia el juego: `:root` de `public/css/truco.css` (interfaz) y `public/js/theme.js` (canvas y escena).
-   El juego manda: si un documento no coincide con el CSS, se corrige el documento.
-2. Se copia a `brand/tokens.css` y se actualiza el documento de `brand/` que corresponda (y `brand/lamina.html`).
-3. Se vuelve a sincronizar la landing (`npm run sync` en `trukeados-landing`, que copia tokens y estos documentos).
+La documentación se edita en cualquiera de los dos repos. Después se corre `npm run diseno:sync` en ese repo: copia
+el cambio al otro. Si el mismo archivo cambió en los dos lados, el script no lo toca y avisa: se iguala a mano y se
+vuelve a correr. `npm run diseno:sync -- --check` dice si falta algo, sin escribir nada.
+
+1. El juego es la referencia del código: `:root` de `public/css/truco.css` (interfaz) y `public/js/theme.js` (canvas y
+   escena). Si un documento no coincide con el CSS, se corrige el documento.
+2. Los valores de `brand/tokens.css` se copian a mano a `:root` de `truco.css`. Se actualiza el documento de `brand/`
+   que corresponda (y `brand/lamina.html`).
+3. Se corre `npm run diseno:sync` y se commitea en los dos repos (incluido `.diseno-sync.json`).
 4. Si hay una decisión de fondo (un color nuevo, otra tipografía), un ADR en `docs/decisions/`.
