@@ -259,6 +259,8 @@ export const ANTICHEAT = {
   lookPenalty: 1500, // ms sin ver señas después de pasarse (la mirada igual se mueve: los demás la ven)
   senaGap: 700, // ms mínimos entre dos señas del mismo jugador
   msgBurst: { n: 120, ms: 5000 }, // mensajes por conexión por ventana; los que sobran se descartan
+  joinBurst: { n: 4, ms: 10000 }, // "join" por conexión (cada uno lee la base): los que sobran se descartan
+  chatBurst: { n: 6, ms: 5000 }, // mensajes de chat por conexión: los que sobran se descartan
 };
 
 // ------------------------------------------------------------------ bots

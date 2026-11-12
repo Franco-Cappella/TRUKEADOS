@@ -50,7 +50,7 @@ export async function verifyToken(env, token) {
     const claims = part(p);
     const aud = [].concat(claims.aud);
     if (claims.iss !== `${env.SUPABASE_URL}/auth/v1` || !aud.includes('authenticated')) return null;
-    if (!claims.sub || claims.exp * 1000 < Date.now()) return null;
+    if (!claims.sub || typeof claims.exp !== 'number' || claims.exp * 1000 < Date.now()) return null;
     if (!(await signatureOk(env, token, header))) return null;
     return { id: claims.sub, email: claims.email || '' };
   } catch {

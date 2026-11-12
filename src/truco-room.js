@@ -157,7 +157,8 @@ export class TrucoRoom extends DurableObject {
     }
     if (msg.t === 'ping') return this.send(ws, { t: 'pong', now: Date.now() });
     if (!this.room) return this.send(ws, { t: 'notfound' });
-    if (msg.t !== 'join' && this.flooding(ws)) return; // un cliente que manda de más: se descarta lo que sobra
+    // un cliente que manda de más: se descarta lo que sobra ("join" lee la base: tiene su propio límite, más corto)
+    if (msg.t === 'join' ? this.flooding(ws, 'join', ANTICHEAT.joinBurst) : this.flooding(ws)) return;
 
     // entrar pide sesión: el jugador es el id de la cuenta y el nombre, el de su perfil (ver src/auth.js)
     let account = null;
@@ -179,7 +180,8 @@ export class TrucoRoom extends DurableObject {
     const pid = account ? account.pid : ws.deserializeAttachment()?.pid;
     const seat = pid ? this.seatOf(pid) : null;
     const isHost = pid && pid === r.host;
-    const lobbyHost = isHost && r.status === 'lobby';
+    // en la partida rápida no hay anfitrión que maneje la mesa (no puede echar, mover, ni tocar a los rivales automáticos)
+    const lobbyHost = isHost && r.status === 'lobby' && !r.quick;
 
     switch (msg.t) {
       case 'join': {
@@ -249,8 +251,9 @@ export class TrucoRoom extends DurableObject {
 
       case 'addbot': {
         if (!lobbyHost) return;
-        const to = Number.isInteger(msg.seat) && !r.seats[msg.seat] ? msg.seat : this.freeSeat();
-        if (to == null || to >= r.seats.length) return;
+        const asked = Number.isInteger(msg.seat) && msg.seat >= 0 && msg.seat < r.seats.length && !r.seats[msg.seat];
+        const to = asked ? msg.seat : this.freeSeat();
+        if (to == null) return;
         r.seats[to] = { bot: true, name: this.botName() };
         return this.commit();
       }
@@ -283,7 +286,7 @@ export class TrucoRoom extends DurableObject {
       }
 
       case 'start': {
-        if (!lobbyHost || r.quick) return;
+        if (!lobbyHost) return;
         // de a uno: así botName() ve los nombres que ya se pusieron y no repite
         if (msg.fillBots) r.seats.forEach((s, i) => s || (r.seats[i] = { bot: true, name: this.botName() }));
         if (r.seats.some((s) => !s)) return this.send(ws, { t: 'error', msg: 'Faltan jugadores (o llená con bots)' });
@@ -369,7 +372,7 @@ export class TrucoRoom extends DurableObject {
 
       case 'chat': {
         const text = String(msg.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, MAX_CHAT_TEXT);
-        if (!text || !pid) return;
+        if (!text || !pid || this.flooding(ws, 'chat', ANTICHEAT.chatBurst)) return;
         // los que miran tienen su chat aparte: a los jugadores no les llega
         if (seat == null && r.status !== 'lobby') return this.specSay(ws, text);
         const name = seat != null ? r.seats[seat].name : ws.deserializeAttachment()?.name || 'Espectador';
@@ -1407,11 +1410,12 @@ export class TrucoRoom extends DurableObject {
   }
 
   // Ventana de mensajes por conexión: true si este mensaje sobra.
-  flooding(ws) {
-    const { n, ms } = ANTICHEAT.msgBurst;
+  flooding(ws, kind = 'msg', { n, ms } = ANTICHEAT.msgBurst) {
     const now = Date.now();
-    let w = this.limits.get(ws);
-    if (!w || now - w.from >= ms) this.limits.set(ws, (w = { from: now, count: 0 }));
+    let all = this.limits.get(ws);
+    if (!all) this.limits.set(ws, (all = {}));
+    let w = all[kind];
+    if (!w || now - w.from >= ms) all[kind] = w = { from: now, count: 0 };
     return ++w.count > n;
   }
 
