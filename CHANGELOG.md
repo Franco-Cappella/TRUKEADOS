@@ -4,6 +4,8 @@
 - **Irse al mazo en equipo es un pedido**, como rendirse: en 2 vs 2 tienen que estar de acuerdo los dos y en 3 vs 3,
   dos de los tres. A tus compañeros les llega "X quiere irse al mazo" con "Al mazo" / "Seguir la mano" y una cuenta
   de 15 segundos; si la mano termina antes, el pedido se cae. Los bots ya no se llevan al mazo a su compañero.
+- **Dorsos de la tienda arreglados**: el dorso azul, verde, negro o de la noche estrellada se veía solo en una esquina
+  de la carta, mezclado con el de siempre (la imagen nueva era más chica que la textura). Ahora se ve entero.
 
 ## 1.27.1 — la noche estrellada, como el cuadro; mesas en juego; buscadores
 - **Noche estrellada rehecha** sobre la composición y la técnica del cuadro de Van Gogh (1889): estás en una loma

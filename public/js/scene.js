@@ -290,6 +290,21 @@ function backCanvas([bg, ink]) {
   return c;
 }
 
+// El dorso de la tienda al tamaño del de siempre: la textura de WebGL queda con el tamaño de la primera imagen
+// (512×788, fijo) y una más chica se pintaba solo en una esquina, mezclada con el dorso de siempre.
+const backImages = new Map();
+function backImage(dorso, look, orig) {
+  if (!backImages.has(dorso)) {
+    const src = look.backDraw ? paintBack(look.backDraw) : backCanvas(look.back);
+    const c = document.createElement('canvas');
+    c.width = orig.width;
+    c.height = orig.height;
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    backImages.set(dorso, c);
+  }
+  return backImages.get(dorso);
+}
+
 // Lo que cada uno tiene delante en la mesa (tienda, ranura "objeto"). colors: los de COSMETIC_LOOK.
 function tableObject(id) {
   const col = COSMETIC_LOOK[id]?.colors;
@@ -995,7 +1010,7 @@ export class TableScene {
       t.userData.orig = t.image;
     }
     this.backKey = dorso || null;
-    t.image = backLook?.backDraw ? paintBack(backLook.backDraw) : back ? backCanvas(back) : t.userData.orig;
+    t.image = dorso && (back || backLook?.backDraw) ? backImage(dorso, backLook, t.userData.orig) : t.userData.orig;
     t.needsUpdate = true;
   }
 
