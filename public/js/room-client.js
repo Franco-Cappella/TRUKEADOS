@@ -48,7 +48,8 @@ let party = null;
 const partyStage = () => (party ||= new PartyStage($('#pl-stage')));
 
 // en equipo uno se va al mazo por todos (salvo en un duelo de pica-pica)
-const mazoText = (g) => (g.n > 2 && !g.h?.duel ? 'Nos vamos al mazo' : 'Me voy al mazo');
+const teamMazo = (g) => g.n > 2 && !g.h?.duel; // en equipo (y fuera de un duelo de pica-pica) se va todo el equipo
+const mazoText = (g) => (teamMazo(g) ? 'Nos vamos al mazo' : 'Me voy al mazo');
 const cardImg = (c, alt = '') => `<img src="${ROUTES.card(c)}" alt="${esc(alt)}">`;
 
 export class RoomClient {
@@ -201,7 +202,8 @@ export class RoomClient {
       cantar: () => ['tanto', `${a.value ?? g.h.myTanto}`, `${a.value ?? g.h.myTanto}`],
       buenas: () => ['tanto', 'Son buenas', 'Son buenas'],
       flor: () => ['call', `¡${FLOR_NAMES[a.kind]}!`, FLOR_NAMES[a.kind]],
-      mazo: () => ['mazo', mazoText(g), mazoText(g)],
+      // en equipo el mazo es un pedido (lo tienen que aceptar): se dice cuando se van de verdad
+      mazo: () => !teamMazo(g) && ['mazo', mazoText(g), mazoText(g)],
       nomostrar: () => ['nomuestra', 'Me voy al mazo', 'Me voy al mazo'],
     }[a.t]?.();
     if (said) {
@@ -1031,9 +1033,11 @@ export class RoomClient {
       }
       if (ask?.can.primera) add('equipo', 'Compañero', '¿Pongo o voy?', '', () => this.send({ t: 'ask', kind: 'primera' }), 'Le preguntás al pie si tirás alta para ganar la primera (poner) o baja y mata él (ir)');
     }
-    if (a.mazo) {
+    // en equipo, irse al mazo es un pedido: si ya lo pediste (o dijiste que sí), se espera al resto
+    if (a.mazo && !this.st.mazoVote?.voted) {
+      const team = teamMazo(g);
       // dos toques: el primero pide confirmación (sin ventanas del navegador)
-      add('mano', 'Mano', this.mazoArmed ? 'Sí, me voy' : 'Irse al mazo', this.mazoArmed ? 'danger' : '', () => {
+      add('mano', 'Mano', this.mazoArmed ? (team ? 'Sí, pedirlo' : 'Sí, me voy') : 'Irse al mazo', this.mazoArmed ? 'danger' : '', () => {
         if (this.mazoArmed) {
           this.mazoArmed = false;
           return this.act({ t: 'mazo' });
@@ -1045,7 +1049,7 @@ export class RoomClient {
           this.render();
         }, MAZO_CONFIRM_MS);
         this.render();
-      });
+      }, team ? 'Se va todo el equipo: se lo pedís a tus compañeros y tienen que estar de acuerdo' : undefined);
       // irse mostrando las cartas que no tiraste ("mirá lo que tenía")
       if (this.mazoArmed) {
         add('mano', 'Mano', 'Me voy y muestro', 'danger', () => {
@@ -1239,24 +1243,29 @@ export class RoomClient {
     this.placePlates(this.platePos);
   }
 
-  // En equipo, rendirse se le pide al resto: a los que tienen que contestar, "Rendirnos" o "Seguir jugando"; al que ya
+  // En equipo, rendirse e irse al mazo se le piden al resto: a los que tienen que contestar, que sí o que no; al que ya
   // contestó, cuántos están de acuerdo y cuánto falta para que venza el pedido.
   renderSurrender() {
     const el = $('#surrender-vote');
-    const v = this.st?.surrender;
     clearInterval(this.svT);
-    if (!v || this.st.room.status !== 'playing') return el.classList.add('hidden');
+    const playing = this.st?.room.status === 'playing';
+    const votes = [
+      ['mazo', this.st?.mazoVote, 'Pediste irte al mazo', (n) => `${n} quiere irse al mazo`, 'Seguir la mano', 'Al mazo'],
+      ['surrender', this.st?.surrender, 'Pediste rendirte', (n) => `${n} quiere rendirse`, 'Seguir jugando', 'Rendirnos'],
+    ].filter(([, v]) => v && playing);
+    if (!votes.length) return el.classList.add('hidden');
     el.classList.remove('hidden');
-    const until = Date.now() + v.left;
-    const who = v.by === this.you ? 'Pediste rendirte' : `${esc(this.nameOf(v.by))} quiere rendirse`;
-    const dots = Array.from({ length: v.of }, (_, k) => `<i class="${k < v.yes.length ? 'y' : k < v.yes.length + v.no.length ? 'n' : ''}"></i>`).join('');
-    const secs = () => Math.max(0, Math.ceil((until - Date.now()) / 1000));
-    el.innerHTML = `<div class="sv-h"><b>${who}</b><small>Tienen que estar de acuerdo ${v.need} de ${v.of} · <span id="sv-left">${secs()}</span> s</small></div>
+    const until = votes.map(([, v]) => Date.now() + v.left);
+    const secs = (k) => Math.max(0, Math.ceil((until[k] - Date.now()) / 1000));
+    el.innerHTML = votes.map(([kind, v, mine, theirs, no, yes], k) => {
+      const who = v.by === this.you ? mine : theirs(esc(this.nameOf(v.by)));
+      const dots = Array.from({ length: v.of }, (_, i) => `<i class="${i < v.yes.length ? 'y' : i < v.yes.length + v.no.length ? 'n' : ''}"></i>`).join('');
+      return `<div class="sv-one"><div class="sv-h"><b>${who}</b><small>Tienen que estar de acuerdo ${v.need} de ${v.of} · <span data-sv-left="${k}">${secs(k)}</span> s</small></div>
       <div class="sv-dots" aria-label="${v.yes.length} de ${v.need}">${dots}</div>
-      ${v.voted ? '<p class="sv-wait">Esperando a tu equipo…</p>' : '<div class="sv-acts"><button type="button" class="btn ghost" data-sv="0">Seguir jugando</button><button type="button" class="btn danger" data-sv="1">Rendirnos</button></div>'}`;
+      ${v.voted ? '<p class="sv-wait">Esperando a tu equipo…</p>' : `<div class="sv-acts"><button type="button" class="btn ghost" data-sk="${kind}" data-sv="0">${no}</button><button type="button" class="btn danger" data-sk="${kind}" data-sv="1">${yes}</button></div>`}</div>`;
+    }).join('');
     this.svT = setInterval(() => {
-      const t = $('#sv-left');
-      if (t) t.textContent = secs();
+      for (const t of el.querySelectorAll('[data-sv-left]')) t.textContent = secs(Number(t.dataset.svLeft));
     }, 500);
   }
 

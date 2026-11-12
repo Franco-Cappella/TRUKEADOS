@@ -145,10 +145,10 @@ function bindGameUI() {
     room?.act({ t: 'rendirse' });
   };
 
-  // contestar el pedido de rendirse de tu equipo
+  // contestar el pedido de tu equipo (rendirse o irse al mazo)
   $('#surrender-vote').addEventListener('click', (e) => {
     const b = e.target.closest('[data-sv]');
-    if (b) room?.send({ t: 'surrender-vote', yes: b.dataset.sv === '1' });
+    if (b) room?.send({ t: b.dataset.sk === 'mazo' ? 'mazo-vote' : 'surrender-vote', yes: b.dataset.sv === '1' });
   });
 
   // vista: primera persona o segunda (de frente, te ves la cara), con el botón o la tecla V

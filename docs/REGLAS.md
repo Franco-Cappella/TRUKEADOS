@@ -30,7 +30,8 @@ Fuente principal: *Reglamento de Truco* de juegosdesalon.com
 | La segunda y la tercera ronda las empieza quien ganó la anterior (en parda, la mano) | `resolveRound` | [R] glosario: "en las bazas segunda y tercera, el mano es el que ha ganado la baza anterior" |
 | Gana la mano quien gana dos rondas: ganar primera y perder segunda **no** termina la mano, se juega tercera | `handWinner` | [R] "El truco": "para ganar el truco hay que ganar dos de ellas" |
 | Irse al mazo: en equipo se va todo el equipo; el rival cobra lo que valga el truco | `act` mazo | |
-| Rendirse en equipo: lo tienen que aceptar 2 de 2 (2 vs 2) o 2 de 3 (3 vs 3); bots y ausentes cuentan como sí. El pedido dura 25 s y si no sale hay que esperar 1 min | `TrucoRoom.askSurrender`, `SURRENDER_NEED` | regla de la casa (como en otros juegos por equipos) |
+| Irse al mazo en equipo es un pedido (como rendirse): lo tienen que aceptar 2 de 2 (2 vs 2) o 2 de 3 (3 vs 3) de los que siguen en la mano; bots y ausentes cuentan como sí, y tocar "Irse al mazo" cuando ya lo pidió un compañero es decir que sí. Al equipo le llega "X quiere irse al mazo"; el pedido dura 15 s, es de esa mano (si la mano termina se cae) y si no sale hay que esperar 8 s para volver a pedirlo. Un bot no se lleva al mazo a un compañero persona conectado (juega otra cosa). En el duelo de pica-pica uno se va solo | `TrucoRoom.openVote` (`mazo`), `MAZO_NEED` | regla de la casa |
+| Rendirse en equipo: lo tienen que aceptar 2 de 2 (2 vs 2) o 2 de 3 (3 vs 3); bots y ausentes cuentan como sí. El pedido dura 25 s y si no sale hay que esperar 1 min | `TrucoRoom.openVote` (`surrender`), `SURRENDER_NEED` | regla de la casa (como en otros juegos por equipos) |
 | Irse al mazo en primera sin envido cantado: +1 de envido para el rival | `act` mazo | costumbre de mesa |
 
 ### Envido

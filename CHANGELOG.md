@@ -1,5 +1,10 @@
 # Cambios
 
+## Sin publicar
+- **Irse al mazo en equipo es un pedido**, como rendirse: en 2 vs 2 tienen que estar de acuerdo los dos y en 3 vs 3,
+  dos de los tres. A tus compañeros les llega "X quiere irse al mazo" con "Al mazo" / "Seguir la mano" y una cuenta
+  de 15 segundos; si la mano termina antes, el pedido se cae. Los bots ya no se llevan al mazo a su compañero.
+
 ## 1.27.1 — la noche estrellada, como el cuadro; mesas en juego; buscadores
 - **Noche estrellada rehecha** sobre la composición y la técnica del cuadro de Van Gogh (1889): estás en una loma
   mirando el valle, con el ciprés enorme a la izquierda, el pueblo con la iglesia de campanario fino y las ventanas

@@ -1180,6 +1180,8 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .sv-dots i.n { background: var(--text); }
 .sv-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sv-wait { margin: 0; font-size: 13px; color: var(--text-dim); }
+.sv-one { display: flex; flex-direction: column; gap: 10px; }
+.sv-one + .sv-one { padding-top: 10px; border-top: 1px solid var(--line-2); }
 
 /* ---------- amigos conectados (panel de la derecha, en el menú y en la partida): friends.js ---------- */
 .fd { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.45); display: flex; justify-content: flex-end; }

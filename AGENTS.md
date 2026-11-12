@@ -71,6 +71,7 @@ test/auth.test.js         verificación del token de Supabase y validación del 
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
 test/sala.test.js         la sala (TrucoRoom) de punta a punta: bots, consultas, señas, desconexiones
 test/rendirse.test.js     rendirse en equipo: el pedido que tienen que aceptar los compañeros (SURRENDER_NEED)
+test/mazo-equipo.test.js  irse al mazo en equipo: el pedido que tienen que aceptar los compañeros (MAZO_NEED)
 test/limits.test.js       límite de pedidos a /api (src/limits.js)
 test/cuenta.test.js       borrar la cuenta (con el nombre escrito a mano) y bajar los datos (src/account.js)
 test/helpers/             banco de pruebas de la sala en Node (storage, sockets, Lobby, cuentas y reloj de mentira)
@@ -112,9 +113,9 @@ docs/REGLAS.md            reglas implementadas, decisiones de la mesa y pendient
 ## Protocolo WebSocket (`/api/rooms/CÓDIGO/ws`)
 Cliente → servidor: `join {token,spectate}` (el token de Supabase: el servidor saca de ahí el id y el nombre), `sit {seat}`, `stand`, `addbot {seat}`, `removebot {seat}`,
 `kick {seat}`, `move {from, to}` (anfitrión: cambia o intercambia lugares en la sala de espera), `config {cfg}`, `start {fillBots}`, `act {a}`, `look {target}`, `sena {sena}`, `chat {text}`,
-`rematch` (pedir o aceptar la revancha), `rematch-no`, `leave` (tocó "Salir": la revancha ya no lo espera), `away {on}` (pestaña oculta), `to-lobby`, `ping`.
+`surrender-vote {yes}` / `mazo-vote {yes}` (contestar el pedido de tu equipo de rendirse o de irse al mazo), `rematch` (pedir o aceptar la revancha), `rematch-no`, `leave` (tocó "Salir": la revancha ya no lo espera), `away {on}` (pestaña oculta), `to-lobby`, `ping`.
 
-Servidor → cliente: `state {room, you, isHost, game, dealLeft, now}` (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
+Servidor → cliente: `state {room, you, isHost, game, surrender, mazoVote, dealLeft, now}` (`surrender`/`mazoVote`: el pedido abierto de tu equipo) (`dealLeft`: ms de reparto que faltan), `error {msg}`, `chat {msg}`,
 `chat-history {messages}`, `gaze {seat,target}`, `gaze-all {gaze}`, `sena {seat,sena,self?,seenBy?}`,
 `match {id, players, rated}` (la partida terminada quedó guardada: ELO y monedas de cada uno), `notfound`, `auth` (sin sesión válida o sin perfil: el cliente vuelve a la pantalla de entrada), `pong`.
 
@@ -327,6 +328,13 @@ ajedrez). Al separarlo se movió a la raíz, se partió `main.js` en módulos, s
 colores, y se arreglaron: botones chicos, mazo partido después del corte, parpadeo que se confundía con
 la seña "ciego", "no te toca" por doble envío, cantos fuera de turno, y la carta de arriba de las dos
 encimadas ahora queda quemada. Ver [CHANGELOG.md](CHANGELOG.md).
+
+## Pedidos al equipo (rendirse e irse al mazo)
+En equipo, rendirse y irse al mazo no los decide uno solo: `act {rendirse}` o `act {mazo}` abren un pedido (`openVote` en
+truco-room.js, `VOTES`, guardado en `r.votes[tipo][equipo]`) que tienen que aceptar `SURRENDER_NEED` / `MAZO_NEED` del equipo
+(para el mazo, de los que siguen en la mano). Los bots y los ausentes cuentan como sí. Cuando sale, la sala hace la jugada
+en el motor con el asiento del que lo pidió (y la graba). El del mazo es de una mano (`staleVote`). Un bot o el que juega
+por un ausente no elige el mazo si haría falta el sí de una persona conectada (`mazoNeedsPeople`).
 
 ## Abandonar una partida
 Con la pestaña oculta (`away`) corre la misma cuenta, pero no se pierde: juega un bot hasta que vuelva. Si le toca

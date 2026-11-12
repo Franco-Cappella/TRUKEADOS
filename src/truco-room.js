@@ -1,14 +1,28 @@
 import { DurableObject } from 'cloudflare:workers';
-import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie, tanto } from '../public/js/engine.js';
+import { newGame, act, actionsFor, nextHand, rematch, viewFor, waitingFor, team, closeShow, envidoVoices, trucoCallable, isPie, tanto } from '../public/js/engine.js';
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, cleanLook, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT, FARM } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, cleanLook, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, MAZO_NEED, ANTICHEAT, FARM } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
 import { rivalSeat, nextRivalIn, fakeRecent } from './matchmaking.js';
 import { recordMatch, recentMatches } from './matches.js';
+
+// Pedidos al equipo: cuántos tienen que estar de acuerdo, cuánto dura el pedido y qué se avisa.
+const VOTES = {
+  surrender: {
+    need: SURRENDER_NEED, ttl: 'surrenderVote', cool: 'surrenderCooldown',
+    coolMsg: 'Esperá un poco para volver a pedir rendirse',
+    ask: (n) => `${n} quiere rendirse`, no: (n) => `${n} quiere seguir jugando`,
+  },
+  mazo: {
+    need: MAZO_NEED, ttl: 'mazoVote', cool: 'mazoCooldown',
+    coolMsg: 'Esperá un poco para volver a pedir irse al mazo',
+    ask: (n) => `${n} quiere irse al mazo`, no: (n) => `${n} quiere seguir la mano`,
+  },
+};
 
 // Memoria de situaciones de los bots (ver BotMemo en bot.js): una por isolate, compartida por todas las salas
 // que corren en él. Al arrancar se trae lo que guardó el Lobby; lo que madura se le manda al terminar cada mano.
@@ -298,13 +312,23 @@ export class TrucoRoom extends DurableObject {
         if (r.status !== 'playing' || seat == null) return;
         // en equipo, rendirse es un pedido: lo tienen que aceptar los compañeros
         if (msg.a?.t === 'rendirse' && SURRENDER_NEED[r.cfg.mode] && r.game?.status === 'playing') {
-          const err = this.askSurrender(seat);
+          const err = this.openVote('surrender', seat);
           if (err) this.send(ws, { t: 'error', msg: err });
           return this.commit();
         }
         if (Date.now() < (r.dealUntil || 0)) {
           this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
           return this.sendState(ws); // el cliente pintó la jugada: el estado real lo corrige
+        }
+        // en equipo, irse al mazo también es un pedido: se va todo el equipo, así que tienen que estar de acuerdo
+        if (msg.a?.t === 'mazo' && this.mazoNeedsVote(seat)) {
+          if (!actionsFor(r.game, seat).mazo) {
+            this.send(ws, { t: 'error', msg: 'Ahora no te podés ir al mazo' });
+            return this.sendState(ws);
+          }
+          const err = this.openVote('mazo', seat, msg.a.show ? { t: 'mazo', show: true } : { t: 'mazo' });
+          if (err) this.send(ws, { t: 'error', msg: err });
+          return this.commit();
         }
         const seen = observe(r.game, seat, msg.a);
         const res = act(r.game, seat, msg.a);
@@ -345,7 +369,14 @@ export class TrucoRoom extends DurableObject {
       // Contestar el pedido de rendirse de tu equipo.
       case 'surrender-vote': {
         if (seat == null || r.status !== 'playing') return;
-        this.voteSurrender(seat, !!msg.yes);
+        this.castVote('surrender', seat, !!msg.yes);
+        return this.commit();
+      }
+
+      // Contestar el pedido de irse al mazo de tu equipo.
+      case 'mazo-vote': {
+        if (seat == null || r.status !== 'playing') return;
+        this.castVote('mazo', seat, !!msg.yes);
         return this.commit();
       }
 
@@ -497,7 +528,7 @@ export class TrucoRoom extends DurableObject {
 
   async tick() {
     const r = this.room;
-    if (r?.status === 'playing' && this.expireSurrender()) this.broadcastState(); // venció un pedido de rendirse
+    if (r?.status === 'playing' && this.expireVotes()) this.broadcastState(); // venció un pedido al equipo (rendirse, mazo)
     if (r?.status === 'lobby' && r.quick) return this.quickTick();
     if (r?.status === 'ended' && r.rematchBotAt && Date.now() >= r.rematchBotAt) {
       r.seats.forEach((s, i) => {
@@ -581,10 +612,15 @@ export class TrucoRoom extends DurableObject {
           console.error('bot failed', e);
         }
       }
+      // en equipo, un bot (o el que juega por un ausente) no se lleva al mazo a un compañero persona sin preguntarle:
+      // juega otra cosa
+      const noMazo = actor != null && this.mazoNeedsPeople(actor);
+      if (a?.t === 'mazo' && noMazo) a = null;
       let ok = !!a && this.botAct(actor, a);
       // si el bot falló o eligió algo que no vale, juega lo primero que entre (nunca se traba la mesa)
       if (!ok && !asked && !mustAnswer && !tells && actor != null && waitingFor(g).seats.includes(actor)) {
         for (const f of fallbackActions(g, actor)) {
+          if (f.t === 'mazo' && noMazo) continue;
           if (this.botAct(actor, f)) {
             console.warn('bot fallback', JSON.stringify(a), '->', JSON.stringify(f));
             a = f;
@@ -1195,6 +1231,7 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     const g = r.game;
     this.pace();
+    this.expireVotes(); // terminó la mano: el pedido de mazo que quedaba ya no vale
     if (g.status === 'ended' || (g.h.phase === 'ended' && !r.handEndedAt)) {
       this.learnDue = true;
       this.botHandTalk();
@@ -1243,72 +1280,130 @@ export class TrucoRoom extends DurableObject {
     }
   }
 
-  // ---- rendirse en equipo: un pedido que tienen que aceptar SURRENDER_NEED del equipo (los bots y los que no
-  // están cuentan como que sí: si no, un compañero ausente te deja trabado)
+  // ---- pedidos al equipo (VOTES): rendirse e irse al mazo. Los tiene que aceptar `need` del equipo (2 de 2 en 2v2,
+  // 2 de 3 en 3v3). Los bots y los que no están cuentan como que sí: si no, un compañero ausente te deja trabado.
+  // Quedan en r.votes[tipo][equipo]; el del mazo es de una mano y se cae solo cuando la mano termina.
   teamSeatsOf(T) {
     return this.room.seats.map((_, i) => i).filter((i) => team(i) === T);
   }
 
-  askSurrender(seat) {
+  // Los que votan: para rendirse, todo el equipo; para el mazo, los que siguen en la mano (en pica-pica, solo el
+  // del duelo, así que se va solo).
+  voters(kind, T) {
+    const h = this.room.game?.h;
+    const seats = this.teamSeatsOf(T);
+    return kind === 'mazo' ? seats.filter((i) => !h?.mazo[i]) : seats;
+  }
+
+  voteNeed(kind, T) {
+    return Math.min(VOTES[kind].need[this.room.cfg.mode] || 1, this.voters(kind, T).length);
+  }
+
+  mazoNeedsVote(seat) {
+    return !!MAZO_NEED[this.room.cfg.mode] && this.voteNeed('mazo', team(seat)) > 1;
+  }
+
+  // ¿Irse al mazo desde este asiento necesita el sí de una persona conectada del equipo?
+  mazoNeedsPeople(seat, now = Date.now()) {
+    if (!this.mazoNeedsVote(seat)) return false;
+    const T = team(seat);
+    const auto = this.voters('mazo', T).filter((i) => i === seat || this.room.seats[i]?.bot || this.isAway(i, now)).length;
+    return auto < this.voteNeed('mazo', T);
+  }
+
+  openVote(kind, seat, a = null) {
     const r = this.room;
     const T = team(seat);
     const now = Date.now();
-    r.surrender ||= {};
-    const cur = r.surrender[T];
-    if (cur) return this.voteSurrender(seat, true), null;
-    if ((r.surrenderCool?.[T] || 0) > now) return 'Esperá un poco para volver a pedir rendirse';
-    r.surrender[T] = { by: seat, yes: [seat], no: [], until: now + TIMING.surrenderVote };
-    for (const i of this.teamSeatsOf(T)) if (i !== seat && (r.seats[i]?.bot || this.isAway(i, now))) r.surrender[T].yes.push(i);
-    const name = r.seats[seat]?.name;
-    this.notifyTeam(T, `${name} quiere rendirse`);
-    this.checkSurrender(T);
+    const all = ((r.votes ||= {})[kind] ||= {});
+    if (all[T]) return this.castVote(kind, seat, true), null; // ya había uno: pedirlo también es decir que sí
+    if ((r.voteCool?.[kind]?.[T] || 0) > now) return VOTES[kind].coolMsg;
+    const v = { by: seat, yes: [seat], no: [], until: now + TIMING[VOTES[kind].ttl], hand: r.game?.handNo, a };
+    for (const i of this.voters(kind, T)) if (i !== seat && (r.seats[i]?.bot || this.isAway(i, now))) v.yes.push(i);
+    all[T] = v;
+    if (v.yes.length < this.voteNeed(kind, T)) this.notifyTeam(T, VOTES[kind].ask(r.seats[seat]?.name));
+    this.checkVote(kind, T);
     return null;
   }
 
-  voteSurrender(seat, yes) {
+  castVote(kind, seat, yes) {
     const r = this.room;
     const T = team(seat);
-    const cur = r.surrender?.[T];
-    if (!cur || cur.yes.includes(seat) || cur.no.includes(seat)) return;
-    (yes ? cur.yes : cur.no).push(seat);
-    if (!yes) this.notifyTeam(T, `${r.seats[seat]?.name} quiere seguir jugando`);
-    this.checkSurrender(T);
+    const v = r.votes?.[kind]?.[T];
+    if (!v || v.yes.includes(seat) || v.no.includes(seat) || !this.voters(kind, T).includes(seat)) return;
+    (yes ? v.yes : v.no).push(seat);
+    if (!yes) this.notifyTeam(T, VOTES[kind].no(r.seats[seat]?.name));
+    this.checkVote(kind, T);
   }
 
-  checkSurrender(T) {
+  checkVote(kind, T) {
     const r = this.room;
-    const cur = r.surrender?.[T];
-    if (!cur) return;
-    const need = SURRENDER_NEED[r.cfg.mode] || 1;
-    const seats = this.teamSeatsOf(T);
-    if (cur.yes.length >= need) {
-      delete r.surrender[T];
-      const res = act(r.game, cur.by, { t: 'rendirse' });
+    const v = r.votes?.[kind]?.[T];
+    if (!v) return;
+    if (this.staleVote(kind, v)) return void delete r.votes[kind][T];
+    const need = this.voteNeed(kind, T);
+    if (v.yes.length >= need) {
+      delete r.votes[kind][T];
+      return this.voteDone(kind, T, v);
+    }
+    if (this.voters(kind, T).length - v.no.length < need) this.failVote(kind, T);
+  }
+
+  // El del mazo es de una mano: si la mano terminó (o ya es otra), no vale más.
+  staleVote(kind, v) {
+    const g = this.room.game;
+    return kind === 'mazo' && (!g?.h || g.handNo !== v.hand || g.h.phase !== 'play');
+  }
+
+  voteDone(kind, T, v) {
+    const r = this.room;
+    if (kind === 'surrender') {
+      const res = act(r.game, v.by, { t: 'rendirse' });
       if (res.ok) {
-        this.rec.step(cur.by, { t: 'rendirse' });
-        this.addSystemChat(`El equipo de ${r.seats[cur.by]?.name} se rindió`);
+        this.rec.step(v.by, { t: 'rendirse' });
+        this.addSystemChat(`El equipo de ${r.seats[v.by]?.name} se rindió`);
         this.onGameChange();
       }
       return;
     }
-    if (seats.length - cur.no.length < need) this.failSurrender(T);
+    // mazo: se va el que lo pidió (el motor se lleva a todo el equipo)
+    const p = r.seats[v.by];
+    const seen = p && !p.bot ? observe(r.game, v.by, v.a) : [];
+    const res = act(r.game, v.by, v.a);
+    if (!res.ok) return this.notifyTeam(T, `No se pudo ir al mazo: ${res.error}`);
+    this.rec.step(v.by, v.a);
+    for (const e of seen) this.learnBuf.push({ pid: p.pid, ...e });
+    this.onGameChange();
   }
 
-  failSurrender(T) {
+  failVote(kind, T) {
     const r = this.room;
-    delete r.surrender[T];
-    (r.surrenderCool ||= {})[T] = Date.now() + TIMING.surrenderCooldown;
+    delete r.votes[kind][T];
+    ((r.voteCool ||= {})[kind] ||= {})[T] = Date.now() + TIMING[VOTES[kind].cool];
   }
 
-  expireSurrender(now = Date.now()) {
+  // Vence lo que no se contestó a tiempo y se cae el pedido de mazo de una mano que ya terminó.
+  expireVotes(now = Date.now()) {
     let any = false;
-    for (const [T, v] of Object.entries(this.room.surrender || {})) {
-      if (v && now >= v.until) {
-        this.failSurrender(Number(T));
+    for (const [kind, all] of Object.entries(this.room.votes || {})) {
+      for (const [T, v] of Object.entries(all || {})) {
+        if (!v) continue;
+        if (this.staleVote(kind, v)) delete all[T];
+        else if (now >= v.until) this.failVote(kind, Number(T));
+        else continue;
         any = true;
       }
     }
     return any;
+  }
+
+  // El pedido abierto de tu equipo, como lo ve el cliente.
+  voteView(kind, seat) {
+    const r = this.room;
+    const T = seat != null ? team(seat) : null;
+    const v = T != null && r.status === 'playing' ? r.votes?.[kind]?.[T] : null;
+    if (!v || this.staleVote(kind, v)) return null;
+    return { by: v.by, yes: v.yes, no: v.no, need: this.voteNeed(kind, T), of: this.voters(kind, T).length, left: Math.max(0, v.until - Date.now()), voted: v.yes.includes(seat) || v.no.includes(seat), show: !!v.a?.show };
   }
 
   // Un aviso que ven solo los de un equipo.
@@ -1551,7 +1646,7 @@ export class TrucoRoom extends DurableObject {
       if (d != null) at = Math.min(at, Math.max(now + 200, d));
     }
     for (const t of Object.values(r.botSenaDue || {})) at = Math.min(at, Math.max(now + 100, t));
-    for (const v of Object.values(r.surrender || {})) if (v) at = Math.min(at, Math.max(now + 100, v.until));
+    for (const all of Object.values(r.votes || {})) for (const v of Object.values(all || {})) if (v) at = Math.min(at, Math.max(now + 100, v.until));
     for (const [s, since] of Object.entries(r.afkSince || {})) if (!r.afkBot?.[s]) at = Math.min(at, Math.max(now + 100, since + TIMING.afk));
     if (r.talkQueue?.length) at = Math.min(at, Math.max(now + 100, r.talkQueue[0].at));
     for (const T of [0, 1]) {
@@ -1652,10 +1747,9 @@ export class TrucoRoom extends DurableObject {
       // consulta al compañero: qué puede preguntar y la consulta abierta de su equipo
       ask: seat != null && r.status === 'playing' && r.game?.h ? this.askView(seat) : null,
       // el pedido de rendirse de tu equipo (si hay uno abierto)
-      surrender: (() => {
-        const v = seat != null && r.status === 'playing' ? r.surrender?.[team(seat)] : null;
-        return v ? { by: v.by, yes: v.yes, no: v.no, need: SURRENDER_NEED[r.cfg.mode] || 1, of: this.teamSeatsOf(team(seat)).length, left: Math.max(0, v.until - Date.now()), voted: v.yes.includes(seat) || v.no.includes(seat) } : null;
-      })(),
+      surrender: this.voteView('surrender', seat),
+      // el pedido de irse al mazo de tu equipo (si hay uno abierto en esta mano)
+      mazoVote: this.voteView('mazo', seat),
       dealLeft: r.status === 'playing' ? Math.max(0, (r.dealUntil || 0) - Date.now()) : 0, // ms de reparto que faltan
       now: Date.now(),
     };

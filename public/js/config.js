@@ -108,6 +108,8 @@ export const TIMING = {
   foldWindow: 6000, // si el que ganó el envido se va al mazo sin mostrar, lo que les queda a los rivales para reclamar
   surrenderVote: 25_000, // en equipo, cuánto dura el pedido para rendirse (lo tienen que aceptar los compañeros)
   surrenderCooldown: 60_000, // si no salió, cuánto hay que esperar para volver a pedirlo
+  mazoVote: 15_000, // en equipo, cuánto dura el pedido para irse al mazo (es de una mano: se cae si la mano termina)
+  mazoCooldown: 8000, // si no salió, cuánto hay que esperar para volver a pedirlo
   afk: 40_000, // humano desconectado: después de esto pierde la partida (si le queda un compañero conectado, juega un bot por él)
   // con la pestaña oculta (sigue conectado) a los afk ms juega un bot por él, pero no pierde la partida.
   // Si le toca cantar los tantos y no está (oculto o desconectado), a los autoTanto ms se cantan solos: lo que tiene o "son buenas".
@@ -466,6 +468,8 @@ export const GRADES = [
 export const HISTORY_PAGE = 20; // partidas por página en el historial
 // Rendirse en equipo: cuántos del equipo tienen que estar de acuerdo (en 1 vs 1 no hay votación).
 export const SURRENDER_NEED = { '2v2': 2, '3v3': 2 };
+// Irse al mazo en equipo: se va todo el equipo, así que es un pedido como rendirse (2 de 2 en 2v2, 2 de 3 en 3v3).
+export const MAZO_NEED = { '2v2': 2, '3v3': 2 };
 // Amigos conectados: cada navegador avisa dónde está cada ping ms; sin aviso por ttl ms, desconectado.
 // El chat entre amigos guarda los últimos dmKeep mensajes de cada pareja y, con el chat abierto, se revisa cada chatPoll ms.
 export const PRESENCE = { ping: 20_000, ttl: 70_000, dmKeep: 60, chatPoll: 3000 };
