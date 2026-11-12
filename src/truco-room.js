@@ -942,6 +942,9 @@ export class TrucoRoom extends DurableObject {
     const q = this.openAsk(T);
     if (!q || q.seat === seat || q.answers[seat] != null || r.game.h.mazo[seat] || !this.answerers(q).includes(seat)) return false;
     q.answers[seat] = ans;
+    // "¿pongo o voy?" se guarda aparte: otra consulta del equipo (los tantos, el truco) pisa r.asks[T] y el que
+    // preguntó y el pie tienen que acordarse de lo que se dijo hasta tirar
+    if (q.kind === 'primera') (r.primera ||= {})[T] = { hand: r.game.handNo, asker: q.seat, pie: seat, ans };
     const text = talkAnswer(q.kind, ans, rng, this.rivalsCan(q));
     this.teamSay(seat, text);
     if (this.answerers(q).every((s) => q.answers[s] != null)) {
@@ -987,15 +990,14 @@ export class TrucoRoom extends DurableObject {
 
   // Lo que le contestó el pie a "¿pongo o voy?" ('poner' / 'ir'), para el bot que preguntó.
   askPrimera(seat) {
-    const q = this.myAsk(seat);
-    return q?.kind === 'primera' ? Object.values(q.answers)[0] || null : null;
+    const p = this.room.primera?.[team(seat)];
+    return p && p.hand === this.room.game.handNo && p.asker === seat ? p.ans : null;
   }
 
   // ¿`seat` es el pie que contestó "vení" a "¿pongo o voy?" en esta mano? Entonces tiene que matar él la primera.
   saidVeni(seat) {
-    const r = this.room;
-    const q = r.asks?.[team(seat)];
-    return !!q && q.kind === 'primera' && q.hand === r.game.handNo && q.answers[seat] === 'ir';
+    const p = this.room.primera?.[team(seat)];
+    return !!p && p.hand === this.room.game.handNo && p.pie === seat && p.ans === 'ir';
   }
 
   myAsk(seat) {

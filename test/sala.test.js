@@ -303,6 +303,36 @@ test('sala: le preguntás al pie bot "¿pongo o voy?" y te contesta con un clic 
   assert.equal(h.state(ws[0]).ask.can.primera, false); // una vez por mano
 });
 
+test('sala: el pie bot que dijo "Vení" mata él la primera (con la más baja que alcance)', async () => {
+  // reparte el 2: es mano el 3, después vos (0), el 1 y el pie de tu equipo, el bot 2. Los rivales tienen 6:
+  // al pie solo le alcanza el 3 de espada para matar. Antes, después de decir "Vení" podía tirar una baja.
+  // varias manos: el pie a veces pregunta los tantos antes de tirar, y eso borraba la consulta (el bug)
+  let checked = 0;
+  for (let i = 0; i < 12 && checked < 5; i++) {
+    const { h, ws, r } = await table({ dealer: 2, trucoDesdeSegunda: true });
+    deal(r, [['4B', '5O', '4O'], ['5C', '6B', '7C'], ['3E', '4C', '5E'], ['4E', '5B', '6O']]);
+    h.room.broadcastState();
+    await h.send(ws[0], { t: 'ask', kind: 'primera' });
+    await h.tick(TIMING.askBotAnswer + 1500);
+    assert.ok(h.room.chat.some((c) => c.seat === 2 && ASK_TALK.primera.ir.includes(c.text)), h.chat().slice(-3).join(' | '));
+    const playedBy = (s) => r.game.h.rounds[0].plays.find((p) => p.seat === s);
+    let mine = false;
+    for (let t = 0; t < 30_000 && !playedBy(2) && r.game.h.phase === 'play'; t += 100) {
+      const w = waitingFor(r.game);
+      if (w.seats.includes(0) && w.kind !== 'play') await h.send(ws[0], { t: 'act', a: { t: 'noquiero' } });
+      else if (w.kind === 'play' && w.seats.includes(0) && !mine) {
+        mine = true;
+        await h.send(ws[0], { t: 'act', a: { t: 'play', card: '4B' } }); // vas a él: tirás la baja
+      }
+      await h.tick(100);
+    }
+    if (!playedBy(2)) continue; // se cortó la mano (un canto no querido): otra
+    assert.equal(playedBy(2).c, '3E');
+    checked++;
+  }
+  assert.ok(checked > 0, 'nunca llegó a tirar el pie');
+});
+
 test('sala: "¿pongo o voy?" no lo tiene el pie ni se puede en 1v1', async () => {
   const { h, ws } = await table({ dealer: 1 }); // sos pie
   assert.equal(h.state(ws[0]).ask.can.primera, false);
