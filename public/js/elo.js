@@ -30,3 +30,20 @@ export function milestoneCoins(peak, elo, step, reward) {
   const steps = Math.floor(elo / step) - Math.floor(peak / step);
   return steps > 0 ? steps * reward : 0;
 }
+
+/**
+ * Cuántas partidas por ELO ya jugaron uno contra otro alguien de `teamA` y alguien de `teamB` (ids de cuenta),
+ * según `rows`: las filas de match_players de los de `teamA`, con su partida ({ match_id, team, match: { seats } }).
+ * El equipo de cada asiento es asiento % 2. Cada partida cuenta una vez.
+ */
+export function rematchCount(rows, teamA, teamB) {
+  const a = new Set(teamA);
+  const b = new Set(teamB);
+  const ids = new Set();
+  for (const r of rows || []) {
+    if (!a.has(r.user_id)) continue;
+    const seats = r.match?.seats || [];
+    if (seats.some((s, i) => s?.uid && b.has(s.uid) && i % 2 !== r.team)) ids.add(r.match_id);
+  }
+  return ids.size;
+}

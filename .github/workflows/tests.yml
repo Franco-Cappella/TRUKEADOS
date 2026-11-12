@@ -1,0 +1,18 @@
+# Corre los tests (npm test) en cada push y en cada PR. No hace falta npm ci: los tests no usan dependencias.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm test

@@ -72,6 +72,13 @@ direcciones del equipo del proyecto y muy pocos por hora. Para gente de verdad h
 - `matches` (una fila por partida, con el registro para rebobinarla) y `match_players` (una por persona).
 - Al terminar, la sala llama a `record_match(m)` con la clave secreta: inserta la partida, suma el ELO (como
   diferencia, para no pisar otra partida simultánea) y las monedas. Solo `service_role` puede ejecutarla.
+- **Anti-farmeo**: entre las mismas personas (alguien de cada equipo) cuentan como mucho `FARM.maxRated` partidas por
+  ELO cada `FARM.hours` horas (config.js). Las que siguen se anotan sin ELO (`rated: false`), con las monedas de una
+  partida sin ELO, y la mesa avisa en el chat. Lo decide `recordMatch` (`tooManyRematches`, `rematchCount` en elo.js)
+  con el índice `match_players_user_ended`; si la base no contesta, la partida cuenta.
+- **Límite de pedidos** (`src/limits.js`, `ratelimits` en wrangler.jsonc): todo `/api` por IP (`API_LIMIT`, generoso
+  por el CGNAT) y los POST por cuenta (`WRITE_LIMIT`, salvo `/api/presence`). Pasarse da 429 con un mensaje; sin el
+  binding (tests) no limita.
 - `/api/matches` (tu historial, de a 20) y `/api/matches/ID` (una partida, solo si la jugaste).
 
 ## Tienda

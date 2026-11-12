@@ -5,7 +5,8 @@
 import { TrucoRoom } from './truco-room.js';
 import { Lobby } from './lobby.js';
 import { newRoomCode, json } from './util.js';
-import { requireUser, createProfile, renameProfile } from './auth.js';
+import { requireUser as authUser, createProfile, renameProfile } from './auth.js';
+import { ipLimited, writeLimited, TOO_MANY } from './limits.js';
 import { listMatches, getMatch, shareMatch, getShared } from './matches.js';
 import { ownedItems, buyItem, equipItem } from './shop.js';
 import { areFriends, setAvatar, setLook, avatarGif, listFriends, requestFriend, respondFriend, removeFriend, ranking, publicProfile } from './social.js';
@@ -32,6 +33,13 @@ async function createRoom(env, opts) {
   throw new Error('No se pudo crear la sala');
 }
 
+// La sesión (ver auth.js), con el límite de escrituras por cuenta: si escribió de más, { error: 429 }.
+async function requireUser(env, request, opts) {
+  const auth = await authUser(env, request, opts);
+  if (!auth.error && (await writeLimited(env, request, auth.user.id))) return { error: json({ error: TOO_MANY }, 429) };
+  return auth;
+}
+
 // Jugador logueado y con perfil, más el cuerpo del pedido. Si falta la sesión, { error: Response }.
 async function readPlayer(env, request) {
   const auth = await requireUser(env, request);
@@ -55,6 +63,7 @@ export default {
 async function handle(request, env) {
   const path = new URL(request.url).pathname;
   const method = request.method;
+  if (await ipLimited(env, request)) return json({ error: TOO_MANY }, 429);
 
   // lo público del proyecto de Supabase, para que el navegador pueda iniciar sesión
   if (path === '/api/config' && method === 'GET') {
