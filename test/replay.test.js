@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { newGame, act, nextHand, waitingFor, closeShow } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
 import { handFrames, describe, actionLabel } from '../public/js/replay.js';
-import { eloDeltas, milestoneCoins } from '../public/js/elo.js';
+import { eloDeltas, milestoneCoins, rematchCount } from '../public/js/elo.js';
 import { analyzeHand, accuracy, gradeCounts, seeded, classify, winSeries, explain } from '../public/js/analysis.js';
 import { GRADES } from '../public/js/config.js';
 import { MatchRecorder } from '../src/recorder.js';
@@ -114,6 +114,24 @@ test('ELO: premio por escalones nuevos, una sola vez', () => {
   assert.equal(milestoneCoins(1190, 1420, 100, 75), 225);
   assert.equal(milestoneCoins(1450, 1420, 100, 75), 0);
   assert.equal(milestoneCoins(1210, 1290, 100, 75), 0);
+});
+
+test('anti-farmeo: cuenta las partidas por ELO entre las mismas personas, una vez por partida', () => {
+  const seats = (...uids) => uids.map((uid) => (uid ? { uid } : { bot: true }));
+  const rows = [
+    // a contra b (asientos 0 y 1): cuenta
+    { match_id: 'm1', user_id: 'a', team: 0, match: { seats: seats('a', 'b') } },
+    // 2v2 con a y c juntos contra b: cuenta una sola vez aunque estén las dos filas
+    { match_id: 'm2', user_id: 'a', team: 0, match: { seats: seats('a', 'b', 'c', 'x') } },
+    { match_id: 'm2', user_id: 'c', team: 0, match: { seats: seats('a', 'b', 'c', 'x') } },
+    // a y b del mismo lado (asientos 0 y 2): no cuenta
+    { match_id: 'm3', user_id: 'a', team: 0, match: { seats: seats('a', 'x', 'b', null) } },
+    // a contra bots: no cuenta
+    { match_id: 'm4', user_id: 'a', team: 0, match: { seats: seats('a', null) } },
+  ];
+  assert.equal(rematchCount(rows, ['a', 'c'], ['b']), 2);
+  assert.equal(rematchCount(rows, ['a'], ['z']), 0);
+  assert.equal(rematchCount([], ['a'], ['b']), 0);
 });
 
 test('calificaciones, como en chess.com: por chance de ganar perdida', () => {

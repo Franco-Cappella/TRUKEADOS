@@ -407,6 +407,9 @@ export function botSkill(elo) {
 // Monedas: al registrarte, por partida (contra bots elegidos, la mitad) y cada escalón nuevo de ELO.
 export const COINS = { signup: 200, game: 10, win: 10, // ganar: game + win (perder no da monedas)
   botFactor: 0.5, milestoneStep: 100, milestone: 75 };
+// Anti-farmeo: entre las mismas personas (una de cada lado), como mucho `maxRated` partidas por ELO en `hours`
+// horas. Las que siguen se juegan igual pero no mueven el ELO y dan las monedas de una partida sin ELO.
+export const FARM = { hours: 24, maxRated: 3 };
 export const AVATAR = {
   size: 128, // lado en píxeles de la foto guardada
   maxChars: 24000,

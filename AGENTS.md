@@ -18,6 +18,7 @@ src/                      SERVIDOR (Cloudflare Worker)
   recorder.js             graba la partida en curso (estado al repartir cada mano + jugadas) para el historial
   matches.js              partida terminada → Supabase (ELO, monedas, historial) y lectura del historial
   shop.js                 tienda: comprar (buy_item) y elegir lo que tenés puesto (profiles.equipped)
+  limits.js               límite de pedidos a /api (por IP y escrituras por cuenta; ratelimits de wrangler.jsonc)
   social.js               amigos por nombre de usuario, foto de perfil y ranking
   show-tables.js          mesas en juego del lobby: 7 a 10 partidas entre usuarios automáticos que se pueden mirar
   matchmaking.js          partida rápida: nombre, ELO y ropa de los rivales automáticos que completan la mesa
@@ -70,6 +71,7 @@ test/auth.test.js         verificación del token de Supabase y validación del 
 test/replay.test.js       grabar y reproducir partidas, ELO y análisis
 test/sala.test.js         la sala (TrucoRoom) de punta a punta: bots, consultas, señas, desconexiones
 test/rendirse.test.js     rendirse en equipo: el pedido que tienen que aceptar los compañeros (SURRENDER_NEED)
+test/limits.test.js       límite de pedidos a /api (src/limits.js)
 test/cuenta.test.js       borrar la cuenta (con el nombre escrito a mano) y bajar los datos (src/account.js)
 test/helpers/             banco de pruebas de la sala en Node (storage, sockets, Lobby, cuentas y reloj de mentira)
 supabase/migrations/      tablas de la base (se aplican en el proyecto de Supabase)

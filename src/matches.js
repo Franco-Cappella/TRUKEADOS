@@ -1,7 +1,7 @@
 // Partidas terminadas: ELO, monedas e historial en la base de Supabase (tablas matches y match_players,
 // función record_match en supabase/migrations). Lo usa la sala al terminar y las rutas /api/matches.
-import { COINS, ELO_START, HISTORY_PAGE } from '../public/js/config.js';
-import { eloDeltas, milestoneCoins } from '../public/js/elo.js';
+import { COINS, ELO_START, HISTORY_PAGE, FARM } from '../public/js/config.js';
+import { eloDeltas, milestoneCoins, rematchCount } from '../public/js/elo.js';
 import { team } from '../public/js/engine.js';
 import { rest, forgetProfile } from './auth.js';
 
@@ -31,6 +31,9 @@ export async function recordMatch(env, meta, log, game) {
   }));
   // los rivales automáticos de la partida rápida cuentan con su ELO para el promedio del equipo
   const rivals = seats.filter((s) => s.disguised).map((s) => ({ team: team(s.seat), elo: s.elo ?? ELO_START, games: 999 }));
+  // anti-farmeo: si estas personas ya jugaron entre ellas FARM.maxRated partidas por ELO hoy, esta no cuenta
+  const capped = meta.rated && (await tooManyRematches(env, players));
+  meta = capped ? { ...meta, rated: false } : meta;
   const deltas = meta.rated
     ? eloDeltas([...players.map((p) => ({ team: p.team, elo: p.elo_before, games: p.games })), ...rivals], winner).slice(0, players.length)
     : players.map(() => 0);
@@ -73,8 +76,26 @@ export async function recordMatch(env, meta, log, game) {
   ids.forEach(forgetProfile);
   return {
     id,
+    rated: meta.rated,
+    capped,
     players: players.map((p) => ({ seat: p.seat, eloBefore: meta.rated ? p.elo_before : null, eloDelta: p.elo_delta, coins: p.coins, milestone: p.milestone })),
   };
+}
+
+// ¿Alguien de un equipo ya jugó FARM.maxRated partidas por ELO contra alguien del otro en las últimas FARM.hours
+// horas? Si la base no contesta, la partida cuenta (no se castiga a nadie por una falla nuestra).
+async function tooManyRematches(env, players) {
+  const [a, b] = [0, 1].map((t) => players.filter((p) => p.team === t).map((p) => p.user_id));
+  if (!a.length || !b.length) return false;
+  const since = new Date(Date.now() - FARM.hours * 3600_000).toISOString();
+  try {
+    const res = await rest(env, `match_players?user_id=in.(${a.join(',')})&ended_at=gte.${since}&select=match_id,user_id,team,match:matches!inner(seats)&match.rated=eq.true&limit=1000`);
+    if (!res.ok) throw new Error(await res.text());
+    return rematchCount(await res.json(), a, b) >= FARM.maxRated;
+  } catch (err) {
+    console.error('anti-farmeo', err?.message ?? err);
+    return false;
+  }
 }
 
 // Lo que sabe el servidor de cada asiento y el navegador no necesita.

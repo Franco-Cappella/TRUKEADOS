@@ -3,7 +3,7 @@ import { newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow, 
 import { botAction, botSena, botClaims, botShow, stackDeck, fallbackActions, BotMemo, botAnswer, botAsks, botAsksCall, botCallsTantos, honestTanto } from '../public/js/bot.js';
 import { talkFor, talkHandEnd, talkCaught, talkEvent, talkIdle, talkReply, talkAsk, talkAnswer, talkTellTantos, ASK_ANSWERS } from '../public/js/talk.js';
 import { observe } from '../public/js/brain.js';
-import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, cleanLook, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT } from '../public/js/config.js';
+import { MODES, TARGETS, SENAS, BOT, BOT_NAMES, TIMING, dealMs, speechMs, MAX_CHAT_HISTORY, MAX_CHAT_TEXT, ROOM_OPTIONS, roomOptions, roomOptionsText, ROOM_REUSE_MS, cleanEquipped, cleanLook, botSkill, ELO_START, MATCH, botCos, pickAmbiente, SURRENDER_NEED, ANTICHEAT, FARM } from '../public/js/config.js';
 import { cleanName, rng } from './util.js';
 import { verifyToken, getProfile } from './auth.js';
 import { MatchRecorder } from './recorder.js';
@@ -683,14 +683,17 @@ export class TrucoRoom extends DurableObject {
     try {
       const done = await recordMatch(this.env, meta, this.rec.log(), r.game);
       if (done) {
-        r.lastMatch = { ...done, rated: meta.rated };
+        // el anti-farmeo puede haberla dejado sin ELO (ver recordMatch): manda lo que se anotó
+        const rated = done.rated ?? meta.rated;
+        r.lastMatch = { ...done, rated };
+        if (done.capped) this.addSystemChat(`Ya jugaron ${FARM.maxRated} partidas por ELO entre ustedes hoy: esta no movió el ELO`);
         // la que terminó pasa a ser la última de cada uno en su cartel
         const g = r.game;
         for (const p of done.players || []) {
           const s = r.seats[p.seat];
           if (!s || s.bot) continue;
           const t = team(p.seat);
-          s.recent = [{ won: g.winner === t, mode: r.cfg.mode, score: [g.score[t], g.score[1 - t]], delta: meta.rated ? p.eloDelta : null, at: new Date().toISOString() }, ...(s.recent || [])].slice(0, 3);
+          s.recent = [{ won: g.winner === t, mode: r.cfg.mode, score: [g.score[t], g.score[1 - t]], delta: rated ? p.eloDelta : null, at: new Date().toISOString() }, ...(s.recent || [])].slice(0, 3);
         }
         await this.save();
         this.broadcastRaw({ t: 'match', ...r.lastMatch });
