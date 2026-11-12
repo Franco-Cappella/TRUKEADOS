@@ -1,5 +1,5 @@
 // Sincroniza la documentación de diseño entre TRUKEADOS (el juego) y trukeados-landing, en los dos sentidos.
-// Se sincronizan DESIGN.md, brand/ (todo) y docs/landing/. Este script viaja con esos archivos: está igual en los dos repos.
+// Se sincronizan DESIGN.md y brand/ (todo). Este script viaja con esos archivos: está igual en los dos repos.
 //
 //   npm run diseno:sync                 copia lo que cambió de un lado al otro
 //   npm run diseno:sync -- --check      solo informa; sale con 1 si hay algo pendiente o un conflicto
@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SETS = ['DESIGN.md', 'brand', 'docs/landing'];
+const SETS = ['DESIGN.md', 'brand'];
 const REGISTRO = '.diseno-sync.json';
 
 const args = process.argv.slice(2);

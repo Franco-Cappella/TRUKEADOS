@@ -24,7 +24,7 @@ Los archivos copiados **no se editan** en la página: si hay que cambiarlos, se 
 vuelve a sincronizar. `characters.js`, `theme.js`, `config.js` y `engine.js` no usan el DOM al
 importarse, así que funcionan en cualquier bundler.
 
-La documentación de diseño (DESIGN.md, `brand/` y `docs/landing/`) no pasa por ese script: está en los dos repos y se sincroniza con `npm run diseno:sync` (ver DESIGN.md).
+La documentación de diseño (DESIGN.md y `brand/`) no pasa por ese script: está en los dos repos y se sincroniza con `npm run diseno:sync` (ver DESIGN.md).
 
 ---
 
@@ -149,7 +149,3 @@ Son la mejor imagen que tiene la marca. Cómo sacarlas:
    `showSena(asiento, id)` para que un personaje haga una seña) y `window.__truco.room`.
 3. Tamaños: 2560 × 1440 (escritorio), 1170 × 2532 (celular). Ocultar la interfaz si la toma es de ambiente.
 4. Guardar en WebP calidad 82 y en AVIF; nombre descriptivo (`mesa-2v2-reparto.webp`).
-
-Lista mínima para la landing: mesa en primera persona con cartas en la mano · primer plano de una cara
-haciendo una seña · carta quemada sobre el paño · globo "¡Truco!" sobre un personaje · vista en celular
-· la mesa de 3 vs 3 desde arriba.

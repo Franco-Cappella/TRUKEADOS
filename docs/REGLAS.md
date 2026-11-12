@@ -99,16 +99,6 @@ El reglamento no trata las cartas quemadas; esta es la regla que pidió el dueñ
 | En la charla de los bots, decir "truco" (en cualquier momento) o "envido" (si sos pie) en una frase es cantarlo, o subirlo: solo las frases de canto nombran el canto. Para hablar del tema dicen "el segundo" (truco) o "el primero", "los tantos" o "los puntos" (envido), y al no querer el envido no lo nombran | `talk.js` (`BOT_TALK`, `ASK_TALK`); test en `bots.test.js` |
 | Invitado por un amigo a una mesa normal: no se sienta solo. Elige si va con el que lo invitó (su equipo) o con el otro equipo; si el lugar de su equipo está ocupado, solo le queda el otro. En partida rápida no cambia | `openSeat` (truco-room.js), `inviteChoiceHtml` (room-client.js); test en `mesas-en-juego.test.js` |
 
-## No implementadas (todavía)
-- Pedir flor al final de la mano (no hace falta: la flor es obligatoria y el juego la detecta sola). [R] §12.
-- **Partidas de 3** (con gallo) y de **8**. [R] §3.
-- **Chicos**: la partida termina al llegar a 15/30; no se juega "al mejor de dos chicos". [R] §2.
-- Corte con mínimo de tres cartas por mitad, "golpear el mazo" sin cortar. [R] §17.
-- Carta que cae boca arriba en el reparto (el que la recibe puede pedir nuevo reparto). [R] §17.
-- Expresiones ambiguas ("quieto", "envido mi truco"…): el juego usa botones, no hay ambigüedad. [R] §16.
-- Penalidades por hablar de más / señas indebidas en pica-pica (el juego no deja consultar al compañero en el duelo).
-- Pica-pica simultáneo: acá los tres duelos se juegan uno detrás del otro.
-
 ### Flor (opción de la sala)
 Tres del mismo palo (con muestra, las piezas sirven de cualquier palo). Obligatoria: en primera, antes de tirar
 (o contestando envido/truco). Anula el envido. Sin flor rival: 3 por flor. Con flor rival: con flor quiero (gana la
@@ -133,3 +123,10 @@ se alterna una mano **redonda** y una de **pica-pica** (`PICA_PICA` en `config.j
   envido, el truco se canta desde primera (aunque la mesa juegue "truco desde segunda"), no se puede tirar fuera
   de turno y no hay consultas al compañero.
 - La **falta envido** (y la contraflor al resto) vale **6** fija. [R] §3; fuente de la falta: laps4.com.
+
+## Pendientes
+
+- Corte con mínimo de tres cartas por mitad, "golpear el mazo" sin cortar. [R] §17.
+- Carta que cae boca arriba en el reparto (el que la recibe puede pedir nuevo reparto). [R] §17.
+- Penalidades por hablar de más / señas indebidas en pica-pica (el juego no deja consultar al compañero en el duelo).
+- Pica-pica simultáneo: acá los tres duelos se juegan uno detrás del otro.

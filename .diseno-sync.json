@@ -1,12 +1,12 @@
 {
   "nota": "Estado común de la documentación de diseño tras la última sincronización. Lo escribe brand/tools/sync-diseno.mjs; no editar a mano.",
   "archivos": {
-    "DESIGN.md": "279fe3267128bd5e627d1367cbc4ea1dbc1c4baf6b40d2a93678bc7186cb7424",
-    "brand/ALINEACION.md": "21335309ec71ffe8743a12efb69832a5f451c30ebbed1f8e3e970ef4b4c3413d",
+    "DESIGN.md": "49121e4fda4359b119152c38f15f38589d7f07fbe93ed7147bc3c784b86b1bc5",
+    "brand/ALINEACION.md": "ef3a30405f8b2a6e4ca3fd806e2b1ef9ba9550d626e30e9ca7c70ba5509cd8aa",
     "brand/BRAND.md": "308f9243c6a8891d2416322cfddf4ae14a5a0444e7c13fa6f7fc0fcb9e444d98",
     "brand/COMPONENTES.md": "9bcff923bfa1be97f39cf0c4512233cf53621e1f254e082fb2a47bca9a44fe19",
-    "brand/PAGINAS.md": "1ae723ad21f9f1939912b1cc11755f556e22835717b47915152f4e23e3037d97",
-    "brand/RECURSOS.md": "fd9b3e27ad440531f25fdc9c5c9e8c48b2cbec307c0b8252f1744c0be94f6cd1",
+    "brand/PAGINAS.md": "3785b7d8e5f72b839a546251c3be0db825b437612d35440003aee576e59ea9ca",
+    "brand/RECURSOS.md": "b49f999f519790a2cc429dc3dee07e4d8267fb347d3b96ea6aae4084340ed466",
     "brand/VOZ.md": "9c5584c97339f453c77b22ea3ed7d85d22baa8e3411941a07d3593b7e64f912c",
     "brand/lamina.html": "27e586e785a986603fc9baec62b76fdaac5ffed56025b34dc4bab67d4402aced",
     "brand/logo/icono-app.svg": "f60ee397b297bf0443ca12070b8efc8963bade007abfd2bfcfed29b163be8850",
@@ -25,7 +25,6 @@
     "brand/logo/palabra.svg": "2f128f67fee492228d8d13391e4976369f17c3f277d7e2c11f6bd8b1f193cd97",
     "brand/tokens.css": "88d7ff55f162724f24e13d5d45ebd9750403f957d0d4377332db724f825dadf4",
     "brand/tools/build-logos.mjs": "9814f9bbeeeaf3607d5dfc4c995eceef5f05bd2a419295819b2ed163f9545e4d",
-    "brand/tools/sync-diseno.mjs": "dfbbb0a6533ff7aa0fde8aadf2fed489fa9afff822219bc6cc0f7868845f766a",
-    "docs/landing/SECCIONES.md": "383f078da871814e64896da9cbf574aace20953b210ce9c6c89b0f787513ce8d"
+    "brand/tools/sync-diseno.mjs": "c6b61d9c8e22dcbe7f27bad5c2437beb0716e123f5f7c437e326e1a7ad4d1bda"
   }
 }

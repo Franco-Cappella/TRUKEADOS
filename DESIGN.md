@@ -3,7 +3,7 @@
 Leé esto antes de diseñar o maquetar algo de Trukeados: el juego, la landing o cualquier página derivada.
 Si algo de acá choca con una skill de diseño, gana esto (y después, lo que pida la persona en el momento).
 
-Esta documentación vive en dos repos, iguales: TRUKEADOS y trukeados-landing (este archivo, `brand/` y `docs/landing/`).
+Esta documentación vive en dos repos, iguales: TRUKEADOS y trukeados-landing (este archivo y `brand/`).
 Se edita en cualquiera de los dos y se sincroniza con `npm run diseno:sync` (ver al final).
 
 ## Dónde está cada cosa
@@ -19,7 +19,7 @@ Se edita en cualquiera de los dos y se sincroniza con `npm run diseno:sync` (ver
 | Logos y lo que falta cambiar | [brand/ALINEACION.md](brand/ALINEACION.md) · SVG en [brand/logo/](brand/logo/) |
 | Todo junto en una página | [brand/lamina.html](brand/lamina.html) (abrir en el navegador) |
 | Qué hace el juego (en el repo del juego) | `docs/JUEGO.md` · reglas: `docs/REGLAS.md` |
-| Landing: secciones y catálogo de ideas | [docs/landing/](docs/landing/) · contrato de la landing: `docs/CONTRATO.md` en su repo |
+| Landing: contrato (decisiones y estado) | `docs/CONTRATO.md` en el repo de la landing |
 
 ## Principios
 
@@ -35,4 +35,4 @@ Se edita en cualquiera de los dos y se sincroniza con `npm run diseno:sync` (ver
 2. Se actualiza el documento de `brand/` que corresponda, y `brand/lamina.html` si hace falta.
 3. `npm run diseno:sync` en cualquiera de los dos repos. Si el mismo archivo cambió en los dos lados, no lo toca y avisa: se iguala a mano y se vuelve a correr. `npm run diseno:sync -- --check` muestra lo pendiente sin escribir nada.
 4. Se commitea en los dos repos, incluido `.diseno-sync.json`.
-5. Una decisión de fondo (un color nuevo, otra tipografía) va en un ADR en `docs/decisions/` (la carpeta todavía no existe).
+5. Una decisión de fondo (un color nuevo, otra tipografía) va en un ADR en `docs/decisions/`.

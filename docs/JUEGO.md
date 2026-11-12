@@ -1,7 +1,7 @@
 # Trukeados — qué hace el juego
 
 Documentación funcional completa: qué ve, qué puede hacer y qué siente quien juega. Es la materia prima
-para la landing (ver [landing/](landing/)). Para el código, [AGENTS.md](../AGENTS.md); para el detalle
+para la landing. Para el código, [AGENTS.md](../AGENTS.md); para el detalle
 de cada regla, [REGLAS.md](REGLAS.md).
 
 > Lo que hace el juego hoy. La historia de cambios está en [CHANGELOG.md](../CHANGELOG.md).
@@ -92,7 +92,6 @@ Las reglas completas, con sus fuentes y lo que falta, están en [REGLAS.md](REGL
 
 - Partida a **15** o a **30** (malas y buenas). Truco argentino, con baraja española de 40.
 - **Flor**, **muestra** y **no permitir trampas** son opciones de la sala, apagadas por defecto (las trampas, en cambio, vienen permitidas). Se puede decir "con flor o sin flor", nunca que se juega con flor siempre; y "se puede hacer trampa" vale porque es lo que viene por defecto.
-- **No tiene (todavía)**: partidas de 3 con gallo / de 8, chicos (mejor de dos).
 
 ## 5. Las 11 señas
 

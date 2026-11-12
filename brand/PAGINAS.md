@@ -4,8 +4,7 @@ Reglas para toda página que no es el juego: la landing, una página de reglas, 
 estas son páginas que se leen y se recorren. Comparten marca ([BRAND.md](BRAND.md)), componentes ([COMPONENTES.md](COMPONENTES.md))
 y voz ([VOZ.md](VOZ.md)), y cambian la gramática: más escala, menos interfaz.
 
-Para la landing, las ideas de secciones están en [../docs/landing/](../docs/landing/), y el contrato de la landing
-(decisiones y estado) en `docs/CONTRATO.md` de su repo.
+El contrato de la landing (decisiones y estado) está en `docs/CONTRATO.md` de su repo.
 
 ## 1. Propósito
 
