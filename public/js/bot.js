@@ -71,11 +71,13 @@ export function botAnswer(g, seat, kind, rng = Math.random) {
     if (v >= 27) return 'algo';
     return v <= 23 && pick(rng, 0.8) ? 'nada' : 'vos';
   }
-  // "¿pongo o voy?": si el pie tiene con qué matar la primera, "vení"; si no, "poné"
+  // "¿pongo o voy?": si el pie tiene con qué matar la primera, "vení"; si no, "poné".
+  // Tiene que matar también lo que ya tiraron los rivales (si un rival tiró el ancho, su 3 no alcanza).
   if (kind === 'primera') {
     const R = (c) => rank(c, h.muestra);
     const best = Math.max(...h.inHand[seat].map(R), -1);
-    return best >= R('3E') ? 'ir' : 'poner';
+    const theirs = Math.max(...h.rounds[0].plays.filter((p) => team(p.seat) !== team(seat)).map((p) => playValue(p, g)), -1);
+    return best >= R('3E') && best > theirs ? 'ir' : 'poner';
   }
   if (kind === 'tantos') {
     const v = tanto(h.cards[seat], h.muestra).value;
@@ -620,6 +622,12 @@ function chooseCard(g, seat, ctx, rng, a) {
     // si ya tiró algún rival, la más baja que lo mate; si no, la más alta
     const kill = tb.theirs >= 0 && hand.find((c) => R(c) > tb.theirs && R(c) > tb.mine);
     return { t: 'play', card: kill || hand[hand.length - 1], mode: 'normal' };
+  }
+  // el pie dijo "vení" (mato yo): cumple. Si el compañero ya gana la ronda, la más baja; si no, la más baja
+  // que mate lo de los rivales; si ya no le alcanza con nada, la más baja.
+  if (h.r === 0 && ctx.vine) {
+    const kill = tb.mine > tb.theirs ? hand[0] : hand.find((c) => R(c) > tb.theirs);
+    return { t: 'play', card: kill || hand[0], mode: 'normal' };
   }
   if (hand.length > 1) {
     // dos cartas del mismo valor juegan igual: se simula una por valor

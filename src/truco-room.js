@@ -755,6 +755,7 @@ export class TrucoRoom extends DurableObject {
       senas: [...(r.senaSeen?.[seat] || []), ...this.askSenas(seat)],
       hush: this.askHush(seat),
       primera: this.askPrimera(seat),
+      vine: this.saidVeni(seat),
       // los compañeros bots se pasan las cartas por señas; en partida rápida, no
       bots: r.seats.map((s, i) => (s?.bot && !s.disguised ? i : -1)).filter((i) => i >= 0),
       brainOf: (s) => {
@@ -985,6 +986,13 @@ export class TrucoRoom extends DurableObject {
   askPrimera(seat) {
     const q = this.myAsk(seat);
     return q?.kind === 'primera' ? Object.values(q.answers)[0] || null : null;
+  }
+
+  // ¿`seat` es el pie que contestó "vení" a "¿pongo o voy?" en esta mano? Entonces tiene que matar él la primera.
+  saidVeni(seat) {
+    const r = this.room;
+    const q = r.asks?.[team(seat)];
+    return !!q && q.kind === 'primera' && q.hand === r.game.handNo && q.answers[seat] === 'ir';
   }
 
   myAsk(seat) {
