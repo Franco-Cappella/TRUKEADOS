@@ -1,39 +1,8 @@
-// Texturas y muebles de los ambientes (los usan los amb-*.js): pisos de madera y baldosas, ladrillos, azulejos,
-// estantes con botellas, láminas enmarcadas, árboles de hojas pintadas, sillas, mesitas, tazas, copas y plantas.
+// Texturas y muebles de los ambientes (los usan los amb-*.js): baldosas, ladrillos, estantes con botellas,
+// láminas enmarcadas, árboles de hojas pintadas, sillas, mesitas, tazas, copas y plantas.
 import * as THREE from 'three';
 import { canvasTex, noise, seeded, toon } from './draw3d.js';
 import { hsl, basic, box, cyl } from './amb-kit.js';
-
-/** Tablones de madera (piso) en pocos tonos, con vetas. */
-export function plankTex(tones, seam, { seed = 11, rows = 10, repeat = [4, 4] } = {}) {
-  return canvasTex(1024, 1024, (ctx, w, h) => {
-    const r = seeded(seed);
-    for (let i = 0; i < rows; i++) {
-      const y = (i * h) / rows;
-      let x = -r() * 200;
-      while (x < w) {
-        const len = 260 + r() * 320;
-        ctx.fillStyle = tones[Math.floor(r() * tones.length)];
-        ctx.fillRect(x, y, len, h / rows);
-        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-        ctx.lineWidth = 1.5;
-        for (let k = 0; k < 3; k++) {
-          const vy = y + (h / rows) * (0.2 + r() * 0.6);
-          ctx.beginPath();
-          ctx.moveTo(x, vy);
-          ctx.bezierCurveTo(x + len * 0.3, vy + (r() - 0.5) * 8, x + len * 0.7, vy + (r() - 0.5) * 8, x + len, vy);
-          ctx.stroke();
-        }
-        ctx.fillStyle = seam;
-        ctx.fillRect(x, y, 3, h / rows);
-        x += len;
-      }
-      ctx.fillStyle = seam;
-      ctx.fillRect(0, y, w, 3);
-    }
-    noise(ctx, w, h, 7);
-  }, repeat);
-}
 
 /** Baldosas en damero (o en rombos con `diag`), con brillo de piso encerado. */
 export function checkerTex(a, b, { n = 8, repeat = 5, diag = false, grout = null } = {}) {
@@ -102,35 +71,6 @@ export function brickTex({ base = '#3a1d14', tones = ['#8a3e26', '#9b4a2c', '#7a
       ctx.fillRect(0, 0, w, h);
     }
     noise(ctx, w, h, 12);
-  }, repeat);
-}
-
-/** Azulejos (blancos, o con una fila de color abajo). */
-export function tileTex({ base = '#f1efe8', grout = '#c9c4b8', n = 8, repeat = [6, 2], accent = null } = {}) {
-  return canvasTex(512, 512, (ctx, w, h) => {
-    const s = w / n;
-    const r = seeded(9);
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      ctx.fillStyle = base;
-      ctx.fillRect(x * s, y * s, s, s);
-      ctx.fillStyle = `rgba(255,255,255,${0.05 + r() * 0.1})`;
-      ctx.fillRect(x * s + 4, y * s + 4, s * 0.5, 4);
-    }
-    if (accent) {
-      ctx.fillStyle = accent;
-      for (let x = 0; x < n; x++) ctx.fillRect(x * s, h - s, s, s);
-    }
-    ctx.strokeStyle = grout;
-    ctx.lineWidth = 3;
-    for (let i = 0; i <= n; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * s, 0);
-      ctx.lineTo(i * s, h);
-      ctx.moveTo(0, i * s);
-      ctx.lineTo(w, i * s);
-      ctx.stroke();
-    }
-    noise(ctx, w, h, 5);
   }, repeat);
 }
 

@@ -6,7 +6,7 @@ import { makeRoom } from './helpers/room-harness.mjs';
 import { newGame, waitingFor } from '../public/js/engine.js';
 import { botAction } from '../public/js/bot.js';
 import { ASK_TALK, TELL_TANTOS } from '../public/js/talk.js';
-import { TIMING } from '../public/js/config.js';
+import { TIMING, ANTICHEAT } from '../public/js/config.js';
 
 const answers = (kind) => [...ASK_TALK[kind].si, ...ASK_TALK[kind].callado, ...ASK_TALK[kind].nada];
 
@@ -449,4 +449,46 @@ test('sala: en 3 vs 3 los bots pie no hacen señas, y los demás se las hacen a 
   const from = sent.map((s) => s.seat).sort();
   assert.deepEqual(from, [3, 4, 5], 'solo los que no son pie');
   for (const s of sent) assert.ok(pies.includes(s.gaze) && s.gaze % 2 === s.seat % 2, `el ${s.seat} mira a su pie`);
+});
+
+test('sala: el chat y el "join" tienen su propio límite por conexión', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  const ws = await h.join('u0');
+  for (let i = 0; i < 20; i++) await h.send(ws, { t: 'chat', text: 'spam ' + i });
+  assert.equal(h.room.chat.filter((c) => c.text.startsWith('spam')).length, ANTICHEAT.chatBurst.n);
+  // pasada la ventana, puede volver a escribir
+  await h.tick(ANTICHEAT.chatBurst.ms + 100);
+  await h.send(ws, { t: 'chat', text: 'de nuevo' });
+  assert.ok(h.room.chat.some((c) => c.text === 'de nuevo'));
+  // muchos "join" seguidos por la misma conexión (cada uno lee la base): los que sobran no se procesan
+  const before = ws.got.filter((m) => m.t === 'chat-history').length;
+  for (let i = 0; i < 20; i++) await h.send(ws, { t: 'join', token: 'u0' });
+  assert.equal(ws.got.filter((m) => m.t === 'chat-history').length - before, ANTICHEAT.joinBurst.n - 1);
+});
+
+test('sala: en la partida rápida el primero no maneja la mesa (ni echa, ni cambia la config, ni saca rivales)', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  const r = h.room.room;
+  r.quick = { elo: 1300, startedAt: Date.now(), nextAt: Date.now() + 60_000 };
+  const ws = await h.join('u0');
+  await h.join('u1');
+  r.seats[3] = { bot: true, disguised: true, name: 'Rival', elo: 1300 };
+  const seats = JSON.stringify(r.seats);
+  await h.send(ws, { t: 'config', cfg: { mode: '1v1', rated: false } });
+  await h.send(ws, { t: 'removebot', seat: 3 });
+  await h.send(ws, { t: 'kick', seat: r.seats.findIndex((s) => s?.pid === 'u1') });
+  await h.send(ws, { t: 'addbot' });
+  await h.send(ws, { t: 'move', from: 0, to: 2 });
+  assert.equal(r.cfg.mode, '2v2');
+  assert.equal(r.cfg.rated, true);
+  assert.equal(JSON.stringify(r.seats), seats);
+});
+
+test('sala: "addbot" con un asiento fuera de la mesa no ensucia los asientos', async () => {
+  const h = await makeRoom({ mode: '2v2' });
+  const ws = await h.join('u0');
+  await h.send(ws, { t: 'addbot', seat: -1 });
+  await h.send(ws, { t: 'addbot', seat: 99 });
+  assert.equal(Object.keys(h.room.room.seats).length, 4);
+  assert.equal(h.room.room.seats.filter((s) => s?.bot).length, 2); // fueron a lugares libres de verdad
 });

@@ -5,10 +5,10 @@
 // Del lado de +z (atrás de tu silla) el centro queda libre y bajo: por ahí mira la cámara de la sala de espera.
 import * as THREE from 'three';
 import {
-  hsl, basic, box, cyl, ball, put, canvasTex, noise, seeded, toon, tick, glowSprite,
+  hsl, basic, box, cyl, ball, put, canvasTex, seeded, toon, tick, glowSprite,
   sunLight, tableLight, bulb, flicker, stringLights, embers, fire, smoke, water, grassTufts, birds, butterflies, label, plate,
 } from './amb-kit.js';
-import { tree, chair, sideTable, glassware, pottedPlant, brickTex, checkerTex, plankTex } from './amb-piezas.js';
+import { tree, chair, sideTable, glassware, pottedPlant, brickTex, checkerTex } from './amb-piezas.js';
 import { sky, clouds, layer, paintHills, paintTreeline, paintCity, petals, fireflies } from './paisaje.js';
 
 // Pasto pintado (con matas, tréboles y flores) para un piso grande.

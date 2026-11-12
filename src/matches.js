@@ -4,6 +4,7 @@ import { COINS, ELO_START, HISTORY_PAGE, FARM } from '../public/js/config.js';
 import { eloDeltas, milestoneCoins, rematchCount } from '../public/js/elo.js';
 import { team } from '../public/js/engine.js';
 import { rest, forgetProfile } from './auth.js';
+import { UUID_RE } from './util.js';
 
 /**
  * Guarda una partida terminada y actualiza ELO y monedas. meta: lo de MatchRecorder; game: el estado final.
@@ -148,7 +149,7 @@ const newShareId = () => {
  * y partida. Devuelve la clave, o null si no la jugó.
  */
 export async function shareMatch(env, userId, id) {
-  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  if (!UUID_RE.test(id)) return null;
   const mine = await rest(env, `match_players?match_id=eq.${id}&user_id=eq.${userId}&select=seat`);
   const me = mine.ok ? (await mine.json())[0] : null;
   if (!me) return null;
@@ -189,7 +190,7 @@ export async function getShared(env, share) {
 
 /** Una partida con su registro, solo si el jugador estuvo sentado en ella. */
 export async function getMatch(env, userId, id) {
-  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  if (!UUID_RE.test(id)) return null;
   const mine = await rest(env, `match_players?match_id=eq.${id}&user_id=eq.${userId}&select=seat,won,elo_before,elo_after,coins`);
   const me = mine.ok ? (await mine.json())[0] : null;
   if (!me) return null;

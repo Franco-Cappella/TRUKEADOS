@@ -31,14 +31,6 @@ export const SCENE = {
   deckSide: '#dccbaa',
 };
 
-// Luces del bar: sin mapeo de tonos, para que la paleta quede tal cual se eligió.
-export const LIGHT = {
-  ambient: 1.25, // luz pareja de todo el salón
-  lamp: 7.5, // lámpara colgante sobre la mesa
-  lampSoftness: 0.5, // borde del cono de luz (0 duro, 1 muy suave)
-  fill: 1.4,
-};
-
 // Cartas en la mesa
 export const CARD = {
   blank: '#fbfaf6', // la de abajo de un tiro doble, vista por un rival

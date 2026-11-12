@@ -38,6 +38,10 @@ test('acepta un token firmado por el proyecto', async () => {
 
 test('rechaza tokens vencidos, de otro proyecto, sin audiencia o con otra firma', async () => {
   assert.equal(await verifyToken(env, await sign({ ...good(), exp: Date.now() / 1000 - 1 })), null);
+  // sin vencimiento (o con uno que no es número) no vale, aunque la firma esté bien
+  const { exp, ...noExp } = good();
+  assert.equal(await verifyToken(env, await sign(noExp)), null);
+  assert.equal(await verifyToken(env, await sign({ ...good(), exp: 'nunca' })), null);
   assert.equal(await verifyToken(env, await sign({ ...good(), iss: 'https://otro.supabase.co/auth/v1' })), null);
   assert.equal(await verifyToken(env, await sign({ ...good(), aud: 'anon' })), null);
   const other = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);

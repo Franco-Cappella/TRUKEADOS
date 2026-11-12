@@ -3,7 +3,7 @@
 import { SENAS, SENA_MS, ROUTES, dealMs, roomOptionsText, ROOM_OPTIONS, optionForMode, APP_NAME, MODES, modeLabel, AMBIENTES, tableOwner, tableLook } from './config.js';
 import { cardName, team, validTanto, ENVIDO_NAMES, TRUCO_NAMES, FLOR_NAMES } from './engine.js';
 import { lookFor, dressed, biteAt } from './characters.js';
-import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, initial, avatarHtml, DEFAULT_AVATAR } from './dom.js';
+import { $, esc, api, store, KEYS, savedName, sessionToken, takeSession, avatarHtml, DEFAULT_AVATAR } from './dom.js';
 import { audio, flick, ding, say, hush, myVoice, setSeatVoices } from './audio.js';
 import { palitos, drawFace } from './hud.js';
 import { PartyStage } from './party.js';

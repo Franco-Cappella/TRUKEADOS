@@ -259,6 +259,8 @@ export const ANTICHEAT = {
   lookPenalty: 1500, // ms sin ver señas después de pasarse (la mirada igual se mueve: los demás la ven)
   senaGap: 700, // ms mínimos entre dos señas del mismo jugador
   msgBurst: { n: 120, ms: 5000 }, // mensajes por conexión por ventana; los que sobran se descartan
+  joinBurst: { n: 4, ms: 10000 }, // "join" por conexión (cada uno lee la base): los que sobran se descartan
+  chatBurst: { n: 6, ms: 5000 }, // mensajes de chat por conexión: los que sobran se descartan
 };
 
 // ------------------------------------------------------------------ bots
@@ -464,7 +466,6 @@ export const GRADES = [
 export const HISTORY_PAGE = 20; // partidas por página en el historial
 // Rendirse en equipo: cuántos del equipo tienen que estar de acuerdo (en 1 vs 1 no hay votación).
 export const SURRENDER_NEED = { '2v2': 2, '3v3': 2 };
-export const FRIEND_POLL_MS = 20_000; // cada cuánto se revisa si llegó una solicitud de amistad (menú y partida)
 // Amigos conectados: cada navegador avisa dónde está cada ping ms; sin aviso por ttl ms, desconectado.
 // El chat entre amigos guarda los últimos dmKeep mensajes de cada pareja y, con el chat abierto, se revisa cada chatPoll ms.
 export const PRESENCE = { ping: 20_000, ttl: 70_000, dmKeep: 60, chatPoll: 3000 };
