@@ -19,7 +19,7 @@ Medida de éxito: clics en "Jugar ahora" y "Practicar con bots" sobre visitas.
 | # | Decisión | Detalle |
 |---|---|---|
 | D1 | **La landing no es parte del juego** | Proyecto aparte, `repository/truco3D-landing`, con su propio git y su propio deploy. Su único trabajo es llevar al juego (`VITE_GAME_URL`). |
-| D2 | **Stack de `web-inmersiva`** | React 19 + Vite + TypeScript, React Three Fiber 9.8 + drei 10.7 + three 0.186, GSAP 3.15 (ScrollTrigger, SplitText) + Lenis 1.3, maath, zustand, Archivo autoalojada. Los recursos del juego se copian con `npm run sync`. |
+| D2 | **Stack de `web-inmersiva`** | React 19 + Vite + TypeScript, React Three Fiber 9.8 + drei 10.7 + three 0.186, GSAP 3.15 (ScrollTrigger, SplitText) + Lenis 1.3, maath, zustand, tipografía autoalojada (era Archivo; con el sistema blanco y negro pasa a Hanken Grotesk, ver `brand/ALINEACION.md` §2). Los recursos del juego se copian con `npm run sync`. |
 | D3 | **Marca** | Trukeados, con el brandkit de [../../brand/](../../brand/). |
 | D4 | **Hilo** | "Te están mirando": las señas son el diferencial. |
 | D5 | **Nivel 3: mundo de scroll** | Cambia lo que se había decidido antes (una cara como primera pantalla, sin 3D): se pidió una landing muy inmersiva. El bar del juego es el mundo, el scroll mueve la cámara y el recorrido termina sentado en tu silla, que es la misma vista del juego. |

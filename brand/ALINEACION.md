@@ -1,46 +1,64 @@
-# Trukeados — alinear el juego con la marca
+# Trukeados — lo que falta pasar al blanco y negro
 
-La marca sale del juego, pero el juego todavía tiene diferencias con algunos detalles que la marca decidió
-distinto. Esta es la lista exacta para dejarlos iguales, y los cambios que quedaron para más adelante.
+En noviembre 2026 (commit `90dd922`, "Diseño blanco y negro grotesk") el juego pasó a **blanco y negro,
+grotesk**: Hanken Grotesk, negro, blanco y grises, el blanco como acento, el rojo solo para errores, esquinas
+rectas. La mesa y los ambientes siguen a color. Desde entonces **el juego es la referencia** y la marca lo sigue.
+Esta es la lista de lo que todavía no coincide.
 
-**Estado (2026-11-06, juego 1.5.3, commit `4766ecf`)**: el nombre ya está cambiado en el juego (1.5.1, con
-`APP_NAME` en `config.js`), salvo el favicon. Lo demás sigue pendiente.
+**Estado (2026-11-12)**: juego ✅, documentos de `brand/` y `DESIGN.md` ✅, `brand/tokens.css` ✅ (con alias
+heredados), `brand/lamina.html` ✅. Pendiente: logos (§1), landing (§2) y detalles del juego (§3).
 
-Prioridad: 🔴 nombre (antes de publicar la landing) · 🟡 coherencia visual · ⚪ cuando se pueda.
+Prioridad: 🔴 se ve en la pantalla de entrada · 🟡 coherencia visual · ⚪ cuando se pueda.
 
 ## 0. Decisiones cerradas
 
-| Tema | Decisión | Cambio futuro |
-|---|---|---|
-| Nombre visible | **Trukeados** en todo lo que se muestra. | ✅ Hecho en 1.5.1, salvo el favicon (§1). |
-| Nombre del Worker | Se había decidido mantener `truco3d`, pero el juego lo cambió a **`trukeados`** en 1.5.1. | Al desplegar, ver §5. |
-| Botón principal | **Por ahora, oro solo en páginas.** El juego sigue con el botón principal blanco. | §4, cuando se quiera. |
-| Paño como fondo | **Una sección entera por página** puede ir en `--pano-3`. En el juego, el paño sigue solo en la escena 3D. | — |
-
-## 1. Nombre: "Truco 3D" → "Trukeados" ✅ (1.5.1)
-
-El juego lo hizo en 1.5.1: el nombre del JS sale de `APP_NAME` (`config.js`), y en lo estático está en
-`index.html`, `package.json` y `wrangler.jsonc`.
-
-| Dónde | Estado |
+| Tema | Decisión |
 |---|---|
-| Título, descripción, encabezado del menú, título de la sala, compartir, paño, comentarios, `README.md`, `AGENTS.md`, `docs/REGLAS.md` | ✅ Hecho. El encabezado quedó en texto (`Truke<span>ados</span>`) con la bajada "Truco argentino en 3D, online, con señas de verdad."; el logo SVG queda como opción. |
-| `package.json` / `wrangler.jsonc` (`name`) | ✅ Cambió a `trukeados` (ver §5 antes de desplegar). |
-| `public/favicon.svg` | 🔴 Pendiente: sigue el favicon viejo (naipes marfil, trazo marrón). Cambiar por `brand/logo/icono-app.svg`. |
+| Tipografía | **Hanken Grotesk**, 400–800, una sola familia. Reemplaza a Archivo (y con ella los anchos 62–125 %). |
+| Paleta de interfaz | Negro, blanco y grises. El acento es el blanco. Equipos blanco / gris `#8c8c8c`. Rojo `#ff5a4f` solo para errores y trampa. |
+| Botón principal | **Blanco con letra negra, en el juego y en las páginas.** Se descarta el botón oro (era el §4 de la versión anterior de este documento). |
+| Palos como colores | Ya no son colores de interfaz. `--oro`, `--espada`, `--basto`, `--copa` quedan en `tokens.css` como alias heredados. |
+| Paño como fondo de sección | **No.** Las páginas no tienen campos de color; el paño queda en la escena y en las imágenes. |
+| Esquinas | 2 px en todo (antes 3–4 px). |
+| La mesa | A todo color (paño verde por defecto, ambientes, cartas, personajes). Se probó un paño grafito en `90dd922` y se volvió al color. |
 
-## 2. Coherencia visual 🟡
+## 1. Logos 🔴
 
-| Tema | Hoy en el juego | Marca | Qué hacer |
-|---|---|---|---|
-| Botón principal | `.btn.primary` blanco (`--text`) con texto negro | Oro (`--oro`) con texto `--accent-ink` en páginas | **Decidido: queda blanco en el juego por ahora.** Cuando se cambie, ver §4. |
-| Fondo del menú | `radial-gradient(… var(--glow) …)` | Sin degradés | Excepción del juego, o reemplazar por `--bg` liso. Pendiente de decidir. |
-| Comentarios viejos en `truco.css` | "raya de latón", "papelito marfil, letra de imprenta en cursiva" | La marca prohíbe latón, marfil e itálica (y el CSS ya no los usa) | Corregir los comentarios (líneas 96 y 161). |
-| Tokens nuevos | No existen en el juego: `--surface-3`, `--espada-tinta`, `--basto-tinta`, `--copa-tinta`, `--pano*`, escala `--fs-*`, `--ease-out`, `--dur-*` | Están en `brand/tokens.css` | Copiar a `:root` de `truco.css` cuando se usen. `--team0` y `--team1` ya equivalen a espada y copa tinta. |
-| Nombres de color | `--blue`, `--green`, `--yellow`, `--red` | `--espada`, `--basto`, `--oro`, `--copa` (con alias) | Sin urgencia: los alias mantienen los dos. |
-| Estilo Canto | Globo y botón de canto en 700, ancho normal, sin mayúsculas | La marca agrega el estilo Canto (125 %, 900) para páginas | El juego queda como está; el estilo Canto es para momentos grandes en páginas. |
-| Favicon | `favicon.svg` viejo | `icono-app.svg` | Ver §1. |
+| Dónde | Hoy | Qué hacer |
+|---|---|---|
+| `public/favicon.svg`, `public/img/icon-*.png` | ✅ Blanco y negro: dos naipes cruzados, uno blanco lleno y uno calado con la raya de la espada. | Tomarlo como base de la marca nueva. |
+| `brand/logo/*.svg` | Espada azul `#2f6fd6` con guarda y pomo oro `#f2c12e`; palabra en Archivo Expanded Black. | Rehacer: marca de una sola tinta (como el favicon) y palabra TRUKEADOS en Hanken Grotesk 800 convertida a contornos. Versiones: blanco sobre negro y negro sobre blanco (ya no hace falta la de color). |
+| `brand/tools/build-logos.mjs` | Lee `ArchivoExpanded-Black.ttf` y pinta la espada en color. | Pasarlo a Hanken Grotesk (TTF de Google Fonts) y a una tinta; regenerar `logo-data.json`. |
+| `public/img/og.png` | ✅ Ya en el sistema nuevo: favicon blanco y negro, TRUKEADOS en Hanken Grotesk 800 en mayúsculas, botón blanco "JUGAR GRATIS" sobre una captura a color. | Es la referencia de cómo se ve una pieza de la marca. |
 
-## 3. Para que la landing lleve más directo al juego ⚪
+Mientras tanto, en piezas nuevas: el nombre escrito en Hanken Grotesk (`TRUKE` 800 + `ADOS` 400), o los SVG
+mono blanco / mono negro.
+
+## 2. La landing (`trukeados-landing`) 🔴
+
+La landing sigue en el sistema anterior: Archivo autoalojada (`@fontsource-variable/archivo`), anchos 78–125 %,
+botón principal oro con reflejo de moneda, selección de texto oro y "te mira" en oro.
+
+| Archivo de la landing | Qué cambiar |
+|---|---|
+| `package.json` | `@fontsource-variable/archivo` → `@fontsource-variable/hanken-grotesk`. |
+| `src/styles/base.css` | `--font` a `'Hanken Grotesk Variable', 'Hanken Grotesk', …`; botón principal blanco con letra negra (hover `--accent-hover`); sacar el reflejo de moneda; selección de texto blanca con tinta negra. |
+| `src/styles/landing.css`, `estudios.css` | Sacar los `font-stretch` (no hacen nada con Hanken); títulos y rótulos en mayúsculas como en el juego; "te mira" en `--text`; el campo de paño, fuera. |
+| `src/styles/tokens.css` | Volver a sincronizar (`npm run sync`) para traer los tokens nuevos. Los alias heredados evitan que se rompa antes de cambiar el CSS. |
+| `index.html` | Precargar Hanken Grotesk en lugar de Archivo; `theme-color` `#0a0a0a`. |
+| `src/ui/Footer.tsx`, `docs/CONTRATO.md`, `public/llms.txt` | Crédito de la tipografía: "Hanken Grotesk, de Hanken Design Co. (OFL)". |
+| `src/three/bar/palette.ts` | Revisar: la escena puede seguir a color, pero ningún color de ahí va a la interfaz. |
+
+## 3. Detalles del juego 🟡
+
+| Tema | Hoy | Qué hacer |
+|---|---|---|
+| `theme-color` | `<meta name="theme-color" content="#121212">` en `public/index.html` | Pasar a `#0a0a0a` (el `--bg` nuevo). Revisar también `manifest.webmanifest`. |
+| Restos de Archivo en el CSS | `font-stretch: var(--narrow)` en muchos selectores de `truco.css` (`--narrow` vale 100 %) | Se pueden borrar sin cambio visible. |
+| `accent-color: var(--yellow)` | Casillas de verificación (`.a-level`, `.rv-reveal`) | Funciona (`--yellow` es blanco), pero conviene pasarlo a `--accent`. |
+| Fondo del menú | `radial-gradient` de `--glow` `#1a1a1a` | Excepción aceptada del juego: es gris sobre negro, no un degradé de color. |
+
+## 4. Para que la landing lleve más directo al juego ⚪
 
 No hacen falta para publicar, pero mejoran el paso de la landing al juego:
 
@@ -52,49 +70,7 @@ No hacen falta para publicar, pero mejoran el paso de la landing al juego:
 
 Cada uno es un cambio chico en `main.js` / `menu.js` / `src/index.js`, con su prueba.
 
-## 4. Cambio futuro: botón principal en oro también en el juego
-
-Hoy, en páginas, el botón principal es oro. En el juego es blanco. Si se pasa el juego a oro:
-
-**Qué cambia**
-- `public/css/truco.css`, líneas 90–91: `.btn.primary` pasa a `background: var(--oro); color: var(--accent-ink); border-color: var(--oro);`, y el hover a un oro más claro. Conviene agregar `--oro-hover` a `brand/tokens.css` antes (hoy la lámina usa `#f5cc4f` escrito a mano).
-- Los 7 lugares del juego que usan `btn primary`:
-
-| Archivo | Línea | Botón |
-|---|---|---|
-| `public/index.html` | 41 | Entrar (unirse con código) |
-| `public/index.html` | 70 | Crear sala |
-| `public/index.html` | 126 | Tirar (la carta elegida) |
-| `public/index.html` | 141 | Enviar (chat) |
-| `public/js/menu.js` | 85 | Sentarme (mesas públicas) |
-| `public/js/room-client.js` | 797 | Empezar (sala de espera) |
-| `public/js/room-client.js` | 818 | Revancha (fin de partida) |
-
-**Qué mirar después**
-- **La regla de proporción**: en el juego el oro aparecería varias veces a la vez (por ejemplo "Tirar" y "Entrar"). La marca dice menos de 3 % de oro en pantalla. Si en la mesa se ve demasiado, la alternativa es dejar oro solo en "Crear sala", "Empezar" y "Revancha", y el resto en blanco.
-- **Contraste**: texto negro sobre oro da 11:1, así que alcanza.
-- **Los cantos no cambian**: el botón de canto ya tiene su raya oro, y sigue igual.
-- **Probar** el panel de acciones en 1280×720, 768×1024 y 375×812 (la misma vara que usa el juego).
-- Después, actualizar `brand/COMPONENTES.md` (fila "Principal") y `brand/lamina.html`.
-
-## 5. El Worker renombrado y el dominio propio
-
-Desde 1.5.1 el Worker se llama `trukeados`: al desplegar, la dirección pasa a
-`trukeados.<cuenta>.workers.dev`. El paso 1 ya está hecho; los demás son para el primer despliegue con el
-nombre nuevo.
-
-**Opción A: renombrar el Worker** (elegida por el juego en 1.5.1)
-1. ✅ Cambiar `name` en `wrangler.jsonc` y en `package.json`.
-2. Antes de desplegar, verificar en la documentación de Cloudflare que los Durable Objects (`TrucoRoom` y `Lobby`) se crean de cero en el Worker nuevo. Si es así, las salas en curso y la lista de mesas públicas arrancan vacías. Las salas son efímeras, pero conviene hacerlo sin partidas abiertas.
-3. `npm run deploy` y probar: partida rápida, entrar con código, práctica con bots y una sala de dos personas.
-4. Mantener el Worker viejo activo mientras los links compartidos se reemplazan. No conviene redirigirlo: las conexiones en vivo (WebSocket) no se redirigen bien, así que las salas se romperían.
-5. Actualizar la dirección en la landing (`VITE_GAME_URL`), en el texto de deploy del `README.md`, y en el mensaje de WhatsApp si lo tiene.
-
-**Opción B: dominio propio** (por ejemplo `trukeados.com.ar`)
-- Se agrega como ruta personalizada del Worker. La dirección `workers.dev` sigue funcionando, así que los links viejos no se rompen.
-- Hay que comprar el dominio y decidir cuál es el canónico. Es lo que D6 deja pendiente en `docs/landing/PLAN.md`.
-
 ## Cómo se usa este documento
 
-Cuando se haga un cambio de esta lista, se marca la fila como hecha, se actualiza la fecha y el commit al
-principio, y se corre `npm test` en el juego.
+Cuando se haga un cambio de esta lista, se marca la fila como hecha, se actualiza la fecha al principio, y se
+corre `npm test` en el juego (y `npm run build` en la landing si se tocó).

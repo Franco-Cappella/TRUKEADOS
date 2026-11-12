@@ -1,26 +1,26 @@
 # Trukeados — marca
 
 Guía de identidad para el juego y para todo lo que salga de él (landing, reglas, prensa, redes).
-Todo sale de lo que el juego ya usa: Archivo, los grises de la interfaz, los cuatro palos de la baraja y
-el bar de la escena 3D. Esto lo ordena, completa lo que faltaba (logo, escala, estilos de texto, usos) y
-lo vuelve una regla.
+Todo sale de lo que el juego ya usa. Desde noviembre 2026 la interfaz es **blanco y negro, grotesk**: Hanken
+Grotesk, negro, blanco y grises, esquinas rectas. El color lo ponen las cartas, los personajes y la mesa 3D.
+Esto lo ordena, completa lo que faltaba (escala, estilos de texto, usos) y lo vuelve una regla.
 
 | Archivo | Qué es |
 |---|---|
 | [tokens.css](tokens.css) | Colores, tipografía, espacios, formas y movimiento como variables CSS. **Fuente de verdad.** |
 | [logo/](logo/) | Logos en SVG con letras convertidas a contornos (no dependen de la fuente instalada). |
-| [tools/build-logos.mjs](tools/build-logos.mjs) | Genera los logos desde Archivo Expanded Black (ver al final). |
+| [tools/build-logos.mjs](tools/build-logos.mjs) | Genera los logos (hoy desde Archivo Expanded Black: por rehacer, ver §2). |
 | [lamina.html](lamina.html) | La marca en una página: logos, paleta, estilos de texto y componentes. Abrir en el navegador. |
 | [COMPONENTES.md](COMPONENTES.md) | Cada componente del juego con sus valores exactos, y cómo se traduce a páginas. |
 | [RECURSOS.md](RECURSOS.md) | Cartas, personajes, señas, anotador, sonido y escena: cómo usarlos fuera del juego. |
 | [VOZ.md](VOZ.md) | Cómo habla Trukeados: vocabulario del juego, cantos, frases y textos reales. |
 | [PAGINAS.md](PAGINAS.md) | Reglas para páginas derivadas (landing, reglas, prensa): grilla, escala, secciones, imágenes, movimiento, accesibilidad. |
-| [ALINEACION.md](ALINEACION.md) | Diferencias que hoy hay entre el juego y la marca, y qué cambiar en cada archivo. |
+| [ALINEACION.md](ALINEACION.md) | Lo que todavía no pasó al blanco y negro (logos, landing) y qué cambiar en cada archivo. |
 
 Índice general del sistema de diseño: [DESIGN.md](../DESIGN.md) en la raíz del repositorio.
 
-En el juego, `public/css/truco.css` (`:root`) y `public/js/theme.js` tienen que coincidir con
-`tokens.css`. Los nombres del juego (`--bg`, `--surface`, `--text`, `--accent`, `--blue`…) se mantienen.
+En el juego, `public/css/truco.css` (`:root`) y `public/js/theme.js` son la referencia: `tokens.css` los copia.
+Los nombres del juego (`--bg`, `--surface`, `--text`, `--accent`, `--team0`…) se mantienen.
 
 ---
 
@@ -32,7 +32,7 @@ En el juego, `public/css/truco.css` (`:root`) y `public/js/theme.js` tienen que 
 - **Para quién**: gente que juega o jugó al truco en familia, con amigos o en el club, y quiere seguir
   jugando a distancia.
 - **Personalidad**: canchera, de barrio, con picardía, sin chabacanería. Tradicional en las reglas,
-  moderna en cómo se ve.
+  moderna en cómo se ve: blanco y negro, letra grotesk, nada de adornos en la interfaz.
 - **Lo que se evita**: el folclore de souvenir (mate y gaucho por todos lados), el casino (dorados,
   brillos, fichas), el "app de juegos" genérico (degradés, íconos de colores, mascotas).
 
@@ -50,127 +50,144 @@ hacer trampa, y te pueden cazar.
 
 ## 2. Logo
 
-### La marca: el ancho de espada en la mano
-Dos naipes cruzados. El de adelante lleva el **ancho de espada** reducido: hoja azul espada, guarda y
-pomo oro. Es la mejor carta del truco ("el macho") y los dos naipes encimados son la mano, y también la
-trampa del juego (tirar dos encimadas). Viene del favicon original (dos naipes, una espada azul y un
-punto oro), redibujado con la paleta y con una espada que se lee como espada.
+> **En transición.** El sistema blanco y negro todavía no tiene logo propio. Hoy conviven:
+> - **El favicon del juego** (`public/favicon.svg`, y los PNG `public/img/icon-*.png`): ya es blanco y negro. Dos
+>   naipes cruzados sobre `#0a0a0a`: el de atrás blanco lleno, el de adelante calado (negro con borde blanco de 3 px)
+>   y una raya blanca vertical que es la espada. Esquinas de 2 px.
+> - **El encabezado del menú**: el nombre en texto, `TRUKE` en Hanken Grotesk 800 y `ADOS` en 400, en mayúsculas,
+>   tracking −0,035 em (`.m-head h1`). Es la forma de escribir el nombre hasta que haya logo nuevo.
+> - **Los SVG de `brand/logo/`**: son los de antes (espada azul `#2f6fd6`, guarda y pomo oro `#f2c12e`, palabra en
+>   Archivo Expanded Black). No van en piezas nuevas en color; si hace falta un SVG ya, usar las versiones
+>   **mono blanco / mono negro**, que son de una sola tinta. Rehacerlos está en [ALINEACION.md](ALINEACION.md) §1.
 
-La **palabra** es TRUKEADOS en **Archivo Expanded Black**, mayúsculas, tracking −0,01 em, convertida a
-contornos. Una sola tinta: el color lo pone la marca.
+### La marca
+Dos naipes cruzados: la mano, y también la trampa del juego (tirar dos encimadas). El de adelante lleva el
+**ancho de espada** ("el macho"), reducido a una raya. En blanco y negro: un naipe lleno y uno calado, nunca
+con color.
 
-### Versiones
+### Versiones (archivos actuales)
 
-| Archivo | Uso |
+| Archivo | Uso hoy |
 |---|---|
-| `logo-horizontal.svg` | **Principal.** Fondo oscuro. Barra de navegación, pie, encabezados. |
-| `logo-horizontal-claro.svg` | Fondo claro (naipes en tinta, espada en color). |
-| `logo-apilado.svg` / `-claro` | Espacios cuadrados: portada, carga, posteos. |
-| `logo-horizontal-mono-blanco.svg` / `-negro` | Una sola tinta: sellos, impresos, fondos de foto. La espada queda calada. |
-| `marca.svg` / `-claro` / `-mono-blanco` / `-mono-negro` | Solo el símbolo: avatar, botón, marca de agua. |
-| `palabra.svg` / `palabra-negro.svg` | Solo la palabra, cuando la marca ya está cerca. |
-| `icono-app.svg` | Ícono de app y favicon: marca en color sobre `--bg`, esquinas al 22 %. |
-| `logo-data.json` | Trazado de la palabra y caja de la marca, para dibujarlo en componentes. |
+| `public/favicon.svg` | Favicon y referencia de la marca blanco y negro. |
+| `logo-horizontal-mono-blanco.svg` / `-negro` | **Las únicas que se usan mientras no haya logo nuevo.** Una sola tinta. |
+| `marca-mono-blanco.svg` / `-mono-negro` | Solo el símbolo, una tinta. |
+| `logo-horizontal.svg`, `logo-apilado.svg`, `marca.svg`, `icono-app.svg` y sus `-claro` | Versiones en color de antes. No usar en piezas nuevas. |
+| `palabra.svg` / `palabra-negro.svg` | La palabra en Archivo. No usar en piezas nuevas (escribir el nombre en Hanken Grotesk). |
+| `logo-data.json` | Trazado de la palabra y caja de la marca (versión anterior). |
 
 ### Reglas
-- **Aire alrededor**: como mínimo, la altura de la "T" de TRUCO en los cuatro lados.
-- **Tamaño mínimo**: horizontal 120 px de ancho; marca sola 20 px; por debajo de 32 px usar `icono-app.svg`.
-- **Fondos**: `--bg`, `--surface`, `--pano-3` o fotos oscuras → versión de color o mono blanco.
-  `--text` (claro) → versión clara o mono negro. Sobre oro, espada o copa → solo mono negro (oro) o
-  mono blanco (espada, copa).
-- **No**: cambiar los colores de la espada, rotar o deformar, poner la palabra en otra fuente o en
-  itálica, agregar sombras, brillos, contornos o degradés, separar la marca de la palabra en otra
-  proporción, usar el logo dentro de una frase.
+- **Aire alrededor**: como mínimo, la altura de la "T" en los cuatro lados.
+- **Tamaño mínimo**: horizontal 120 px de ancho; marca sola 20 px; por debajo de 32 px, el favicon.
+- **Fondos**: oscuro (`--bg`, `--surface`, fotos oscuras) → blanco; claro (`--text`) → negro. Nunca sobre color.
+- **No**: ponerle color, rotar o deformar, poner la palabra en otra fuente o en itálica, agregar sombras, brillos,
+  contornos o degradés, usar el logo dentro de una frase.
 
 ## 3. Color
 
-### Neutros: la mesa de noche
+**Negro, blanco y grises.** La interfaz no tiene colores: el acento es el blanco y el rojo queda solo para lo
+que sale mal. El color de la pantalla lo ponen las cartas, los personajes y la mesa.
+
+### Neutros
 | Token | Hex | Rol |
 |---|---|---|
-| `--bg` | `#121212` | Fondo de todo. |
-| `--surface` | `#1c1c1c` | Un escalón arriba (paneles, secciones alternas). |
-| `--surface-2` | `#262626` | Dos escalones (tarjetas sobre panel, campos). |
-| `--surface-3` | `#303030` | Hover. |
-| `--text` | `#f5f5f5` | Tinta principal. También el "papel" cuando el fondo es claro. |
-| `--text-dim` | `#b3b3b3` | Texto secundario. |
-| `--muted` | `#808080` | Notas y créditos. No usar sobre `--surface-2`. |
+| `--bg` | `#0a0a0a` | Fondo de todo. |
+| `--surface` | `#141414` | Un escalón arriba (paneles, tarjetas, diálogos). |
+| `--surface-2` | `#1f1f1f` | Dos escalones (campos, asientos, caras de las señas). |
+| `--surface-3` | `#2a2a2a` | Hover en páginas (en el juego: `--panel-hover` `rgba(34,34,34,.96)`). |
+| `--text` | `#f4f4f4` | Tinta principal (18:1). También el "papel" cuando el fondo es claro. |
+| `--text-dim` | `#a8a8a8` | Texto secundario (8,3:1). |
+| `--muted` | `#757575` | Notas y créditos no esenciales (4,3:1: no llega a AA; nunca sobre `--surface-2`). |
+| `--line` / `--line-2` | `rgba(255,255,255,.1)` / `.22` | Bordes de 1 px de la interfaz. |
 
-### Los cuatro palos
-| Palo | Relleno | Como texto sobre oscuro | Para qué |
-|---|---|---|---|
-| Espada | `--espada` `#2f6fd6` | `--espada-tinta` `#5b93e8` | Equipo 1 ("nosotros"), información, la marca. |
-| Basto | `--basto` `#2e9e57` | `--basto-tinta` `#4fbf7a` | Bien: ganaste, querido, mostró. |
-| **Oro** | `--oro` `#f2c12e` | `--oro-tinta` `#f2c12e` | **El acento.** Acción principal, foco, "te toca". |
-| Copa | `--copa` `#d93b30` | `--copa-tinta` `#ef6a5c` | Equipo 2 ("ellos"), trampa, error, peligro. |
+En el juego también: `--panel` `rgba(10,10,10,.92)` (paneles sobre la escena), `--panel-soft` `.74`,
+`--hover-tint` `rgba(255,255,255,.07)`, `--shade` `rgba(0,0,0,.74)` (detrás de diálogos), `--face-bg` `#1f1f1f`.
 
-Espada y copa como relleno no llegan a 4,5:1 contra el fondo: **nunca como color de texto chico**;
-para texto, las versiones "tinta". Sobre oro se escribe siempre en `--accent-ink` (`#121212`, 11:1).
-Blanco sobre espada o copa solo en texto de 18 px o más en negrita (4,4:1 y 4,2:1).
-
-### Ambiente del bar
-| Token | Hex | Rol |
+### Usos
+| Token | Valor | Para qué |
 |---|---|---|
-| `--pano` / `--pano-2` / `--pano-3` | `#27523e` / `#204534` / `#1a4529` | El paño. `--pano-3` es el único campo de color permitido para una sección entera de página (blanco 10:1, oro 6,5:1). |
-| `--lampara` | `#ffd9a0` | Luz cálida. Solo en imágenes y en la escena 3D. |
-| `--bar` / `--madera` / `--pared` | `#1a120c` / `#5b3418` / `#6b3b2a` | Escena 3D e imágenes. **Nunca en interfaz** (ni botones, ni textos, ni fondos de panel). |
+| `--accent` | `#ffffff` | **El acento.** Botón principal, foco, "te toca", raya de los cantos, "te mira". |
+| `--accent-ink` | `#0a0a0a` | Texto sobre el acento (20:1). |
+| `--team0` | `#ffffff` | Equipo "nosotros": borde de placa, nombres en el chat, marcador. |
+| `--team1` | `#8c8c8c` | Equipo "ellos" (5,9:1). |
+| `--good-*` | blanco, fondo `rgba(255,255,255,.12)` | Bien: ganaste, querido, mostró. Se marca en blanco, no en verde. |
+| `--red` | `#ff5a4f` | **Único color de interfaz.** Errores, trampa, peligro, "¡Mostrá las dos!" (6,4:1). |
+| `--bad-ink` / `--bad-bg` | `#ffb0aa` / `rgba(255,90,79,.16)` | Texto y fondo de lo que salió mal. |
+| `--offline` | `#ff8a80` | "Desconectado" en la placa de nombre. |
+
+Los palos (`--blue`, `--green`, `--yellow` en `truco.css`) quedaron en grises y blanco: ya no son colores de
+interfaz. En `tokens.css` siguen `--oro`, `--espada`, `--basto`, `--copa` y sus "tinta" como **alias heredados**
+(apuntan al blanco, a los grises y al rojo) para no romper la landing; no se usan en nada nuevo.
+
+### La mesa y los ambientes (a color)
+La escena 3D va a todo color, como en la vida real: paño verde por defecto (`SCENE.felt` en `theme.js`:
+`#27523e` → `#204534` → `#1a4529`, los `--pano*` de `tokens.css`), madera, y los paños, mazos y mapas de la tienda.
+Los nueve ambientes (bar notable, café, parrilla, club, Bosques de Palermo, quincho, estancia, Barrio Chino y
+Noche estrellada) tienen sus colores en sus archivos (`amb-*.js`, `barrio-chino.js`). **Nada de eso pasa a la
+interfaz**: ni botones, ni textos, ni fondos de panel.
 
 ### Proporciones
-Más o menos así en cualquier pantalla: **70 % negro** (`--bg`/`--surface`), **20 % tinta y grises**,
-**hasta 8 % paño o imagen del bar**, **menos de 3 % oro**. Los otros palos aparecen como señales (un
-equipo, un resultado, la espada del logo), nunca como decoración ni todos juntos en fila.
+En la interfaz: **todo negro y grises, con blanco para lo importante**. El blanco lleno (botón principal, globo,
+placa con el turno) aparece pocas veces por pantalla; el rojo, solo cuando algo salió mal.
 
-**Prohibido**: marfil, crema, latón, dorado metálico, marrones en la interfaz, violeta, degradés,
-brillos, neón.
+**Prohibido en la interfaz**: oro o amarillo, azul, verde, marfil, crema, latón, dorado metálico, marrones,
+violeta, degradés de color, brillos, neón.
 
 ## 4. Tipografía
 
-**Una sola familia: Archivo** (Omnibus-Type, Buenos Aires; Google Fonts, licencia OFL), variable en
-peso (100–900) y ancho (62–125 %). La familia hace todo el trabajo cambiando de ancho: expandida para
-gritar, normal para leer, angosta para rotular. Sin itálicas. Sin serif. Sin monoespaciada (salvo el
-código de sala dentro del juego, que es un código de verdad).
+**Una sola familia: Hanken Grotesk** (Hanken Design Co.; Google Fonts, licencia OFL), variable de 400 a 800.
+Grotesk de palo seco, sin ejes de ancho: el trabajo lo hacen el peso, el tamaño, las mayúsculas y el tracking.
+Sin itálicas. Sin serif. Sin monoespaciada (salvo el código de sala, que es un código de verdad).
 
+```html
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400..800&display=swap">
+```
 ```css
-font-family: var(--font);
-font-stretch: var(--wide); /* 125 % | 112 % | 100 % | 78 % | 62 % */
-font-weight: 850;
+font-family: var(--font); /* 'Hanken Grotesk', system-ui, … */
 ```
 
 ### Estilos de texto
 
-| Estilo | Ancho | Peso | Tamaño | Interlineado / tracking | Uso |
+| Estilo | Peso | Tamaño | Interlineado / tracking | Caja | Uso |
 |---|---|---|---|---|---|
-| **Display** | 125 % | 850 | `--fs-display` (52–152 px) | 0,9 / −0,035 em | Título principal de página. Una vez por página. Oración, no mayúsculas. |
-| **Título** | 112 % | 800 | `--fs-title` (36–72 px) | 1 / −0,02 em | Título de cada sección. Máximo dos líneas. |
-| **Canto** | 125 % | 900 | `--fs-canto` (28–48 px) | 1 / 0 | Lo que se canta: **¡TRUCO!**, **¡QUIERO!**, **¡ENVIDO!** En mayúsculas, con signos de apertura. Globos, momentos de voz. |
-| **Bajada** | 100 % | 400 | `--fs-lead` (20–26 px) | 1,4 / 0 | La frase debajo del título. |
-| **Texto** | 100 % | 400 (600 para resaltar) | `--fs-body` (18 px) | 1,55 / 0 | Párrafos. Máx. 62 caracteres por línea. Tinta llena, no gris. |
-| **Rótulo** | 78 % | 650 | `--fs-small` (15 px) | 1,3 / 0,02 em | Datos y etiquetas en páginas, en oración (no mayúsculas espaciadas). |
-| **Botón** | 78 % | 650 | 17–19 px | 1 / 0,04 em | Acciones. Mayúsculas solo dentro del juego. |
-| **Cifra** | 62–100 % | 800 | según contexto | `font-variant-numeric: tabular-nums` | Tanteador, tantos, puntos. |
-| **Legal** | 100 % | 400 | `--fs-micro` (13 px) | 1,45 | Créditos de cartas y licencias. |
+| **Display** | 800 | `--fs-display` (52–152 px); en el menú `clamp(40px, 6.4vw, 64px)` | 0,92–0,95 / −0,035 a −0,04 em | **Mayúsculas** | Título principal. Una vez por pantalla. |
+| **Título** | 800 | `--fs-title` (36–72 px); en el juego 28–46 px | 0,95–1 / −0,035 a −0,04 em | **Mayúsculas** | Título de sección o de panel grande (tienda, taquilla). |
+| **Rótulo** | 600–700 | 10–15 px | 1,2–1,3 / 0,06–0,12 em (`--track` 0,08 em) | **Mayúsculas** | Encabezados de tarjeta, etiquetas, chips, datos, enlaces de barra. |
+| **Botón** | 650 | `--btn-font` 15 px (14–19 px) | 1,1 / `--track` 0,08 em | **Mayúsculas** | Acciones. |
+| **Canto** | 700 | `--btn-call-font` 20 px; globo 19–23 px; en página `--fs-canto` | 1 / 0 | Como se dice: **¡Truco!**, **¡Quiero retruco!** | Botones de canto y globos. No se fuerzan mayúsculas. |
+| **Bajada** | 400 | `--fs-lead` (20–26 px); en el juego 16 px `--text-dim` | 1,4 / 0 | Oración | La frase debajo del título. |
+| **Texto** | 400 (600 para resaltar) | `--fs-body` 18 px (en el juego 14–16 px) | 1,55 / 0 | Oración | Párrafos. Máx. 62 caracteres por línea. |
+| **Cifra** | 700–800 | según contexto | `font-variant-numeric: tabular-nums` | — | Tanteador, tantos, puntos, ELO, monedas. |
+| **Legal** | 400 | `--fs-micro` 13 px | 1,45 | Oración | Créditos de cartas y licencias. |
 
-Dentro del juego, que es una aplicación, los rótulos de panel pueden seguir en mayúsculas angostas
-(≥ 11 px, tracking 0,1 em). En páginas no.
+El contraste es de **mayúsculas grandes y apretadas** (títulos) contra **mayúsculas chicas con aire** (rótulos),
+con el texto corrido en oración en el medio. El nombre se escribe `TRUKE` 800 + `ADOS` 400 en el encabezado.
 
 ## 5. Forma y espacio
 
-- **Esquinas**: `--radius` 3 px en botones, campos y paneles (casi rectas, como el juego). Las cartas
-  tienen su esquina de naipe (`--radius-naipe`). No hay botones píldora.
+- **Esquinas**: **rectas**, `--radius` 2 px en botones, campos, paneles, globos y toasts. Las cartas tienen su
+  esquina de naipe (`--radius-naipe`). No hay botones píldora ni esquinas redondeadas.
+- **Bordes**: 1 px `--line` o `--line-2`. Es la forma de separar en el juego; las páginas pueden separar por
+  escalón de tono (`--bg` → `--surface` → `--surface-2`).
 - **Espacio**: base 8 (`--space-1` … `--space-10`). Margen de página `--gutter` (16–32 px).
   Entre secciones de página `--section-gap` (96–208 px).
-- **Superficies**: se separan por un escalón de tono (`--bg` → `--surface` → `--surface-2`), no con
-  líneas ni sombras. Sombra solo en lo que flota de verdad (globo de canto, menú, diálogo).
+- **Sombras**: solo en lo que flota de verdad (globo de canto, menú, diálogo, tarjeta del menú, placa sobre la
+  escena), siempre negras y difusas (`0 24px 60px rgba(0,0,0,.45)`).
 
 ## 6. Componentes base
 
-- **Botón principal (página)**: fondo `--oro`, texto `--accent-ink`, 650 angosto, 3 px. Uno por pantalla.
-  En el juego, por ahora, sigue blanco; el cambio a oro está documentado en [ALINEACION.md](ALINEACION.md) §4.
-- **Botón secundario**: fondo `--surface-2`, texto `--text`; hover `--surface-3`.
-- **Botón de canto** (juego): texto Canto, subrayado interior oro de 2 px (`box-shadow: inset 0 -2px 0 var(--accent)`).
-- **Peligro / trampa**: borde y texto copa ("¡Mostrá las dos!").
-- **Globo de canto**: fondo `--text`, texto `--text-on-light`, estilo Canto, esquina 2 px, sombra.
-- **Foco**: contorno 2 px `--focus` (oro) con 2 px de separación, siempre visible.
-- **Anotador**: palitos en `--text` sobre `--surface`, cuatro y el quinto cruzado (es parte de la
+- **Botón principal**: fondo `--text` (blanco), texto `--bg` (negro), borde blanco, 650 en mayúsculas con
+  tracking 0,08 em, 2 px. Hover `#d6d6d6`. Uno por pantalla (en el juego: Crear sala, Entrar, Tirar, Empezar,
+  Revancha…). Es igual en el juego y en las páginas.
+- **Botón secundario**: fondo `--panel` (casi negro), borde 1 px `--line-2`, texto `--text`; hover borde
+  `--text-dim` y fondo `--panel-hover`.
+- **Botón de canto** (juego): texto Canto, 700 sin mayúsculas, raya interior blanca de 2 px abajo
+  (`box-shadow: inset 0 -2px 0 var(--accent)`), 3 px en hover.
+- **Peligro / trampa**: borde `--red` y texto `--bad-ink` ("¡Mostrá las dos!").
+- **Globo de canto**: fondo `--text`, texto `--text-on-light`, 700, esquina 2 px, sombra.
+- **Placa con el turno**: se invierte (fondo blanco, texto negro).
+- **Foco**: contorno 2 px `--accent` (blanco) con 2 px de separación, siempre visible.
+- **Anotador**: palitos en `--text` sobre `--panel`, cuatro y el quinto cruzado (es parte de la
   identidad: usarlo para cualquier puntaje).
 
 ## 7. Imágenes
@@ -182,8 +199,9 @@ En orden de preferencia:
 3. **El mundo del truco**: bares, clubes, mesas de fórmica, paño, sifones, luz de lámpara, en fotos
    reales con crédito.
 
-Tratamiento: oscuro, cálido en la luz (lámpara) y neutro en las sombras; esquinas rectas; recortes
-generosos. Nunca fotos de stock de gente sonriendo con celulares, ni dorados de casino.
+Tratamiento: la imagen va a color (la mesa, los ambientes y las cartas son a color) dentro de una interfaz
+en blanco y negro; esquinas rectas; recortes generosos. Lo que se escribe encima va en blanco o negro, nunca en
+un color sacado de la imagen. Nunca fotos de stock de gente sonriendo con celulares, ni dorados de casino.
 
 Las cartas llevan siempre el crédito: *Naipes Libres de Basquetteur (Wikimedia Commons), CC BY-SA 3.0,
 vectorizadas por gjenkins20.*
@@ -206,10 +224,14 @@ Español rioplatense, de mesa: "jugá", "sentate", "cantá", "vos". Frases corta
 | "¡Mostrá las dos!" | "Denunciar jugada sospechosa" |
 
 Los cantos van en mayúsculas con signos de apertura: **¡TRUCO!**, **¡QUIERO RETRUCO!**, **¡ENVIDO!**
-Nunca se promete lo que el juego no tiene (ranking, cuentas). La flor y la muestra existen como opciones de
-la sala: se nombran como opciones, no como lo que pasa siempre.
+Nunca se promete lo que el juego no tiene. La flor y la muestra existen como opciones de la sala: se nombran como
+opciones, no como lo que pasa siempre.
 
 ## 10. Regenerar los logos
+
+`brand/tools/build-logos.mjs` arma los SVG de `brand/logo/` con la palabra convertida a contornos. Hoy lo hace
+desde Archivo Expanded Black y con la espada en color: hay que pasarlo a Hanken Grotesk y a una sola tinta
+(ver [ALINEACION.md](ALINEACION.md) §1). Mientras tanto, así se regeneran los de antes:
 
 ```bash
 mkdir /tmp/logos && cd /tmp/logos && npm init -y && npm i opentype.js@1.3.4

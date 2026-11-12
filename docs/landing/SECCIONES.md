@@ -31,7 +31,7 @@ Alternativas de hilo, por si no convence:
 
 ## 0. Barra superior 🟢 · S
 - Logo (wordmark "Trukeados"), anclas *Cómo se juega · Señas · Mesas en vivo*, CTA **Jugar** siempre visible.
-- Detalle: el CTA pasa a amarillo oro (`--accent`) cuando el hero sale de pantalla.
+- Detalle: el CTA pasa a blanco lleno con letra negra (`--accent`) cuando el hero sale de pantalla.
 - **Skills**: `design-taste-frontend` → `emil-design-eng` (transición del CTA).
 
 ## 1. Hero 🟢 · M–L
@@ -72,7 +72,7 @@ el gesto y se da vuelta la carta que representa. En celular, deslizable.
 
 ## 4. La trampa: dos encimadas 🟡 · M
 Una carta cae sobre otra en el paño. La de arriba se oscurece y se le carbonizan los bordes (la textura
-real `burnTex`). Botón rojo copa **"¡Mostrá las dos!"** → se levanta la quemada y aparece la de abajo.
+real `burnTex`). Botón de peligro (borde `--red`) **"¡Mostrá las dos!"** → se levanta la quemada y aparece la de abajo.
 Copy: *"Acá se puede hacer trampa. Y te pueden cazar."*
 - Activos: `burnTex`, `CARD` de `theme.js`, cartas. **Skills**: `emil-design-eng` → `web-inmersiva`.
 
@@ -96,7 +96,7 @@ y un globo de canto (con la voz del juego si el sonido está activado).
 - Activos: `dealAnim`, `TIMING`, `say()`, `palitos()`. **Skills**: `web-inmersiva` → `emil-design-eng`.
 
 ## 8. Modos: 1 vs 1, 2 vs 2, 3 vs 3 🟢 · S
-Tres mesas vistas desde arriba (diagramas limpios, asientos alternados por color de equipo), con el
+Tres mesas vistas desde arriba (diagramas limpios, asientos alternados por equipo: blanco y gris), con el
 **pie** marcado en las de equipo y una línea por modo ("mano a mano", "con compañero", "pica… no, eso
 todavía no"). Toque el modo y queda elegido para el CTA.
 - **Skills**: `design-taste-frontend` → `ui-ux-pro-max`.
@@ -166,7 +166,7 @@ juego, sin pasos intermedios.
 
 ## 20. Pie y créditos 🟢 · S
 Créditos obligatorios: cartas "Naipes Libres" (Basquetteur, CC BY-SA 3.0, vectorizadas por gjenkins20),
-Three.js (MIT), Archivo (Omnibus-Type, OFL). Link al repositorio si es público. Hecho en Argentina.
+Three.js (MIT), Hanken Grotesk (Hanken Design Co., OFL). Link al repositorio si es público. Hecho en Argentina.
 
 ---
 

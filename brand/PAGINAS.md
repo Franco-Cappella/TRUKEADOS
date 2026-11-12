@@ -2,7 +2,8 @@
 
 Reglas para toda página que no es el juego: la landing, una página de reglas, prensa, un 404. El juego
 es una aplicación; estas son páginas que se leen y se recorren. Comparten marca (tokens, logo, tipografía,
-voz) y cambian la gramática: más escala, menos interfaz.
+voz) y cambian la gramática: más escala, menos interfaz. Desde noviembre 2026 la marca es **blanco y negro,
+grotesk** (Hanken Grotesk, negro, blanco y grises, esquinas rectas): las páginas también.
 
 Se apoya en [BRAND.md](BRAND.md), [COMPONENTES.md](COMPONENTES.md), [RECURSOS.md](RECURSOS.md) y
 [VOZ.md](VOZ.md). Para la landing, el contenido y las secciones posibles están en
@@ -10,8 +11,8 @@ Se apoya en [BRAND.md](BRAND.md), [COMPONENTES.md](COMPONENTES.md), [RECURSOS.md
 
 ## 1. Propósito
 
-Toda página derivada tiene **una sola acción**: llevar al juego. El botón principal (oro) dice "Jugar
-ahora" y abre el juego. Lo demás (mirar señas, leer reglas) está para que esa acción se tome con ganas.
+Toda página derivada tiene **una sola acción**: llevar al juego. El botón principal (blanco con letra negra,
+como en el juego) dice "Jugar ahora" y abre el juego. Lo demás (mirar señas, leer reglas) está para que esa acción se tome con ganas.
 
 **Destinos** (la URL del juego va en una variable de entorno, nunca escrita a mano en el código):
 
@@ -28,8 +29,8 @@ nombre: todos los CTA van al menú. Si se quiere saltear el menú, se agrega al 
 ## 2. Lienzo
 
 - **Fondo**: `--bg` en toda la página. Escalones `--surface` / `--surface-2` para separar zonas.
-- **Un campo de color**: como máximo una sección entera en `--pano-3` (el paño). Ninguna sección en
-  espada, basto, oro o copa.
+- **Sin campos de color**: ninguna sección con fondo de color. El color de la página lo ponen las imágenes
+  de la mesa, las cartas y los personajes. (Antes se permitía una sección en `--pano-3`; ya no.)
 - **Margen exterior**: `--gutter` (16 → 32 px), igual a izquierda y derecha en todos los anchos.
 - **Grilla**: 12 columnas en escritorio, 4 en celular; separación entre columnas igual a `--gutter`.
   Ancho máximo del contenido: 1440 px; las imágenes pueden ir a sangre.
@@ -39,43 +40,48 @@ nombre: todos los CTA van al menú. Si se quiere saltear el menú, se agrega al 
 
 ## 3. Tipografía en página
 
-Cinco tamaños como máximo por página, tomados de la escala de [tokens.css](tokens.css):
+Una sola familia, **Hanken Grotesk** (400–800). Cinco tamaños como máximo por página, tomados de la escala de
+[tokens.css](tokens.css):
 
 | Uso | Estilo | Token |
 |---|---|---|
-| Título principal (un `h1` por página, en la primera pantalla) | Display | `--fs-display` |
-| Título de sección (`h2`, uno por sección) | Título | `--fs-title` |
-| Bajada, preguntas, frases destacadas | Bajada | `--fs-lead` |
-| Párrafos | Texto | `--fs-body` |
-| Rótulos, datos, enlaces de barra | Rótulo | `--fs-small` |
+| Título principal (un `h1` por página, en la primera pantalla) | Display: 800, mayúsculas, tracking −0,04 em | `--fs-display` |
+| Título de sección (`h2`, uno por sección) | Título: 800, mayúsculas, tracking −0,035 em | `--fs-title` |
+| Bajada, preguntas, frases destacadas | Bajada: 400, oración | `--fs-lead` |
+| Párrafos | Texto: 400, oración | `--fs-body` |
+| Rótulos, datos, enlaces de barra, botones | Rótulo: 600–700, mayúsculas, tracking `--track` 0,08 em | `--fs-small` |
 
-Más el estilo Canto para globos y el Legal (13 px) solo para créditos.
+Más el estilo Canto para globos (700, sin mayúsculas forzadas) y el Legal (13 px) solo para créditos.
 
 - Todo título en **dos líneas como máximo** en cualquier ancho (unos 32 caracteres a tamaño Display).
 - Alineado a la izquierda; centrado solo en un momento de la página.
 - Texto corrido en `--text` (tinta llena), 18 px, 62 caracteres de ancho máximo. El gris
   (`--text-dim`) es para notas.
-- Ninguna palabra del título en otro color, peso o estilo para "destacarla".
-- **Fuente**: Archivo variable con los dos ejes, peso (100–900) y ancho (62–125). La misma URL de Google
-  Fonts que el juego (`family=Archivo:wdth,wght@62..125,100..900&display=swap`), o autoalojada con los
-  dos ejes. Precargar el archivo latino. Comprobar en el navegador que `font-stretch: 125%` cambia el
-  ancho (si no cambia, la fuente cargada no tiene el eje).
+- Ninguna palabra del título en otro color o estilo para "destacarla". La única excepción es el nombre
+  (`TRUKE` 800 + `ADOS` 400), como en el menú del juego.
+- **Fuente**: Hanken Grotesk variable, eje de peso 400–800. La misma URL de Google Fonts que el juego
+  (`family=Hanken+Grotesk:wght@400..800&display=swap`), o autoalojada (por ejemplo
+  `@fontsource-variable/hanken-grotesk`). Precargar el archivo latino. No tiene eje de ancho: `font-stretch`
+  no hace nada (los tokens `--wide`, `--narrow`… quedan en 100 % solo por compatibilidad).
 
 ## 4. Lo que no va en una página de Trukeados
 
 Viene de la marca y de las reglas de diseño del hub. Una página que tiene algo de esto está mal hecha:
 
-- Rótulos chiquitos en mayúsculas espaciadas encima de los títulos ("NUEVO", "CÓMO FUNCIONA").
+- Colores en la interfaz: oro, amarillo, azul, verde, ni botones ni textos ni fondos de color. El rojo solo
+  para un error real o para mostrar la trampa.
+- Rótulos de relleno en mayúsculas encima de los títulos ("NUEVO", "CÓMO FUNCIONA") que no dicen nada. Los
+  rótulos en mayúsculas son para datos y etiquetas de verdad.
 - Numeración 01 / 02 / 03.
-- Líneas finas como separadores, cajas con borde de 1 px, grillas dibujadas.
+- Grillas dibujadas y cajas con borde por todos lados (el borde de 1 px es de los controles y paneles).
 - Degradés (fondos, botones, textos) y brillos. La única excepción es una sombra neutra debajo de un
   texto sobre foto.
 - Sombras en cosas quietas. Solo flotan: globos de canto, menús, diálogos, una carta en el aire.
-- Vidrio (`backdrop-filter`), barras flotantes tipo píldora, botones píldora.
+- Vidrio (`backdrop-filter`), barras flotantes tipo píldora, botones píldora, esquinas redondeadas.
 - Tarjetas con ícono arriba en filas iguales; filas de tarjetas idénticas.
 - Emojis, íconos decorativos, manchas de color, "tableros" falsos de barras grises.
 - Monoespaciada (salvo un código de sala real).
-- Marfil, crema, latón, dorado metálico, marrones en la interfaz, violeta.
+- Marfil, crema, latón, dorado metálico, marrones en la interfaz, violeta, neón.
 - Fotos de stock de gente.
 
 ## 5. Imágenes
@@ -86,6 +92,7 @@ En este orden (ver [BRAND.md](BRAND.md) §7 y [RECURSOS.md](RECURSOS.md)):
 3. **Fotos reales del mundo del truco** (bar, club, paño), con licencia libre y crédito en el pie.
 
 - Al menos cuatro imágenes reales (capturas, cartas, fotos) por página; lo normal es entre seis y doce.
+- Las imágenes van a color (la mesa y los ambientes son a color); la página alrededor, en blanco y negro.
 - Esquinas rectas en capturas y fotos; esquina de naipe en las cartas.
 - Una imagen dominante por pantalla, no seis chicas.
 - Nada encima de un título.
@@ -108,9 +115,10 @@ En este orden (ver [BRAND.md](BRAND.md) §7 y [RECURSOS.md](RECURSOS.md)):
 
 ## 7. Accesibilidad
 
-- Contraste AA: tinta y grises según la tabla de [BRAND.md](BRAND.md) §3. Espada y copa nunca como
-  texto chico (usar las versiones "tinta").
-- Foco visible en todo: `outline: 2px solid var(--focus); outline-offset: 2px`.
+- Contraste AA: tinta y grises según la tabla de [BRAND.md](BRAND.md) §3. `--muted` (4,3:1) no llega a AA:
+  solo para créditos y notas no esenciales; lo que hay que leer va en `--text` o `--text-dim`.
+- Foco visible en todo: `outline: 2px solid var(--focus); outline-offset: 2px` (blanco). Sobre un botón
+  blanco el contorno se separa 2 px, así que se ve igual.
 - Todo se usa con teclado en el orden de lectura; los canvas interactivos tienen alternativa con botones.
 - Un `h1` por página; un `h2` por sección; `lang="es-AR"`.
 - Objetivos táctiles de 44 × 44 px como mínimo.
@@ -130,17 +138,18 @@ En este orden (ver [BRAND.md](BRAND.md) §7 y [RECURSOS.md](RECURSOS.md)):
 - `<title>`: "Trukeados · Truco argentino online, en 3D" (portada) o "[Página] · Trukeados".
 - Descripción: "Truco argentino online en 3D, gratis y sin cuenta. Las señas se hacen con la cara: si
   te miran, te las cazan. 1 vs 1, 2 vs 2 y 3 vs 3."
-- Imagen para compartir 1200 × 630: fondo `--bg`, logo horizontal, una captura o una cara haciendo una
-  seña. Sin texto chico.
-- Favicon: `icono-app.svg` (y PNG de 180 px para Apple).
-- `theme-color`: `#121212`.
+- Imagen para compartir 1200 × 630: fondo `--bg`, el nombre en blanco, una captura o una cara haciendo una
+  seña. Sin texto chico. La del juego es `public/img/og.png`.
+- Favicon: el del juego, `public/favicon.svg` (blanco y negro), y PNG de 180 px para Apple (`img/icon-180.png`).
+- `theme-color`: `#0a0a0a` (el juego todavía dice `#121212` en `index.html`).
 
 ## 10. Lista para cerrar cualquier página
 
 - [ ] Un `h1` en la primera pantalla que dice qué es; un título en cada sección.
-- [ ] Una sola acción principal en oro por pantalla, que lleva al juego.
+- [ ] Una sola acción principal (blanca) por pantalla, que lleva al juego.
 - [ ] Solo tokens de `tokens.css`; ningún color ni tamaño suelto.
-- [ ] Archivo con los dos ejes cargando de verdad (ancho expandido visible en el título).
+- [ ] Hanken Grotesk cargando de verdad (títulos en 800, no en la fuente del sistema).
+- [ ] Interfaz sin colores: negro, blanco, grises y, si hace falta, el rojo de error.
 - [ ] Nada de la lista del §4.
 - [ ] Al menos cuatro imágenes reales; crédito de las cartas en el pie.
 - [ ] Textos en voseo, cortos y sin promesas falsas ([VOZ.md](VOZ.md)).

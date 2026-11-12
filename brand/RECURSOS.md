@@ -17,7 +17,7 @@ sola. Qué se copia:
 | `public/js/theme.js` | `src/game/theme.js` | Colores del canvas (lo usa `characters.js`) |
 | `public/js/config.js` | `src/game/config.js` | Nombre (`APP_NAME`), señas (`SENAS`), nombres de bots, tiempos, opciones de sala |
 | `public/js/engine.js` (si hace falta) | `src/game/engine.js` | `cardName`, `rank`, `tanto` |
-| `brand/tokens.css` | `src/brand/tokens.css` | Tokens |
+| `brand/tokens.css` | `src/styles/tokens.css` | Tokens (blanco y negro; sin el `@import` de la fuente) |
 | `brand/logo/*.svg` | `public/brand/` | Logos |
 
 Los archivos copiados **no se editan** en la página: si hay que cambiarlos, se cambia el juego y se
@@ -118,19 +118,26 @@ otro). Para una página: copiar la función o reproducir sus medidas exactas (ve
 - `say(texto)`: voz del navegador en español (prefiere `es-AR`), velocidad 1,05.
 - En páginas: **apagado por defecto**, solo después de un gesto del usuario, con un interruptor visible.
 
-## 7. La escena del bar (`scene.js`, colores en `SCENE` de `theme.js`)
+## 7. La mesa y los ambientes (`scene.js`, `ambientes.js`; colores en `SCENE` de `theme.js` y en cada `amb-*.js`)
 
-Un bar en penumbra, con el mismo lenguaje que los personajes: materiales de sombreado por escalones
-(`toon()` en `scene.js`) y paredes pintadas, sin mapeo de tonos para que la paleta quede exacta.
-Lámpara colgante de pantalla verde (`#27352b`) con luz `#ffdcaa`, paño verde en franjas planas (`#27523e` →
-`#1a4529`) con costura, guarda escalonada y el nombre del juego en un rombo (`SCENE.feltName`, que sale de
-`APP_NAME`), mesa de madera oscura, boiserie `#1b120d` con molduras, estantería de botellas en la pared de
-enfrente, piso de tablones, vaso de vino, botella, mate con bombilla y cuatro láminas de dos tintas en los
-costados: sol, guarda pampa, espada y pampa con ombú.
+**La escena es la parte a color de la marca.** La interfaz encima es blanco y negro; la mesa no.
+Materiales de sombreado por escalones (`toon()`) y colores exactos, sin mapeo de tonos.
+
+- **La mesa**: paño verde en franjas planas por defecto (`SCENE.felt`: `#27523e` → `#204534` → `#1a4529`) con
+  costura y el nombre del juego (`SCENE.feltName`, de `APP_NAME`), madera oscura (`SCENE.wood` `#452a17`),
+  vaso de vino, botella, mate con bombilla. Los paños, mazos (dorsos) y mapas de la tienda la cambian:
+  los paños pintados a mano están en `panos.js` (alfombra persa, almendro, fileteado, poncho, casino, calcárea,
+  noche de campo, bodegón) y se eligen con `COSMETIC_LOOK` de `theme.js`.
+- **Los ambientes** (`AMBIENTES` en `config.js`: el servidor sortea uno por partida y cambia en la revancha):
+  bar notable, café porteño, parrilla de barrio y club de barrio (`amb-interiores.js`); Bosques de Palermo,
+  quincho y estancia (`amb-afuera.js`); Barrio Chino (`barrio-chino.js`) y Noche estrellada, pintada con relieve
+  (`amb-noche.js`, `impasto.js`), que son de la tienda. Piezas compartidas en `amb-kit.js` y `amb-piezas.js`;
+  cielo y fondo en `paisaje.js`. Imágenes de cada uno en `public/img/mapas/*.webp`.
+- Para mirarlos: `/tools/scene-test.html` (con `shoot()` se guardan capturas en `tools/shots/`).
 
 Para usar la escena en una página: **capturas reales del juego** (ver abajo). Montar Three.js en una
 landing solo si la escena es lo principal de esa sección, y siempre cargándolo después del primer
-pintado (son ~680 KB sin comprimir).
+pintado (la landing usa la calle del Barrio Chino, copiada con `npm run sync`).
 
 ## 8. Capturas del juego
 
