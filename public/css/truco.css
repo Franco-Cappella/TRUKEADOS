@@ -42,6 +42,9 @@
   --shade: rgba(0, 0, 0, 0.74);
   --shade-strong: rgba(4, 4, 4, 0.9);
   --glow: #1a1a1a;
+  /* el paño de la mesa: solo donde se dibuja la mesa (la entrada); nunca en botones ni paneles */
+  --pano: #27523e;
+  --pano-3: #1a4529;
   /* tamaños de los botones (grandes para tocar fácil) */
   --btn-font: 15px;
   --btn-pad: 12px 20px;
@@ -1483,6 +1486,77 @@ img.w-av.photo { object-fit: cover; padding: 0; display: block; background: var(
 .sh-try-bar b { font-size: clamp(22px, 3vw, 34px); font-weight: 800; letter-spacing: -0.03em; text-transform: uppercase; }
 
 /* qué es el juego, abajo de la entrada (se lee sin entrar: también para los buscadores) */
+/* ---------- entrada: la mesa (un rival que te mira, el canto, tu mano) y el formulario al costado ---------- */
+#login.lg { display: block; padding: 0; background: var(--bg); }
+.lg-hero { display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 34vw, 480px); min-height: 100dvh; }
+.lg-stage { position: relative; overflow: hidden; padding: 32px 40px; min-height: 560px; background: radial-gradient(ellipse at 62% 46%, var(--glow) 0%, transparent 62%); }
+.lg-brand h1 { font-size: 26px; letter-spacing: -0.02em; }
+.lg-display { position: relative; z-index: 1; margin: clamp(20px, 5vh, 56px) 0 0; font-weight: 800; font-size: clamp(56px, 8.4vw, 148px); line-height: 0.88; letter-spacing: -0.045em; text-transform: uppercase; }
+.lg-tag { position: relative; z-index: 3; max-width: 22ch; margin-top: 18px; font-size: 18px; color: var(--text); }
+.lg-mesa { position: absolute; inset: 0; pointer-events: none; }
+.lg-rival { position: absolute; z-index: 2; right: 6%; bottom: 23%; height: 62%; aspect-ratio: 512 / 620; }
+.lg-rival canvas { display: block; width: 100%; height: 100%; }
+.lg-globo { position: absolute; left: 50%; top: 2%; transform: translate(-50%, -100%); width: max-content; }
+/* el paño: una mesa redonda que entra por abajo, con la raya del centro como en la mesa del juego */
+.lg-pano { position: absolute; z-index: 2; left: -12%; right: -12%; bottom: -46%; height: 76%; border-radius: 50%; background: radial-gradient(ellipse at 50% 30%, var(--pano) 0%, var(--pano-3) 70%); box-shadow: 0 -2px 0 var(--line-2), 0 -30px 60px rgba(0, 0, 0, 0.5); }
+.lg-pano::after { content: ''; position: absolute; inset: 9% 24% auto; height: 46%; border-radius: 50%; border: 2px solid var(--line); }
+.lg-plate { position: absolute; z-index: 3; right: 4%; bottom: 5%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; width: 250px; padding: 7px 12px 8px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--team1); }
+.lg-plate > b { font-size: 15px; font-weight: 750; letter-spacing: -0.01em; }
+.lg-plate > i { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.lg-sena { flex-basis: 100%; margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; opacity: 0.32; transition: opacity 0.18s ease-out; }
+.lg-sena.on { opacity: 1; }
+.lg-sena span { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+.lg-sena b { font-size: 14px; }
+.lg-sena small { grid-column: 2; font-size: 12px; color: var(--text-dim); }
+.lg-sena b:empty::before { content: '—'; }
+/* tu mano, en abanico, como se ve sentado a la mesa */
+.lg-mano { position: absolute; z-index: 4; left: 17%; bottom: -8%; height: 36%; aspect-ratio: 512 / 788; pointer-events: auto; }
+.lg-mano img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6.5% / 4.2%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transform-origin: 50% 100%; transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1); animation: lg-deal 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.lg-mano img:nth-child(1) { transform: translateX(-48%) rotate(-13deg); }
+.lg-mano img:nth-child(2) { transform: translateY(-5%); animation-delay: 0.09s; }
+.lg-mano img:nth-child(3) { transform: translateX(48%) rotate(13deg); animation-delay: 0.18s; }
+.lg-mano:hover img:nth-child(1) { transform: translateX(-62%) rotate(-18deg); }
+.lg-mano:hover img:nth-child(2) { transform: translateY(-12%); }
+.lg-mano:hover img:nth-child(3) { transform: translateX(62%) rotate(18deg); }
+@keyframes lg-deal { from { transform: translateY(70%) rotate(0deg); opacity: 0; } }
+.lg-panel { display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 40px clamp(24px, 3vw, 44px); background: var(--surface); border-left: 1px solid var(--line-2); }
+.lg-title { margin: 0 0 8px; font-weight: 800; font-size: clamp(30px, 2.6vw, 40px); line-height: 0.95; letter-spacing: -0.035em; text-transform: uppercase; }
+.lg-panel .a-form { gap: 10px; }
+.lg-panel .a-form input { padding: 15px 14px; border-color: var(--line); }
+.lg-panel .a-form input:focus { border-color: var(--accent); }
+.lg-panel .a-switch, .lg-panel .a-legal { text-align: left; }
+.lg-about { padding: clamp(48px, 8vw, 112px) 40px 64px; border-top: 1px solid var(--line); }
+.lg-about .a-about { max-width: 1120px; margin: 0 auto; padding: 0; border: 0; font-size: 16px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); gap: 0 clamp(32px, 6vw, 96px); }
+.lg-about .a-about > * { grid-column: 1; }
+.lg-about .a-about h2 { font-size: clamp(30px, 3.6vw, 52px); letter-spacing: -0.035em; line-height: 0.95; margin-bottom: 18px; }
+.lg-about .a-about > p { max-width: 62ch; }
+.lg-about .a-feats { gap: 0 24px; margin-top: 20px; }
+.lg-about .a-feats li { padding: 14px 0; background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.lg-about .a-feats b { font-size: 15px; }
+.lg-about .a-feats span { font-size: 14px; }
+.lg-about .a-about h3, .lg-about .a-faq { grid-column: 2; }
+.lg-about .a-about h3 { grid-row: 1; align-self: end; margin: 0 0 18px; }
+.lg-about .a-faq { grid-row: 2 / span 3; }
+.lg-about .a-faq dt { margin-top: 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.lg-about .a-faq dd { margin: 4px 0 14px; }
+.lg-about .a-more { margin-top: 24px; }
+@media (max-width: 900px) {
+  .lg-hero { grid-template-columns: 1fr; min-height: 0; }
+  .lg-stage { min-height: 0; height: min(64dvh, 560px); padding: 20px 16px; }
+  .lg-display { font-size: clamp(40px, 12vw, 96px); margin-top: 14px; }
+  .lg-tag { font-size: 15px; max-width: 18ch; margin-top: 10px; }
+  .lg-rival { right: -2%; bottom: 20%; height: 52%; }
+  .lg-plate { right: 12px; bottom: 12px; width: 160px; padding: 5px 10px 6px; }
+  .lg-sena small { display: none; }
+  .lg-mano { left: 10%; height: 27%; bottom: -8%; }
+  .lg-pano { bottom: -52%; }
+  .lg-panel { padding: 28px 16px 32px; border-left: 0; border-top: 1px solid var(--line-2); }
+  .lg-about { padding: 48px 16px; }
+  .lg-about .a-about { display: block; }
+  .lg-about .a-about h3 { margin-top: 32px; }
+  .lg-about .a-feats { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .lg-mano img { animation: none; transition: none; } .lg-sena { transition: none; } }
 .a-about { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--text-dim); font-size: 14px; line-height: 1.55; }
 .a-about h2 { margin: 0 0 10px; color: var(--text); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; text-transform: uppercase; }
 .a-about h3 { margin: 22px 0 8px; color: var(--text); font-size: 12px; font-weight: 700; letter-spacing: var(--track); text-transform: uppercase; }

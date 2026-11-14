@@ -3,6 +3,7 @@
 import { AUTH, SKILL_LEVELS, DEFAULT_LEVEL, COINS } from './config.js';
 import { $, $$, esc, initial } from './dom.js';
 import { signInWithGoogle, signInWithPassword, signUp, chooseUsername, signOut } from './auth.js';
+import { initStage, stageMode, stageReply } from './entrada.js';
 
 const SCREENS = ['#boot', '#login', '#onboard'];
 
@@ -19,6 +20,7 @@ export function showEntry(which) {
 export function showLoginError(text) {
   $('#login-msg').textContent = text || '';
   $('#login-msg').classList.toggle('bad', !!text);
+  stageReply(text, true);
 }
 
 // done(): ya hay sesión y perfil (main.js sigue con la ruta). out(): volver al inicio de sesión.
@@ -27,6 +29,7 @@ export function initAccount(done, out) {
   const msg = (text, bad = true) => {
     $('#login-msg').textContent = text;
     $('#login-msg').classList.toggle('bad', bad);
+    stageReply(text, bad);
   };
   const paintMode = () => {
     $('#login-title').textContent = creating ? 'Creá tu cuenta' : 'Entrá para jugar';
@@ -37,11 +40,13 @@ export function initAccount(done, out) {
     $('#login-pass').placeholder = creating ? `Contraseña (${AUTH.minPassword} o más)` : 'Contraseña';
     $('#login-pass').minLength = creating ? AUTH.minPassword : 0;
     msg('');
+    stageMode(creating);
   };
   $('#login-switch').onclick = () => {
     creating = !creating;
     paintMode();
   };
+  initStage();
   paintMode();
 
   const busy = (on) => $$('#login button').forEach((b) => (b.disabled = on));

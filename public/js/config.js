@@ -151,6 +151,21 @@ export const SENAS = {
   nada_envido: { label: 'No tengo envido', expr: 'frown', desc: 'Boca para abajo' },
 };
 export const SENA_MS = 2200; // cuánto dura la cara de una seña
+// La mesa de la pantalla de entrada (entrada.js): un rival dibujado que te mira, hace señas y canta.
+// El canto sube a medida que se completa el formulario: nada, mail, mail y contraseña.
+export const LOGIN_STAGE = {
+  rival: 'Tito', // de BOT_NAMES
+  seat: 1,
+  crop: { y: 70, h: 620 }, // la parte del dibujo (de 512 × 1200) que se ve: de la cabeza a la mesa
+  senaEvery: 5200, // cada cuánto hace una seña (dura SENA_MS)
+  senas: ['ancho_espada', 'siete_espada', 'tres', 'ancho_basto', 'envido_alto', 'ciego'],
+  cantos: {
+    entrar: ['¡Truco!', '¡Quiero retruco!', '¡Quiero vale cuatro!'],
+    crear: ['¡Envido!', '¡Real envido!', '¡Falta envido!'],
+    error: '¡No quiero!',
+    listo: '¡Quiero!',
+  },
+};
 // Las señas se ven mirando al que la hace, no de reojo: la carita está entera hasta `clear` grados del centro de la
 // vista y se borra del todo a los `gone` (más allá, se le ve la cara de siempre). Así hay que girar para pescarla.
 export const SENA_GLANCE = { clear: 9, gone: 20 };

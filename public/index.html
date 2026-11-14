@@ -43,25 +43,45 @@
   <!-- ============ ENTRADA (sin sesión no se juega) ============ -->
   <section id="boot" class="screen a-screen"><p class="muted">Cargando…</p></section>
 
-  <section id="login" class="screen a-screen hidden">
-    <div class="m-wrap a-wrap">
-      <header class="m-head">
-        <h1>Truke<span>ados</span></h1>
-        <p class="tag">Truco argentino en 3D, con señas de verdad.</p>
-      </header>
-      <div class="m-card">
-        <h3 id="login-title">Entrá para jugar</h3>
+  <section id="login" class="screen a-screen lg hidden">
+    <div class="lg-hero">
+      <!-- la mesa: un rival que te mira y hace señas, el canto que sube y tu mano (entrada.js) -->
+      <div class="lg-stage">
+        <header class="m-head lg-brand"><h1>Truke<span>ados</span></h1></header>
+        <p class="lg-display">Te están<br>mirando.</p>
+        <p class="tag lg-tag">Truco argentino en 3D, con señas de verdad.</p>
+        <div class="lg-mesa" aria-hidden="true">
+          <div class="lg-rival">
+            <div class="lg-globo"><div class="bubble call" id="lg-bubble">¡Truco!</div></div>
+            <canvas id="lg-face" width="512" height="620"></canvas>
+          </div>
+          <div class="lg-pano"></div>
+          <div class="lg-plate">
+            <b id="lg-name"></b><i>te mira</i>
+            <p class="lg-sena" id="lg-sena"><span>Seña</span><b id="lg-sena-label"></b><small id="lg-sena-desc"></small></p>
+          </div>
+          <div class="lg-mano">
+            <img src="/cards/1E.webp" alt="" width="512" height="788">
+            <img src="/cards/7E.webp" alt="" width="512" height="788">
+            <img src="/cards/1B.webp" alt="" width="512" height="788">
+          </div>
+        </div>
+      </div>
+      <div class="lg-panel">
+        <h2 class="lg-title" id="login-title">Entrá para jugar</h2>
         <button class="btn big a-google" id="login-google" type="button">Entrar con Google</button>
         <div class="a-or"><span>o con tu mail</span></div>
         <form id="login-form" class="a-form">
           <input id="login-email" type="email" placeholder="Tu mail" autocomplete="email" required aria-label="Mail">
           <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" required aria-label="Contraseña">
-          <button class="btn primary" id="login-submit">Entrar</button>
+          <button class="btn primary big" id="login-submit">Entrar</button>
         </form>
         <p class="a-msg" id="login-msg" role="status"></p>
         <p class="a-switch"><span id="login-switch-text">¿Primera vez?</span> <button type="button" class="a-link" id="login-switch">Creá tu cuenta</button></p>
         <p class="a-legal">Al entrar aceptás los <a href="/legal/terminos" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">Política de privacidad</a>. Tenés que tener 13 años o más.</p>
       </div>
+    </div>
+    <div class="lg-about">
       <!-- lo que es el juego, para el que llega por primera vez (y para los buscadores: se lee sin entrar) -->
       <section class="a-about" aria-labelledby="about-title">
         <h2 id="about-title">Truco argentino online, en 3D y gratis</h2>
